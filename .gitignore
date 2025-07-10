@@ -1,0 +1,8 @@
+
+components/acw02/__pycache__/
+
+.vs/
+
+.esphome/
+
+secrets.yaml

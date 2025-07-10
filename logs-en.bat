@@ -1,0 +1,1 @@
+python -m esphome logs esphome-acw02-en.yaml

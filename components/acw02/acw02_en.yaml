@@ -1,0 +1,173 @@
+text:
+  - platform: template
+    name: "MQTT: Broker"
+    id: mqtt_broker_address_input
+    entity_category: config
+    mode: text
+    lambda: |-
+      return id(ac_ctrl).get_mqtt_broker();
+    set_action:
+      then:
+        - lambda: |-
+            id(ac_ctrl).set_mqtt_broker(x);
+    update_interval: 1s
+
+  - platform: template
+    name: "MQTT: Login"
+    id: mqtt_login_input
+    entity_category: config
+    mode: text
+    lambda: |-
+      return id(ac_ctrl).get_mqtt_username();
+    set_action:
+      then:
+        - lambda: |-
+            id(ac_ctrl).set_mqtt_username(x);
+    update_interval: 1s
+
+  - platform: template
+    name: "MQTT: Password"
+    id: mqtt_password_input
+    entity_category: config
+    mode: password
+    lambda: |-
+      return id(ac_ctrl).get_mqtt_password();
+    set_action:
+      then:
+        - lambda: |-
+            id(ac_ctrl).set_mqtt_password(x);
+    update_interval: 1s
+
+  - platform: template
+    name: "MQTT: Port"
+    id: mqtt_port_input
+    mode: text
+    entity_category: config
+    lambda: |-
+      return id(ac_ctrl).int_to_string(id(ac_ctrl).get_mqtt_port());
+    set_action:
+      then:
+        - lambda: |-
+            id(ac_ctrl).set_mqtt_port_from_string(x);
+    update_interval: 1s
+
+switch:
+  - platform: template
+    name: "G1: Mute command"
+    id: mute_commande_api
+    icon: mdi:volume-off
+    entity_category: "config"
+    lambda: |-
+      return id(ac_ctrl).is_mute_on();
+    turn_on_action:
+      - lambda: id(ac_ctrl).set_mute(true);
+    turn_off_action:
+      - lambda: id(ac_ctrl).set_mute(false);
+
+  - platform: template
+    name: "Z-Config: Auto mode excluded"
+    id: disable_mode_auto
+    icon: "mdi:thermostat-cog"
+    entity_category: "config"
+    lambda: |-
+      return id(ac_ctrl).is_disable_mode_auto();
+    turn_on_action:
+      - lambda: id(ac_ctrl).set_disable_mode_auto(true);
+    turn_off_action:
+      - lambda: id(ac_ctrl).set_disable_mode_auto(false);
+
+  - platform: template
+    name: "Z-Config: Heat mode excluded"
+    id: disable_mode_heat
+    icon: "mdi:thermostat-cog"
+    entity_category: "config"
+    lambda: |-
+      return id(ac_ctrl).is_disable_mode_heat();
+    turn_on_action:
+      - lambda: id(ac_ctrl).set_disable_mode_heat(true);
+    turn_off_action:
+      - lambda: id(ac_ctrl).set_disable_mode_heat(false);
+
+  - platform: template
+    name: "Z-Config: Cool mode excluded"
+    id: disable_mode_cool
+    icon: "mdi:thermostat-cog"
+    entity_category: "config"
+    lambda: |-
+      return id(ac_ctrl).is_disable_mode_cool();
+    turn_on_action:
+      - lambda: id(ac_ctrl).set_disable_mode_cool(true);
+    turn_off_action:
+      - lambda: id(ac_ctrl).set_disable_mode_cool(false);
+
+  - platform: template
+    name: "Z-Config: Dry mode excluded"
+    id: disable_mode_dry
+    icon: "mdi:thermostat-cog"
+    entity_category: "config"
+    lambda: |-
+      return id(ac_ctrl).is_disable_mode_dry();
+    turn_on_action:
+      - lambda: id(ac_ctrl).set_disable_mode_dry(true);
+    turn_off_action:
+      - lambda: id(ac_ctrl).set_disable_mode_dry(false);
+
+  - platform: template
+    name: "Z-Config: Fan mode excluded"
+    id: disable_mode_fan
+    icon: "mdi:thermostat-cog"
+    entity_category: "config"
+    lambda: |-
+      return id(ac_ctrl).is_disable_mode_fan();
+    turn_on_action:
+      - lambda: id(ac_ctrl).set_disable_mode_fan(true);
+    turn_off_action:
+      - lambda: id(ac_ctrl).set_disable_mode_fan(false);
+
+  - platform: template
+    name: "G1: auto calc climate (eco/auto)"
+    id: option_recalculate_climate
+    icon: mdi:autorenew
+    entity_category: "config"
+    lambda: |-
+      return id(ac_ctrl).is_option_recalculate_climate();
+    turn_on_action:
+      - lambda: id(ac_ctrl).set_option_recalculate_climate(true);
+    turn_off_action:
+      - lambda: id(ac_ctrl).set_option_recalculate_climate(false);
+
+button:
+  - platform: restart
+    name: "G1: Restart"
+    id: restart_module_ac
+
+  - platform: restart
+    name: "MQTT: validate"
+    id: validate_mqtt
+  
+  - platform: template
+    name: "G1: Refresh data"
+    id: get_status_button
+    icon: mdi:cloud-refresh-variant
+    entity_category: "config"
+    on_press:
+      - lambda: |-
+          id(ac_ctrl).reload_ac_info();
+
+  - platform: template
+    name: "G1: Rebuild MQTT entities"
+    id: rebuild_mqtt_entities
+    icon: mdi:cloud-refresh-variant
+    entity_category: "config"
+    on_press:
+      - lambda: |-
+          id(ac_ctrl).rebuild_mqtt_entity();
+
+  - platform: template
+    name: "Z-Config: Validate"
+    id: apply_disable_settings
+    icon: mdi:send
+    entity_category: "config"
+    on_press:
+      - lambda: |-
+          id(ac_ctrl).apply_disable_settings();

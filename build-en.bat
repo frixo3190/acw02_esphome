@@ -1,0 +1,1 @@
+python -m esphome run esphome-acw02-en.yaml
