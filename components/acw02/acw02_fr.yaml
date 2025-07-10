@@ -1,17 +1,3 @@
-# esphome:
-#   on_boot:
-#     then:
-#       - lambda: |-
-#           id(ac_ctrl).set_temp_number(id(temp_set));
-
-# esphome:
-#   on_boot:
-#     then:
-#       - lambda: |-
-#           id(ac_ctrl).set_ambient_temperature_sensor_c(id(ac_ambient_temperature_c));
-#           id(ac_ctrl).set_ambient_temperature_sensor_f(id(ac_ambient_temperature_f));
-
-
 text:
   - platform: template
     name: "MQTT: Broker"
@@ -185,29 +171,3 @@ button:
     on_press:
       - lambda: |-
           id(ac_ctrl).apply_disable_settings();
-
-
-# le mode chaud et auto et mettre une option pour les desactiver + entité commenté coté ha
-# desactiver le changement de temp et de vitesse de fan en mode eco
-# desactiver le changement de temp en mode auto
-# actuellement je bloque le setter pour le temp C ou F en fonction du mode, faudrait reset la valeur ca la ca reste bloquer
-# bien verifier les setter l'histoire de les faire si la variable est vraiment modif, pour eviter les envoi au start
-# apres avoir gerer le rx, implementer les trame inconnu et periodique voir les trame via interval rx envoyer et essayer de match avec les tx
-
-# dans les setter bien verif que le status est diff (protection)
-
-
-# MQTT
-# faire un ping pour mettre available, detecter quand desactiver climate mqtt, indispo car reboot, ou indispo car ne reponds plus 
-# declencher l'init mqtt du setup apres mqtt connect
-# utilisez des variaible global pour set ip username password de mqtt
-# option switch pour desactiver chacun des mode
-# option pour definir mode par defaut
-# gerer la perte de connexion et que faire avec le suscribe ? 
-# faire un sensor quand c'est indispo, et faire un sensor quand ya une erreur
-# si des mode sont desactiver, forcer le mode si par defaut si un mode desactivé est activé
-# mode renommé les option du select mode mais juste pour lui
-# faire un sensor qui indique les commande ignoré et pourquoi, par exemple le changement de vitesse de ventilation en mode eco
-# dans le cas ou par exemple le mode eco voir pour eliminer les option dans climate et le reconstruire .... voir si c'est pas trop gourmand
-# faire un sensor pour chaque availability et en cas d'erreur
-# revoir le mode clean, enlever le mecanisme qui fait auto un off et declenche le clean, par disable le bouton si power, et enable si off, et si off faire la commande off + clean sans delay
