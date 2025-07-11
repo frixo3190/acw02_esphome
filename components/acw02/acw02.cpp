@@ -103,8 +103,10 @@ namespace esphome {
 
       static uint32_t last_keepalive = 0;
       if (millis() - last_keepalive > 60000 && tx_queue_.empty()) {
-        last_keepalive = millis();
-        send_command_basic(keepalive_frame_);
+        if (millis() - last_rx_byte_time_ > 200) {
+          last_keepalive = millis();
+          send_command_basic(keepalive_frame_);
+        }
       }
     }
 
