@@ -27,7 +27,6 @@ namespace esphome {
         mqtt_->set_on_connect([this](bool first) {
           ESP_LOGI(TAG, "MQTT connected → publishing discovery and state");
           set_timeout("mqtt_discovery_delay", 100, [this]() {
-            publish_state();
             publish_discovery_climate();
             publish_discovery_mode_select();
             publish_discovery_fan_select();
