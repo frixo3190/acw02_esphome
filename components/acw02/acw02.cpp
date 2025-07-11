@@ -99,8 +99,6 @@ namespace esphome {
         ESP_LOGI(TAG, "RX: [%s]", format_hex_pretty(rx_buffer_).c_str());
         decode_state(rx_buffer_);
         rx_buffer_.clear();
-        // for clean
-        flush();
       }
 
       static uint32_t last_keepalive = 0;
@@ -1231,8 +1229,6 @@ namespace esphome {
       const auto &pkt = tx_queue_.front();
       ESP_LOGI(TAG, "TX: [%s]", format_hex_pretty(pkt).c_str());
       write_array(pkt);
-      // for clean
-      flush();
       last_tx_ = millis();
       tx_queue_.pop_front();
     }
