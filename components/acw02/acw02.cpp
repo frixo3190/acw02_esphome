@@ -1359,7 +1359,13 @@ namespace esphome {
         fan_ = Fan::SILENT;
       }
 
-      swing_position_ = static_cast<Swing>(f[15]);
+      // swing_position_ = static_cast<Swing>(f[15]);
+      const uint8_t swing_raw = f[15];
+      const uint8_t swing_v_raw = swing_raw & 0x0F;
+      const uint8_t swing_h_raw = (swing_raw >> 4) & 0x0F;
+
+      swing_position_ = static_cast<Swing>(swing_v_raw);  // garde ton champ actuel
+      const uint8_t swing_horizontal_raw = swing_h_raw;   // info brute uniquement pour log
 
       const uint8_t flags = f[16];
       eco_      = flags & 0x01;
@@ -1372,7 +1378,7 @@ namespace esphome {
 
       ESP_LOGI(TAG,
       "RX decode: PWR=%s | Mode=%s | Mode climate=%s | Fan=%s | Temp=%.1f°C / %.1f°F [%s] | "
-      "Eco=%d | Night=%d | Clean=%d | Purifier=%d | Display=%d | Swing=%s | Silent=%s",
+      "Eco=%d | Night=%d | Clean=%d | Purifier=%d | Display=%d | Swing=%s | SwingH=0x%X | Silent=%s",
       power_on_ ? "ON" : "OFF",
       mode_to_string(app_lang_, mode_).c_str(),
       mode_to_string_climate(mode_).c_str(),
@@ -1380,6 +1386,7 @@ namespace esphome {
       static_cast<float>(target_temp_c_), static_cast<float>(target_temp_f_), is_fahrenheit ? "°F" : "°C",
       eco_, night_, clean_, purifier_, display_,
       swing_to_string(app_lang_, swing_position_).c_str(),
+      swing_horizontal_raw,
       silent_bit ? "YES" : "NO");
 
       if (f.size() >= 12) {
