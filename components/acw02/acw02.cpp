@@ -675,7 +675,7 @@ namespace esphome {
       if (!mqtt_) return;
 
       const std::string topic_eco = app_name_ + "/eco_availability";
-      std::string payload_eco = (mode_ == Mode::COOL) ? "available" : "unavailable";
+      std::string payload_eco = (power_on_ && mode_ == Mode::COOL) ? "available" : "unavailable";
       mqtt_->publish(topic_eco, payload_eco, 1, true);
 
       const std::string topic_night = app_name_ + "/night_availability";
