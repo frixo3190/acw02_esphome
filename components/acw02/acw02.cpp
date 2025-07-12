@@ -40,6 +40,7 @@ namespace esphome {
             publish_discovery_purifier_switch();
             publish_discovery_temperature_number();
             publish_discovery_temperature_sensor();
+            publish_discovery_last_cmd_origin_sensor();
           });
           mqtt_->subscribe(app_name_ + "/cmd/#", [this](const std::string &topic, const std::string &payload) {
             mqtt_callback(topic, payload);
@@ -654,7 +655,8 @@ namespace esphome {
       payload += "\"display\":\"" + std::string(display_ ? "on" : "off") + "\",";
       payload += "\"swing\":\"" + swing_to_string(app_lang_, swing_position_) + "\",";
       payload += "\"swing_horizontal\":\"" + swing_horizontal_to_string(app_lang_, swing_horizontal_) + "\",";
-      payload += "\"unit\":\"" + std::string(use_fahrenheit_ ? "°F" : "°C") + "\"";
+      payload += "\"unit\":\"" + std::string(use_fahrenheit_ ? "°F" : "°C") + "\",";
+      payload += "\"last_cmd_origin\":\"" + std::string(from_remote_ ? "Remote" : "ESP") + "\"";
       payload += "}";
 
       mqtt_->publish(app_name_ + "/state", payload, 0, true);
@@ -1275,6 +1277,37 @@ namespace esphome {
       }
     }
 
+        void ACW02::publish_discovery_last_cmd_origin_sensor(bool recreate) {
+      if (!mqtt_) return;
+
+      const std::string topic_base = app_name_;
+      const std::string unique_id = app_sanitize_name_ + "_mqtt_sensor_last_cmd_origin";
+
+      std::string config_topic = "homeassistant/sensor/" + topic_base + "-last-cmd-origin/config";
+
+      std::string payload = R"({
+        "name": ")" + get_localized_name(app_lang_, "lastCmdOrigin") + R"(",
+        "object_id": ")" + unique_id + R"(",
+        "unique_id": ")" + unique_id + R"(",
+        "stat_t": ")" + topic_base + R"(/state",
+        "icon" : "mdi:origin",
+        "val_tpl": "{{ value_json.last_cmd_origin }}",
+        "avty_t": ")" + topic_base + R"(/status",
+        "pl_avail": "online",
+        "pl_not_avail": "offline")" +
+        build_common_config_suffix() + R"(
+      })";
+
+      if (recreate) {
+        mqtt_->publish(config_topic, std::string(""), 1, true);
+        set_timeout("mqtt_publish_discovery_last_cmd_origin_sensor", mqtt_delay_rebuild_, [this, config_topic, payload]() {
+          mqtt_->publish(config_topic, payload, 1, true);
+        });
+      } else {
+        mqtt_->publish(config_topic, payload, 1, true);
+      }
+    }
+
     void ACW02::rebuild_mqtt_entity() {
       publish_discovery_climate(true);
       publish_discovery_mode_select(true);
@@ -1289,6 +1322,7 @@ namespace esphome {
       publish_discovery_purifier_switch(true);
       publish_discovery_temperature_number(true);
       publish_discovery_temperature_sensor(true);
+      publish_discovery_last_cmd_origin_sensor(true);
     }
 
     void ACW02::apply_disable_settings() {
@@ -1475,7 +1509,7 @@ namespace esphome {
           clean_ = false;
         }
       }
-      const bool from_remote = flags & 0x04;
+      from_remote_ = flags & 0x04;
       purifier_ = flags & 0x40;
       display_  = flags & 0x80;
 
@@ -1491,7 +1525,7 @@ namespace esphome {
       swing_to_string(app_lang_, swing_position_).c_str(),
       swing_horizontal_to_string(app_lang_, swing_horizontal_).c_str(),
       silent_bit ? "YES" : "NO",
-      from_remote ? "Remote" : "ESP");
+      from_remote_ ? "Remote" : "ESP");
 
       if (f.size() >= 12) {
         const uint8_t temp_int = f[10];

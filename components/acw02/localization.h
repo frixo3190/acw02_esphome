@@ -25,7 +25,8 @@ static const std::map<std::string, std::map<std::string, std::string>> LOCALIZED
             {"display", "Affichage"},
             {"unit", "Unité"},
             {"temp", "Temp cible"},
-            {"ambient", "Température"}
+            {"ambient", "Température"},
+            {"lastCmdOrigin", "Origine commande"}
         }},
         {"en", {
             {"climate", "AC"},
@@ -40,7 +41,8 @@ static const std::map<std::string, std::map<std::string, std::string>> LOCALIZED
             {"display", "Display"},
             {"unit", "Unit"},
             {"temp", "Target Temp"},
-            {"ambient", "Temperature"}
+            {"ambient", "Temperature"},
+            {"lastCmdOrigin", "Command origin"}
         }}
     };
 
