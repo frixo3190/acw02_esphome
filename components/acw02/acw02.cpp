@@ -1361,11 +1361,8 @@ namespace esphome {
 
       // swing_position_ = static_cast<Swing>(f[15]);
       const uint8_t swing_raw = f[15];
-      const uint8_t swing_v_raw = swing_raw & 0x0F;
-      const uint8_t swing_h_raw = (swing_raw >> 4) & 0x0F;
-
-      swing_position_ = static_cast<Swing>(swing_v_raw);  // garde ton champ actuel
-      const uint8_t swing_horizontal_raw = swing_h_raw;   // info brute uniquement pour log
+      swing_position_ = static_cast<Swing>(swing_raw & 0x0F);
+      swing_horizontal_ = static_cast<SwingHorizontal>((swing_raw >> 4) & 0x0F);
 
       const uint8_t flags = f[16];
       eco_      = flags & 0x01;
@@ -1378,7 +1375,7 @@ namespace esphome {
 
       ESP_LOGI(TAG,
       "RX decode: PWR=%s | Mode=%s | Mode climate=%s | Fan=%s | Temp=%.1f°C / %.1f°F [%s] | "
-      "Eco=%d | Night=%d | Clean=%d | Purifier=%d | Display=%d | Swing=%s | SwingH=0x%X | Silent=%s",
+      "Eco=%d | Night=%d | Clean=%d | Purifier=%d | Display=%d | Swing=%s | SwingH=%s | Silent=%s",
       power_on_ ? "ON" : "OFF",
       mode_to_string(app_lang_, mode_).c_str(),
       mode_to_string_climate(mode_).c_str(),
@@ -1386,7 +1383,7 @@ namespace esphome {
       static_cast<float>(target_temp_c_), static_cast<float>(target_temp_f_), is_fahrenheit ? "°F" : "°C",
       eco_, night_, clean_, purifier_, display_,
       swing_to_string(app_lang_, swing_position_).c_str(),
-      swing_horizontal_raw,
+      swing_horizontal_to_string(app_lang_, swing_horizontal_).c_str(),
       silent_bit ? "YES" : "NO");
 
       if (f.size() >= 12) {
@@ -1498,6 +1495,21 @@ namespace esphome {
         case Swing::P4:    return key_to_txt(lang, "swing", "P4");
         case Swing::P5:    return key_to_txt(lang, "swing", "P5");
         default:           return "?";
+      }
+    }
+
+    std::string ACW02::swing_horizontal_to_string(const std::string& lang, SwingHorizontal swing) {
+       switch (swing) {
+        case SwingHorizontal::OFF:           return key_to_txt(lang, "swingHorizontal", "STOP");
+        case SwingHorizontal::AUTO_LEFT:     return key_to_txt(lang, "swingHorizontal", "AUTO_LEFT");
+        case SwingHorizontal::P1:            return key_to_txt(lang, "swingHorizontal", "P1");
+        case SwingHorizontal::P2:            return key_to_txt(lang, "swingHorizontal", "P2");
+        case SwingHorizontal::P3:            return key_to_txt(lang, "swingHorizontal", "P3");
+        case SwingHorizontal::P4:            return key_to_txt(lang, "swingHorizontal", "P4");
+        case SwingHorizontal::P5:            return key_to_txt(lang, "swingHorizontal", "P5");
+        case SwingHorizontal::RANGE_P1_P5:   return key_to_txt(lang, "swingHorizontal", "RANGE_P1_P5");
+        case SwingHorizontal::AUTO_MID_OUT:  return key_to_txt(lang, "swingHorizontal", "AUTO_MID_OUT");
+        default:                             return "?";
       }
     }
 

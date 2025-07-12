@@ -52,22 +52,28 @@ static const std::map<std::string, std::map<std::string, std::string>> LOCALIZED
 
 static const LocaleMap LOCALIZED{
   { "fr", {
-      { "mode",  { {"AUTO","Auto"},{"HEAT","Chauffage"},{"COOL","Climatisation"},
-                   {"DRY","Déshumidification"},{"FAN","Ventilation uniquement"},{"OFF","Éteint"} } },
-      { "fan",   { {"AUTO","Auto"},{"P20","20%"},{"P40","40%"},{"P60","60%"},
-                   {"P80","80%"},{"P100","100%"},{"SILENT","Silencieux"},{"TURBO","Turbo"} } },
-      { "swing", { {"STOP","Désactivé"},{"SWING","Activé"},
-                   {"P1","Position 1"},{"P2","Position 2"},{"P3","Position 3"},
-                   {"P4","Position 4"},{"P5","Position 5"} } }
+      { "mode",         { {"AUTO","Auto"},{"HEAT","Chauffage"},{"COOL","Climatisation"},
+                          {"DRY","Déshumidification"},{"FAN","Ventilation uniquement"},{"OFF","Éteint"} } },
+      { "fan",          { {"AUTO","Auto"},{"P20","20%"},{"P40","40%"},{"P60","60%"},
+                          {"P80","80%"},{"P100","100%"},{"SILENT","Silencieux"},{"TURBO","Turbo"} } },
+      { "swing",        { {"STOP","Désactivé"},{"SWING","Activé"},
+                          {"P1","Position 1"},{"P2","Position 2"},{"P3","Position 3"},
+                          {"P4","Position 4"},{"P5","Position 5"} } },
+      { "swingHorizontal", { {"STOP","Désactivé"},{"AUTO_LEFT","Auto gauche-droit"},
+                        {"P1","Position 1"},{"P2","Position 2"},{"P3","Position 3"},
+                        {"P4","Position 4"},{"P5","Position 5"},{"RANGE_P1_P5","P1-P5"},{"AUTO_MID_OUT","Auto centre-extérieur"} } }
   }},
   { "en", {
-      { "mode",  { {"AUTO","Auto"},{"HEAT","Heat"},{"COOL","Cool"},
-                   {"DRY","Dry"},{"FAN","Fan only"}, {"OFF","Off"} } },
-      { "fan",   { {"AUTO","Auto"},{"P20","20%"},{"P40","40%"},{"P60","60%"},
-                   {"P80","80%"},{"P100","100%"},{"SILENT","Silent"},{"TURBO","Turbo"} } },
-      { "swing", { {"STOP","Off"},{"SWING","On"},
-                   {"P1","Position 1"},{"P2","Position 2"},{"P3","Position 3"},
-                   {"P4","Position 4"},{"P5","Position 5"} } }
+      { "mode",         { {"AUTO","Auto"},{"HEAT","Heat"},{"COOL","Cool"},
+                          {"DRY","Dry"},{"FAN","Fan only"}, {"OFF","Off"} } },
+      { "fan",          { {"AUTO","Auto"},{"P20","20%"},{"P40","40%"},{"P60","60%"},
+                          {"P80","80%"},{"P100","100%"},{"SILENT","Silent"},{"TURBO","Turbo"} } },
+      { "swing",        { {"STOP","Off"},{"SWING","On"},
+                          {"P1","Position 1"},{"P2","Position 2"},{"P3","Position 3"},
+                          {"P4","Position 4"},{"P5","Position 5"} } },
+      { "swingHorizontal", { {"STOP","Off"},{"AUTO_LEFT","Auto left-right"},
+                        {"P1","Position 1"},{"P2","Position 2"},{"P3","Position 3"},
+                        {"P4","Position 4"},{"P5","Position 5"},{"RANGE_P1_P5","P1-P5"},{"AUTO_MID_OUT","Auto center-out"} } }
   }}
 };
 

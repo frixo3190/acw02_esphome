@@ -24,6 +24,8 @@ using namespace acw02_localization;
                               P80 = 0x4, P100 = 0x5, SILENT = 0x6, TURBO = 0xD };
   enum class Swing  : uint8_t { P1 = 0x02, P2 = 0x03, P3 = 0x04, P4 = 0x05,
                           P5 = 0x06, SWING = 0x01, STOP = 0x00 };
+  enum class SwingHorizontal : uint8_t { OFF = 0x0, AUTO_LEFT = 0x1, P1 = 0x2, P2 = 0x3,
+                                         P3 = 0x4, P4 = 0x5, P5 = 0x6, RANGE_P1_P5 = 0xC, AUTO_MID_OUT = 0xD};
 
   // globals Statics
   static const char *const TAG = "acw02";
@@ -192,6 +194,7 @@ class ACW02 : public Component, public uart::UARTDevice {
   bool use_fahrenheit_ {false};
   bool option_recalculate_climate_ {false};
   Swing  swing_position_{Swing::P1};
+  SwingHorizontal  swing_horizontal_{SwingHorizontal::P1};
 
   // variables persisted AC settings
   ESPPreferenceObject mute_pref_;
@@ -243,6 +246,7 @@ class ACW02 : public Component, public uart::UARTDevice {
   static std::string fan_to_string(const std::string& lang, Fan fan);
   static Swing str_to_swing(const std::string& lang, const std::string &s);
   static std::string swing_to_string(const std::string& lang, Swing swing);
+  static std::string swing_horizontal_to_string(const std::string& lang, SwingHorizontal swing);
   float celsius_to_fahrenheit(float c, bool floor = true) const;
   float fahrenheit_to_celsius(float f) const;
   uint8_t encode_temperature_byte() const;
