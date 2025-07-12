@@ -183,3 +183,17 @@ button:
     on_press:
       - lambda: |-
           id(ac_ctrl).apply_disable_settings();
+
+text_sensor:
+  - platform: template
+    name: "Z-INFO: IP Address"
+    id: ip_address_sensor
+    lambda: |-
+      return { id(ac_ctrl).get_ip_address() };
+    update_interval: 5s
+  - platform: template
+    name: "Z-INFO: Local Address"
+    id: address_sensor
+    lambda: |-
+      return { id(ac_ctrl).get_address() };
+    update_interval: 5s

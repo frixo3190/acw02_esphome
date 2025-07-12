@@ -421,6 +421,15 @@ namespace esphome {
       return std::string(buf);
     }
 
+    std::string ACW02::get_address() {
+      return wifi::global_wifi_component->get_use_address();
+    }
+
+    std::string ACW02::get_ip_address() {
+      IPAddress ip = WiFi.localIP();
+     return std::string(ip.toString().c_str());
+    }
+
     std::string ACW02::get_mode_string_climate() const {
       if (is_power_on()) {
         return mode_to_string_climate(mode_);

@@ -39,11 +39,13 @@ substitutions:
 I recommend going to this page to obtain a unique api_encrypted_key:
 https://esphome.io/components/api.html
 
-#### WIFI settings
-open file secrets.yaml and put on this file your WIFI settings
+#### WIFI & WEB server settings
+open file secrets.yaml and put on this file your WIFI settings and your desired username and password for the web server
 ```
 wifi_ssid: "testesp32"
 wifi_password: "testesp32"
+web_server_username: admin
+web_server_password: admin
 ```
 
 ### build 
