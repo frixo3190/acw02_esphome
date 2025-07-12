@@ -3,22 +3,14 @@
 #include <string>
 #include <vector>
 
-/* Outils de localisation – aucun log ni dépendance ESPHome ici.
- * Tout est dans le namespace acw02_localization.
- */
+
 namespace acw02_localization {
 
 
-//------------------------------------------------------------------
-// 1. Alias de types
-//------------------------------------------------------------------
-using OptDict   = std::vector<std::pair<std::string, std::string>>; // Ordonné
+using OptDict   = std::vector<std::pair<std::string, std::string>>;
 using CatDict   = std::map<std::string, OptDict>;
 using LocaleMap = std::map<std::string, CatDict>;
 
-//------------------------------------------------------------------
-// 2. Dictionnaires
-//------------------------------------------------------------------
 static const std::map<std::string, std::map<std::string, std::string>> LOCALIZED_NAMES = {
         {"fr", {
             {"climate", "AC"},
@@ -79,9 +71,6 @@ static const LocaleMap LOCALIZED{
   }}
 };
 
-//------------------------------------------------------------------
-// 3. Helpers
-//------------------------------------------------------------------
 inline std::string join(const std::vector<std::string>& vec,
                         const std::string& sep = ",") {
   std::string out;
@@ -92,7 +81,6 @@ inline std::string join(const std::vector<std::string>& vec,
   return out;
 }
 
-// clé ➜ texte
 inline std::string key_to_txt(const std::string& lang, const std::string& cat, const std::string& key) {
   auto loc_it = LOCALIZED.find(lang);
   if (loc_it == LOCALIZED.end()) return key;
@@ -104,7 +92,6 @@ inline std::string key_to_txt(const std::string& lang, const std::string& cat, c
   return key;
 }
 
-// texte ➜ clé
 inline std::string txt_to_key(const std::string& lang, const std::string& cat, const std::string& txt) {
   auto loc_it = LOCALIZED.find(lang);
   if (loc_it == LOCALIZED.end()) return txt;
@@ -116,7 +103,6 @@ inline std::string txt_to_key(const std::string& lang, const std::string& cat, c
   return txt;
 }
 
-// liste localisée
 inline std::vector<std::string> list_txt(const std::string& lang, const std::string& cat) {
   std::vector<std::string> out;
   auto loc_it = LOCALIZED.find(lang);
@@ -128,7 +114,6 @@ inline std::vector<std::string> list_txt(const std::string& lang, const std::str
   return out;
 }
 
-// nom d’entité -----------------------------------------------------
 inline std::string get_localized_name(const std::string& lang, const std::string& key) {
   auto lang_it = LOCALIZED_NAMES.find(lang);
   if (lang_it == LOCALIZED_NAMES.end()) return key;
@@ -137,7 +122,6 @@ inline std::string get_localized_name(const std::string& lang, const std::string
   return (it != map.end()) ? it->second : key;
 }
 
-// options JSON prêtes à injecter ----------------------------------
 inline std::string build_options_json(const std::string& lang, const std::string& cat) {
   auto opts = list_txt(lang, cat);
   return "[\"" + join(opts, R"(",")") + "\"]";
