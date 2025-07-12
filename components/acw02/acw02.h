@@ -24,7 +24,7 @@ using namespace acw02_localization;
                               P80 = 0x4, P100 = 0x5, SILENT = 0x6, TURBO = 0xD };
   enum class Swing  : uint8_t { P1 = 0x02, P2 = 0x03, P3 = 0x04, P4 = 0x05,
                           P5 = 0x06, SWING = 0x01, STOP = 0x00 };
-  enum class SwingHorizontal : uint8_t { OFF = 0x0, AUTO_LEFT = 0x1, P1 = 0x2, P2 = 0x3,
+  enum class SwingHorizontal : uint8_t { STOP = 0x0, AUTO_LEFT = 0x1, P1 = 0x2, P2 = 0x3,
                                          P3 = 0x4, P4 = 0x5, P5 = 0x6, RANGE_P1_P5 = 0xC, AUTO_MID_OUT = 0xD};
 
   // globals Statics
@@ -63,7 +63,8 @@ class ACW02 : public Component, public uart::UARTDevice {
   void set_temperature_c(float temp); 
   void set_temperature_f(float temp);              
   void set_fan(const std::string &speed);         
-  void set_swing(const std::string &pos);         
+  void set_swing(const std::string &pos);   
+  void set_swing_horizontal(const std::string &pos);       
   void set_display(bool on);
   void set_eco(bool on);
   void set_eco_internal(bool on, bool sendCmd);
@@ -141,6 +142,7 @@ class ACW02 : public Component, public uart::UARTDevice {
   void publish_discovery_fan_select(bool recreate = false);
   void publish_discovery_unit_select(bool recreate = false);
   void publish_discovery_swing_select(bool recreate = false);
+  void publish_discovery_swing_horizontal_select(bool recreate = false);
   void publish_discovery_clean_switch(bool recreate = false);
   void publish_discovery_eco_switch(bool recreate = false);
   void publish_discovery_display_switch(bool recreate = false);
@@ -245,6 +247,7 @@ class ACW02 : public Component, public uart::UARTDevice {
   static std::string mode_to_string(const std::string& lang, Mode mode);
   static std::string fan_to_string(const std::string& lang, Fan fan);
   static Swing str_to_swing(const std::string& lang, const std::string &s);
+  static SwingHorizontal str_to_swing_horizontal(const std::string& lang, const std::string &s);
   static std::string swing_to_string(const std::string& lang, Swing swing);
   static std::string swing_horizontal_to_string(const std::string& lang, SwingHorizontal swing);
   float celsius_to_fahrenheit(float c, bool floor = true) const;

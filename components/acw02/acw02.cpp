@@ -31,6 +31,7 @@ namespace esphome {
             publish_discovery_mode_select();
             publish_discovery_fan_select();
             publish_discovery_swing_select();
+            publish_discovery_swing_horizontal_select();
             publish_discovery_unit_select();
             publish_discovery_clean_switch();
             publish_discovery_eco_switch();
@@ -195,6 +196,10 @@ namespace esphome {
 
     void ACW02::set_swing(const std::string &pos) {
       swing_position_ = str_to_swing(app_lang_, pos);
+    }
+
+    void ACW02::set_swing_horizontal(const std::string &pos) {
+      swing_horizontal_ = str_to_swing_horizontal(app_lang_, pos);
     }
 
     void ACW02::set_display(bool on) {
@@ -602,6 +607,9 @@ namespace esphome {
       } else if (cmd == "swing") {
         set_swing(payload);
         send_command();
+      }  else if (cmd == "swing_horizontal") {
+        set_swing_horizontal(payload);
+        send_command();
       } else if (cmd == "clean") {
         set_clean(payload == "on");
       } else if (cmd == "unit") {
@@ -631,6 +639,7 @@ namespace esphome {
       payload += "\"purifier\":\"" + std::string(purifier_ ? "on" : "off") + "\",";
       payload += "\"display\":\"" + std::string(display_ ? "on" : "off") + "\",";
       payload += "\"swing\":\"" + swing_to_string(app_lang_, swing_position_) + "\",";
+      payload += "\"swing_horizontal\":\"" + swing_horizontal_to_string(app_lang_, swing_horizontal_) + "\",";
       payload += "\"unit\":\"" + std::string(use_fahrenheit_ ? "°F" : "°C") + "\"";
       payload += "}";
 
@@ -874,6 +883,40 @@ namespace esphome {
       if (recreate) {
         mqtt_->publish(config_topic, std::string(""), 1, true);
         set_timeout("mqtt_publish_discovery_swing_select_publish", mqtt_delay_rebuild_, [this, config_topic, payload]() {
+          mqtt_->publish(config_topic, payload, 1, true);
+        });
+      } else {
+        mqtt_->publish(config_topic, payload, 1, true);
+      }
+    }
+
+    void ACW02::publish_discovery_swing_horizontal_select(bool recreate) {
+      if (!mqtt_)
+      return;
+
+      const std::string topic_base = app_name_;
+      const std::string unique_id = app_sanitize_name_ + "_mqtt_swing_horizontal";
+
+      std::string config_topic = "homeassistant/select/" + topic_base + "-swing-horizontal/config";
+
+      std::string payload = R"({
+        "name": ")" + get_localized_name(app_lang_, "swingHorizontal") + R"(",
+        "object_id": ")" + unique_id + R"(",
+        "unique_id": ")" + unique_id + R"(",
+        "icon": "mdi:swap-vertical",
+        "cmd_t": ")" + topic_base + R"(/cmd/swing_horizontal",
+        "stat_t": ")" + topic_base + R"(/state",
+        "val_tpl": "{{ value_json.swing_horizontal }}",
+        "options": )" + build_options_json(app_lang_, "swingHorizontal") + R"(,
+        "avty_t": ")" + topic_base + R"(/status",
+        "pl_avail": "online",
+        "pl_not_avail": "offline")" +
+        build_common_config_suffix() + R"(
+      })";
+
+      if (recreate) {
+        mqtt_->publish(config_topic, std::string(""), 1, true);
+        set_timeout("mqtt_publish_discovery_swing_horizontal_select_publish", mqtt_delay_rebuild_, [this, config_topic, payload]() {
           mqtt_->publish(config_topic, payload, 1, true);
         });
       } else {
@@ -1182,6 +1225,7 @@ namespace esphome {
       publish_discovery_mode_select(true);
       publish_discovery_fan_select(true);
       publish_discovery_swing_select(true);
+      publish_discovery_swing_horizontal_select(true);
       publish_discovery_unit_select(true);
       publish_discovery_clean_switch(true);
       publish_discovery_eco_switch(true);
@@ -1198,6 +1242,7 @@ namespace esphome {
         publish_discovery_mode_select(true);
         publish_discovery_fan_select(true);
         publish_discovery_swing_select(true);
+        publish_discovery_swing_horizontal_select(true);
       }
     }
 
@@ -1498,9 +1543,22 @@ namespace esphome {
       }
     }
 
+    SwingHorizontal ACW02::str_to_swing_horizontal(const std::string& lang, const std::string &s) {
+      if (s == key_to_txt(lang, "swingHorizontal", "STOP"))           return SwingHorizontal::STOP;
+      if (s == key_to_txt(lang, "swingHorizontal", "AUTO_LEFT"))      return SwingHorizontal::AUTO_LEFT;
+      if (s == key_to_txt(lang, "swingHorizontal", "P1"))             return SwingHorizontal::P1;
+      if (s == key_to_txt(lang, "swingHorizontal", "P2"))             return SwingHorizontal::P2;
+      if (s == key_to_txt(lang, "swingHorizontal", "P3"))             return SwingHorizontal::P3;
+      if (s == key_to_txt(lang, "swingHorizontal", "P4"))             return SwingHorizontal::P4;
+      if (s == key_to_txt(lang, "swingHorizontal", "P5"))             return SwingHorizontal::P5;
+      if (s == key_to_txt(lang, "swingHorizontal", "RANGE_P1_P5"))    return SwingHorizontal::RANGE_P1_P5;
+      if (s == key_to_txt(lang, "swingHorizontal", "AUTO_MID_OUT"))   return SwingHorizontal::AUTO_MID_OUT;
+      return SwingHorizontal::STOP;
+    }
+
     std::string ACW02::swing_horizontal_to_string(const std::string& lang, SwingHorizontal swing) {
        switch (swing) {
-        case SwingHorizontal::OFF:           return key_to_txt(lang, "swingHorizontal", "STOP");
+        case SwingHorizontal::STOP:           return key_to_txt(lang, "swingHorizontal", "STOP");
         case SwingHorizontal::AUTO_LEFT:     return key_to_txt(lang, "swingHorizontal", "AUTO_LEFT");
         case SwingHorizontal::P1:            return key_to_txt(lang, "swingHorizontal", "P1");
         case SwingHorizontal::P2:            return key_to_txt(lang, "swingHorizontal", "P2");
