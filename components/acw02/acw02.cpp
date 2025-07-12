@@ -1258,7 +1258,7 @@ namespace esphome {
       } else {
         frame[13] = 0x0B;
       }
-      frame[14] = static_cast<uint8_t>(swing_position_);
+      frame[14] = (static_cast<uint8_t>(swing_horizontal_) << 4) | (static_cast<uint8_t>(swing_position_) & 0x0F);
 
       uint8_t b15 = 0;
       if (eco_)      b15 |= 0x01;
