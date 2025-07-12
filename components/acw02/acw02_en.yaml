@@ -125,6 +125,30 @@ switch:
       - lambda: id(ac_ctrl).set_disable_mode_fan(false);
 
   - platform: template
+    name: "Z-Config: Swing vertical excluded"
+    id: disable_swing_vertical
+    icon: "mdi:thermostat-cog"
+    entity_category: "config"
+    lambda: |-
+      return id(ac_ctrl).is_disable_swing_vertical();
+    turn_on_action:
+      - lambda: id(ac_ctrl).set_disable_swing_vertical(true);
+    turn_off_action:
+      - lambda: id(ac_ctrl).set_disable_swing_vertical(false);
+
+  - platform: template
+    name: "Z-Config: Swing horizontal excluded"
+    id: disable_swing_horizontal
+    icon: "mdi:thermostat-cog"
+    entity_category: "config"
+    lambda: |-
+      return id(ac_ctrl).is_disable_swing_horizontal();
+    turn_on_action:
+      - lambda: id(ac_ctrl).set_disable_swing_horizontal(true);
+    turn_off_action:
+      - lambda: id(ac_ctrl).set_disable_swing_horizontal(false);
+
+  - platform: template
     name: "G1: auto calc climate (eco/auto)"
     id: option_recalculate_climate
     icon: mdi:autorenew

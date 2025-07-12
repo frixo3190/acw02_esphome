@@ -80,6 +80,8 @@ class ACW02 : public Component, public uart::UARTDevice {
   void set_disable_mode_cool(bool on);
   void set_disable_mode_dry(bool on);
   void set_disable_mode_fan(bool on);
+  void set_disable_swing_vertical(bool on);
+  void set_disable_swing_horizontal(bool on);
 
   // Setters publics option for rebuild climate if mode auto or option eco enable
   void set_option_recalculate_climate(bool on);
@@ -122,6 +124,8 @@ class ACW02 : public Component, public uart::UARTDevice {
   bool is_disable_mode_cool() const;
   bool is_disable_mode_dry() const;
   bool is_disable_mode_fan() const;
+  bool is_disable_swing_vertical() const;
+  bool is_disable_swing_horizontal() const;
 
   bool is_option_recalculate_climate() const;
 
@@ -196,7 +200,7 @@ class ACW02 : public Component, public uart::UARTDevice {
   bool use_fahrenheit_ {false};
   bool option_recalculate_climate_ {false};
   Swing  swing_position_{Swing::P1};
-  SwingHorizontal  swing_horizontal_{SwingHorizontal::P1};
+  SwingHorizontal  swing_horizontal_{SwingHorizontal::STOP};
 
   // variables persisted AC settings
   ESPPreferenceObject mute_pref_;
@@ -205,6 +209,8 @@ class ACW02 : public Component, public uart::UARTDevice {
   ESPPreferenceObject disable_mode_cool_pref_; 
   ESPPreferenceObject disable_mode_dry_pref_; 
   ESPPreferenceObject disable_mode_fan_pref_; 
+  ESPPreferenceObject disable_swing_vertical_pref_; 
+  ESPPreferenceObject disable_swing_horizontal_pref_; 
   ESPPreferenceObject option_recalculate_climate_pref_;
 
   // variables persisted MQTT
@@ -228,6 +234,8 @@ class ACW02 : public Component, public uart::UARTDevice {
   bool disable_mode_cool_ {false};
   bool disable_mode_dry_ {false};
   bool disable_mode_fan_ {false};
+  bool disable_swing_vertical_ {false};
+  bool disable_swing_horizontal_ {false};
 
   // Protected functions for command queue
   void process_tx_queue();

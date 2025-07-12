@@ -64,6 +64,10 @@ namespace esphome {
       disable_mode_dry_pref_.load(&disable_mode_dry_);
       disable_mode_fan_pref_ = global_preferences->make_preference<bool>(6U, "ac_disable_mode_fan");
       disable_mode_fan_pref_.load(&disable_mode_fan_);
+      disable_swing_vertical_pref_ = global_preferences->make_preference<bool>(8U, "ac_disable_swing_vertical");
+      disable_swing_vertical_pref_.load(&disable_swing_vertical_);
+      disable_swing_horizontal_pref_ = global_preferences->make_preference<bool>(9U, "ac_disable_swing_horizontal");
+      disable_swing_horizontal_pref_.load(&disable_swing_horizontal_);
       option_recalculate_climate_pref_ = global_preferences->make_preference<bool>(7U, "ac_option_recalculate_climate");
       option_recalculate_climate_pref_.load(&option_recalculate_climate_);
 
@@ -347,6 +351,20 @@ namespace esphome {
       }
     }
 
+    void ACW02::set_disable_swing_vertical(bool on) {
+      if (disable_swing_vertical_ != on) {
+        disable_swing_vertical_ = on;
+        disable_swing_vertical_pref_.save(&disable_swing_vertical_);
+      }
+    }
+
+    void ACW02::set_disable_swing_horizontal(bool on) {
+      if (disable_swing_horizontal_ != on) {
+        disable_swing_horizontal_ = on;
+        disable_swing_horizontal_pref_.save(&disable_swing_horizontal_);
+      }
+    }
+
     void ACW02::set_option_recalculate_climate(bool on) {
       if (option_recalculate_climate_ != on) {
         option_recalculate_climate_ = on;
@@ -496,6 +514,14 @@ namespace esphome {
 
     bool ACW02::is_disable_mode_fan() const {
       return disable_mode_fan_;
+    }
+
+    bool ACW02::is_disable_swing_vertical() const {
+      return disable_swing_vertical_;
+    }
+
+    bool ACW02::is_disable_swing_horizontal() const {
+      return disable_swing_horizontal_;
     }
 
     bool ACW02::is_option_recalculate_climate() const {
@@ -700,11 +726,15 @@ namespace esphome {
         "object_id": ")" + unique_id + R"(",
         "unique_id": ")" + unique_id + R"(",
         "stat_t": ")" + topic_base + R"(/state",
-        "cmd_t": ")" + topic_base + R"(/cmd/mode_climate",
-        "preset_mode_command_topic": ")" + topic_base + R"(/cmd/swing_horizontal",
-        "preset_mode_state_topic": ")" + topic_base + R"(/state",
-        "preset_mode_value_template": "{{ value_json.swing_horizontal }}",
-        "preset_modes": )" + build_options_json(app_lang_, "swingHorizontal") + R"(,
+        "cmd_t": ")" + topic_base + R"(/cmd/mode_climate",)";
+        if (!disable_swing_vertical_ && !disable_swing_horizontal_) {
+          payload += R"(
+          "preset_mode_command_topic": ")" + topic_base + R"(/cmd/swing_horizontal",
+          "preset_mode_state_topic": ")" + topic_base + R"(/state",
+          "preset_mode_value_template": "{{ value_json.swing_horizontal }}",
+          "preset_modes": )" + build_options_json(app_lang_, "swingHorizontal") + R"(,)";
+        }
+        payload += R"(
         "mode_stat_t": ")" + topic_base + R"(/state",
         "mode_stat_tpl": "{{ value_json.mode_climate }}",
         "mode_cmd_t": ")" + topic_base + R"(/cmd/mode_climate",
@@ -723,11 +753,30 @@ namespace esphome {
         "fan_mode_cmd_t": ")" + topic_base + R"(/cmd/fan",
         "fan_mode_stat_t": ")" + topic_base + R"(/state",
         "fan_mode_stat_tpl": "{{ value_json.fan }}",
-        "fan_modes": )" + build_fan_speed_json() + R"(,
-        "swing_mode_cmd_t": ")" + topic_base + R"(/cmd/swing",
-        "swing_mode_stat_t": ")" + topic_base + R"(/state",
-        "swing_mode_stat_tpl": "{{ value_json.swing }}",
-        "swing_modes": )" + build_options_json(app_lang_, "swing") + R"(,
+        "fan_modes": )" + build_fan_speed_json() + R"(,)";
+        
+        if (!disable_swing_vertical_ && !disable_swing_horizontal_) {
+          payload += R"(
+          "swing_mode_cmd_t": ")" + topic_base + R"(/cmd/swing",
+          "swing_mode_stat_t": ")" + topic_base + R"(/state",
+          "swing_mode_stat_tpl": "{{ value_json.swing }}",
+          "swing_modes": )" + build_options_json(app_lang_, "swing") + R"(,)";
+        } else {
+          if (disable_swing_vertical_ && !disable_swing_horizontal_) {
+             payload += R"(
+            "swing_mode_cmd_t": ")" + topic_base + R"(/cmd/swing_horizontal",
+            "swing_mode_stat_t": ")" + topic_base + R"(/state",
+            "swing_mode_stat_tpl": "{{ value_json.swing_horizontal }}",
+            "swing_modes": )" + build_options_json(app_lang_, "swingHorizontal") + R"(,)";
+          } else if (disable_swing_horizontal_ && !disable_swing_vertical_) {
+             payload += R"(
+            "swing_mode_cmd_t": ")" + topic_base + R"(/cmd/swing",
+            "swing_mode_stat_t": ")" + topic_base + R"(/state",
+            "swing_mode_stat_tpl": "{{ value_json.swing }}",
+            "swing_modes": )" + build_options_json(app_lang_, "swing") + R"(,)";
+          }
+        }
+        payload += R"(
         "pow_cmd_t": ")" + topic_base + R"(/cmd/power_climate",
         "pow_stat_t": ")" + topic_base + R"(/state",
         "pow_stat_tpl": "{{ value_json.power_climate }}",
