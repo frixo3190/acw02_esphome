@@ -192,7 +192,7 @@ text_sensor:
       return { id(ac_ctrl).get_ip_address() };
     update_interval: 5s
   - platform: template
-    name: "Z-INFO: Addresse Local"
+    name: "Z-INFO: Adresse Local"
     id: address_sensor
     lambda: |-
       return { id(ac_ctrl).get_address() };
