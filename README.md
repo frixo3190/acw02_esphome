@@ -1,4 +1,4 @@
-# acw02_esphome
+# acw02_esphome (for teknopoint AC only for the moment)
 
 ## installation : 
 ### python:
