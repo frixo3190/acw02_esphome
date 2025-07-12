@@ -77,7 +77,6 @@ class ACW02 : public Component, public uart::UARTDevice {
   // Setters publics disable option mode
   void set_disable_mode_auto(bool on);
   void set_disable_mode_heat(bool on);
-  void set_disable_mode_cool(bool on);
   void set_disable_mode_dry(bool on);
   void set_disable_mode_fan(bool on);
   void set_disable_swing_vertical(bool on);
@@ -121,7 +120,6 @@ class ACW02 : public Component, public uart::UARTDevice {
   // Getters publics disable option mode
   bool is_disable_mode_auto() const;
   bool is_disable_mode_heat() const;
-  bool is_disable_mode_cool() const;
   bool is_disable_mode_dry() const;
   bool is_disable_mode_fan() const;
   bool is_disable_swing_vertical() const;
@@ -206,7 +204,6 @@ class ACW02 : public Component, public uart::UARTDevice {
   ESPPreferenceObject mute_pref_;
   ESPPreferenceObject disable_mode_auto_pref_; 
   ESPPreferenceObject disable_mode_heat_pref_; 
-  ESPPreferenceObject disable_mode_cool_pref_; 
   ESPPreferenceObject disable_mode_dry_pref_; 
   ESPPreferenceObject disable_mode_fan_pref_; 
   ESPPreferenceObject disable_swing_vertical_pref_; 
@@ -231,7 +228,6 @@ class ACW02 : public Component, public uart::UARTDevice {
   // Protected functions for disable mode
   bool disable_mode_auto_ {false};
   bool disable_mode_heat_ {false};
-  bool disable_mode_cool_ {false};
   bool disable_mode_dry_ {false};
   bool disable_mode_fan_ {false};
   bool disable_swing_vertical_ {false};
@@ -246,6 +242,9 @@ class ACW02 : public Component, public uart::UARTDevice {
   void send_command();
   static uint16_t crc16(const uint8_t *data, size_t len);
   void decode_state(const std::vector<uint8_t> &frame);
+
+  // force mode if select disable mode
+  void force_cool_mode_if_disabled();
 
   // Protected functions for AC convert
   static Fan str_to_fan(const std::string& lang, const std::string &speed);

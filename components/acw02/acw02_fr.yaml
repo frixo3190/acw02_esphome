@@ -89,18 +89,6 @@ switch:
       - lambda: id(ac_ctrl).set_disable_mode_heat(false);
 
   - platform: template
-    name: "Z-Config: Exclu mode Climatisation"
-    id: disable_mode_cool
-    icon: "mdi:thermostat-cog"
-    entity_category: "config"
-    lambda: |-
-      return id(ac_ctrl).is_disable_mode_cool();
-    turn_on_action:
-      - lambda: id(ac_ctrl).set_disable_mode_cool(true);
-    turn_off_action:
-      - lambda: id(ac_ctrl).set_disable_mode_cool(false);
-
-  - platform: template
     name: "Z-Config: Exclu mode Déshumidification"
     id: disable_mode_dry
     icon: "mdi:thermostat-cog"

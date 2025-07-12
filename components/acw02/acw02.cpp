@@ -58,17 +58,15 @@ namespace esphome {
       disable_mode_auto_pref_.load(&disable_mode_auto_);
       disable_mode_heat_pref_ = global_preferences->make_preference<bool>(3U, "ac_disable_mode_heat");
       disable_mode_heat_pref_.load(&disable_mode_heat_);
-      disable_mode_cool_pref_ = global_preferences->make_preference<bool>(4U, "ac_disable_mode_cool");
-      disable_mode_cool_pref_.load(&disable_mode_cool_);
-      disable_mode_dry_pref_ = global_preferences->make_preference<bool>(5U, "ac_disable_mode_dry");
+      disable_mode_dry_pref_ = global_preferences->make_preference<bool>(4U, "ac_disable_mode_dry");
       disable_mode_dry_pref_.load(&disable_mode_dry_);
-      disable_mode_fan_pref_ = global_preferences->make_preference<bool>(6U, "ac_disable_mode_fan");
+      disable_mode_fan_pref_ = global_preferences->make_preference<bool>(5U, "ac_disable_mode_fan");
       disable_mode_fan_pref_.load(&disable_mode_fan_);
-      disable_swing_vertical_pref_ = global_preferences->make_preference<bool>(8U, "ac_disable_swing_vertical");
+      disable_swing_vertical_pref_ = global_preferences->make_preference<bool>(6U, "ac_disable_swing_vertical");
       disable_swing_vertical_pref_.load(&disable_swing_vertical_);
-      disable_swing_horizontal_pref_ = global_preferences->make_preference<bool>(9U, "ac_disable_swing_horizontal");
+      disable_swing_horizontal_pref_ = global_preferences->make_preference<bool>(7U, "ac_disable_swing_horizontal");
       disable_swing_horizontal_pref_.load(&disable_swing_horizontal_);
-      option_recalculate_climate_pref_ = global_preferences->make_preference<bool>(7U, "ac_option_recalculate_climate");
+      option_recalculate_climate_pref_ = global_preferences->make_preference<bool>(8U, "ac_option_recalculate_climate");
       option_recalculate_climate_pref_.load(&option_recalculate_climate_);
 
       set_timeout("test", 10000, [this]() {
@@ -307,6 +305,7 @@ namespace esphome {
           clean_ = on;
           set_timeout("clean_delay", 3000, [this, on]() {
             send_command_basic(build_frame(true));
+            force_clean_ = false;
           });
         } else {
           clean_ = on;
@@ -327,13 +326,6 @@ namespace esphome {
       if (disable_mode_heat_ != on) {
         disable_mode_heat_ = on;
         disable_mode_heat_pref_.save(&disable_mode_heat_);
-      }
-    }
-
-    void ACW02::set_disable_mode_cool(bool on) {
-      if (disable_mode_cool_ != on) {
-        disable_mode_cool_ = on;
-        disable_mode_cool_pref_.save(&disable_mode_cool_);
       }
     }
 
@@ -502,10 +494,6 @@ namespace esphome {
 
     bool ACW02::is_disable_mode_heat() const {
       return disable_mode_heat_;
-    }
-
-    bool ACW02::is_disable_mode_cool() const {
-      return disable_mode_cool_;
     }
 
     bool ACW02::is_disable_mode_dry() const {
@@ -694,6 +682,10 @@ namespace esphome {
       const std::string topic_purifier = app_name_ + "/purifier_availability";
       std::string payload_purifier = (power_on_) ? "available" : "unavailable";
       mqtt_->publish(topic_purifier, payload_purifier, 1, true);
+
+      const std::string topic_clean = app_name_ + "/clean_availability";
+      std::string payload_clean = (!power_on_) ? "available" : "unavailable";
+      mqtt_->publish(topic_clean, payload_clean, 1, true);
     }
 
     std::string ACW02::build_common_config_suffix() const {
@@ -995,9 +987,19 @@ namespace esphome {
         "val_tpl": "{{ value_json.clean }}",
         "pl_on": "on",
         "pl_off": "off",
-        "avty_t": ")" + topic_base + R"(/status",
-        "pl_avail": "online",
-        "pl_not_avail": "offline")" +
+        "availability_mode": "all",
+        "availability": [
+        {
+          "topic": ")" + topic_base + R"(/status",
+          "payload_available": "online",
+          "payload_not_available": "offline"
+        },
+        {
+          "topic": ")" + topic_base + R"(/clean_availability",
+          "payload_available": "available",
+          "payload_not_available": "unavailable"
+        }
+        ])" +
         build_common_config_suffix() + R"(
       })";
 
@@ -1361,7 +1363,7 @@ namespace esphome {
       uint8_t b15 = 0;
       if (eco_)      b15 |= 0x01;
       if (night_)    b15 |= 0x02;
-      if (clean_)    b15 |= 0x10 | 0x04;
+      if (clean_)    b15 |= 0x10;
       if (purifier_) b15 |= 0x40;
       if (display_)  b15 |= 0x80;
 
@@ -1466,14 +1468,20 @@ namespace esphome {
       eco_      = flags & 0x01;
       night_    = flags & 0x02;
       if (!force_clean_) {
-        clean_    = flags & 0x10;
+        // Only consider the clean bit if mode cool of dry
+        if (mode_ == Mode::COOL || mode_ == Mode::DRY) {
+          clean_ = flags & 0x10;
+        } else {
+          clean_ = false;
+        }
       }
+      const bool from_remote = flags & 0x04;
       purifier_ = flags & 0x40;
       display_  = flags & 0x80;
 
       ESP_LOGI(TAG,
       "RX decode: PWR=%s | Mode=%s | Mode climate=%s | Fan=%s | Temp=%.1f°C / %.1f°F [%s] | "
-      "Eco=%d | Night=%d | Clean=%d | Purifier=%d | Display=%d | Swing=%s | SwingH=%s | Silent=%s",
+      "Eco=%d | Night=%d | Clean=%d | Purifier=%d | Display=%d | Swing=%s | SwingH=%s | Silent=%s | Origin=%s",
       power_on_ ? "ON" : "OFF",
       mode_to_string(app_lang_, mode_).c_str(),
       mode_to_string_climate(mode_).c_str(),
@@ -1482,7 +1490,8 @@ namespace esphome {
       eco_, night_, clean_, purifier_, display_,
       swing_to_string(app_lang_, swing_position_).c_str(),
       swing_horizontal_to_string(app_lang_, swing_horizontal_).c_str(),
-      silent_bit ? "YES" : "NO");
+      silent_bit ? "YES" : "NO",
+      from_remote ? "Remote" : "ESP");
 
       if (f.size() >= 12) {
         const uint8_t temp_int = f[10];
@@ -1505,6 +1514,19 @@ namespace esphome {
         recalculate_climate_depending_by_option();
       } else if (previous_fahrenheit != use_fahrenheit_) {
         publish_discovery_climate(true);
+      }
+      force_cool_mode_if_disabled();
+    }
+
+    void ACW02::force_cool_mode_if_disabled() {
+      Mode tmp = mode_;
+      if (mode_ == Mode::AUTO && is_disable_mode_auto()) tmp = Mode::COOL;
+      if (mode_ == Mode::HEAT && is_disable_mode_heat()) tmp = Mode::COOL;
+      if (mode_ == Mode::FAN && is_disable_mode_fan())   tmp = Mode::COOL;
+      if (mode_ == Mode::DRY && is_disable_mode_dry())   tmp = Mode::COOL;
+      if (tmp != mode_) {
+        mode_ = tmp;
+        send_command();
       }
     }
 
@@ -1659,7 +1681,7 @@ namespace esphome {
       };
 
       if (!is_disable_mode_auto()) push("auto");
-      if (!is_disable_mode_cool()) push("cool");
+      push("cool");
       if (!is_disable_mode_dry() ) push("dry");
       if (!is_disable_mode_heat()) push("heat");
       if (!is_disable_mode_fan() ) push("fan_only");
@@ -1678,7 +1700,7 @@ namespace esphome {
           out.push_back(label);
         } else if (key == "AUTO" && !is_disable_mode_auto()) {
           out.push_back(label);
-        } else if (key == "COOL" && !is_disable_mode_cool()) {
+        } else if (key == "COOL") {
           out.push_back(label);
         } else if (key == "DRY" && !is_disable_mode_dry()) {
           out.push_back(label);
