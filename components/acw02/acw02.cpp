@@ -21,40 +21,7 @@ namespace esphome {
       app_mac_ = get_mac_address();
 
       send_command_basic(keepalive_frame_);
-      send_command_basic(get_status_frame_);
 
-      if (mqtt_) {
-        mqtt_->set_on_connect([this](bool first) {
-          ESP_LOGI(TAG, "MQTT connected → publishing discovery and state");
-          set_timeout("mqtt_discovery_delay", 100, [this]() {
-              schedule_delayed_calls("mqtt_discovery_step", {
-                [this]() { publish_discovery_climate(); },
-                [this]() { publish_discovery_mode_select(); },
-                [this]() { publish_discovery_fan_select(); },
-                [this]() { publish_discovery_swing_select(); },
-                [this]() { publish_discovery_swing_horizontal_select(); },
-                [this]() { publish_discovery_unit_select(); },
-                [this]() { publish_discovery_clean_switch(); },
-                [this]() { publish_discovery_eco_switch(); },
-                [this]() { publish_discovery_display_switch(); },
-                [this]() { publish_discovery_night_switch(); },
-                [this]() { publish_discovery_purifier_switch(); },
-                [this]() { publish_discovery_temperature_number(); },
-                [this]() { publish_discovery_temperature_sensor(); },
-                [this]() { publish_discovery_last_cmd_origin_sensor(); }
-              }, schedule_base_delay, schedule_step_delay);
-          });
-          mqtt_->subscribe(app_name_ + "/cmd/#", [this](const std::string &topic, const std::string &payload) {
-            mqtt_callback(topic, payload);
-          });
-          if (!first) {
-            send_command_basic(get_status_frame_);
-          }
-        });
-        mqtt_->set_on_disconnect([this](mqtt::MQTTClientDisconnectReason reason) {
-          ESP_LOGI(TAG, "MQTT disconnected (reason=%d)", static_cast<int>(reason));
-        });
-      }
       mute_pref_ = global_preferences->make_preference<bool>(1U, "ac_mute");
       mute_pref_.load(&mute_);
       disable_mode_auto_pref_ = global_preferences->make_preference<bool>(2U, "ac_disable_mode_auto");
@@ -73,21 +40,21 @@ namespace esphome {
       option_recalculate_climate_pref_.load(&option_recalculate_climate_);
 
       set_timeout("test", 10000, [this]() {
-        ESP_LOGI(TAG, "Setup %s ", "INIT");
-        ESP_LOGI(TAG, "Board %s ", app_board_.c_str());
-        ESP_LOGI(TAG, "MAC %s ", app_mac_.c_str());
-        ESP_LOGI(TAG, "name %s ", app_name_.c_str());
-        ESP_LOGI(TAG, "friendly name %s ", app_friendly_name_.c_str());
-        ESP_LOGI(TAG, "sanitze name %s ", app_sanitize_name_.c_str());
-        ESP_LOGI(TAG, "MQTT broker %s ", mqtt_broker_address_.c_str());
-        ESP_LOGI(TAG, "MQTT username %s ", mqtt_username_.c_str());
-        ESP_LOGI(TAG, "MQTT port %d ", mqtt_port_);
-        ESP_LOGI(TAG, "Lang %s ", app_lang_.c_str());
-        ESP_LOGI(TAG, "name %s ", get_localized_name(app_lang_, "climate").c_str());
-        ESP_LOGI(TAG, "mode json %s ", build_options_json(app_lang_, "mode").c_str());
-        ESP_LOGI(TAG, "fan json %s ", build_options_json(app_lang_, "fan").c_str());
-        ESP_LOGI(TAG, "swing json %s ", build_options_json(app_lang_, "swing").c_str());
-        send_command_basic(get_status_frame_);
+        ESP_LOGD(TAG, "Setup %s ", "INIT");
+        ESP_LOGD(TAG, "Board %s ", app_board_.c_str());
+        ESP_LOGD(TAG, "MAC %s ", app_mac_.c_str());
+        ESP_LOGD(TAG, "name %s ", app_name_.c_str());
+        ESP_LOGD(TAG, "friendly name %s ", app_friendly_name_.c_str());
+        ESP_LOGD(TAG, "sanitze name %s ", app_sanitize_name_.c_str());
+        ESP_LOGD(TAG, "MQTT broker %s ", mqtt_broker_address_.c_str());
+        ESP_LOGD(TAG, "MQTT username %s ", mqtt_username_.c_str());
+        ESP_LOGD(TAG, "MQTT port %d ", mqtt_port_);
+        ESP_LOGD(TAG, "Lang %s ", app_lang_.c_str());
+        ESP_LOGD(TAG, "name %s ", get_localized_name(app_lang_, "climate").c_str());
+        ESP_LOGD(TAG, "mode json %s ", build_options_json(app_lang_, "mode").c_str());
+        ESP_LOGD(TAG, "fan json %s ", build_options_json(app_lang_, "fan").c_str());
+        ESP_LOGD(TAG, "swing json %s ", build_options_json(app_lang_, "swing").c_str());
+        // send_command_basic(get_status_frame_);
       });
     }
 
@@ -289,11 +256,9 @@ namespace esphome {
 
       if (oldValue != newValue) {
         use_fahrenheit_ = newValue;
-        schedule_delayed_calls("mqtt_discovery_step", {
-          [this]() { publish_discovery_climate(true); },
-          [this]() { publish_discovery_temperature_number(true); },
-          [this]() { publish_discovery_temperature_sensor(true); },
-        }, schedule_base_delay, schedule_step_delay);
+        publish_discovery_climate(true);
+        publish_discovery_temperature_number(true);
+        publish_discovery_temperature_sensor(true);
       }
     }
 
@@ -590,6 +555,7 @@ namespace esphome {
         if (wifi::global_wifi_component->is_connected()) {
           ESP_LOGI(TAG, "Wi-Fi OK; attempting MQTT connection…");
           mqtt_->enable();
+          mqtt_initializer();
           set_timeout("mqtt_retry", 5000, [this]() {
             if (!mqtt_->is_connected()) {
               mqtt_->disable();
@@ -600,6 +566,44 @@ namespace esphome {
           set_timeout("mqtt_retry", 2000, [this]() { mqtt_connexion(); });
         }
       });
+    }
+
+    void ACW02::mqtt_initializer() {
+      if (mqtt_) {
+        mqtt_->set_on_connect([this](bool first) {
+          ESP_LOGI(TAG, "MQTT connected → publishing discovery and state");
+          set_timeout("mqtt_discovery_delay", 100, [this]() {
+            this->set_interval("mqtt_publish_flush", 50, [this]() {
+              if (!mqtt_publish_queue_.empty()) {
+                const auto &entry = mqtt_publish_queue_.front();
+                mqtt_->publish(entry.topic, entry.payload, entry.qos, entry.retain);
+                mqtt_publish_queue_.pop_front();
+              }
+            });
+            publish_discovery_climate();
+            publish_discovery_mode_select();
+            publish_discovery_fan_select();
+            publish_discovery_swing_select();
+            publish_discovery_swing_horizontal_select();
+            publish_discovery_unit_select();
+            publish_discovery_clean_switch();
+            publish_discovery_eco_switch();
+            publish_discovery_display_switch();
+            publish_discovery_night_switch();
+            publish_discovery_purifier_switch();
+            publish_discovery_temperature_number();
+            publish_discovery_temperature_sensor();
+            publish_discovery_last_cmd_origin_sensor();
+            send_command_basic(get_status_frame_);
+          });
+          mqtt_->subscribe(app_name_ + "/cmd/#", [this](const std::string &topic, const std::string &payload) {
+            mqtt_callback(topic, payload);
+          });
+        });
+        mqtt_->set_on_disconnect([this](mqtt::MQTTClientDisconnectReason reason) {
+          ESP_LOGI(TAG, "MQTT disconnected (reason=%d)", static_cast<int>(reason));
+        });
+      }
     }
 
     void ACW02::mqtt_callback(const std::string &topic, const std::string &payload) {
@@ -672,7 +676,7 @@ namespace esphome {
       payload += "\"last_cmd_origin\":\"" + std::string(from_remote_ ? "Remote" : "ESP") + "\"";
       payload += "}";
 
-      mqtt_->publish(app_name_ + "/state", payload, 0, true);
+      publish_async(app_name_ + "/state", payload, 0, true);
     }
 
     void ACW02::publish_availability() {
@@ -680,27 +684,27 @@ namespace esphome {
 
       const std::string topic_eco = app_name_ + "/eco_availability";
       std::string payload_eco = (power_on_ && mode_ == Mode::COOL) ? "available" : "unavailable";
-      mqtt_->publish(topic_eco, payload_eco, 1, true);
+      publish_async(topic_eco, payload_eco, 1, true);
 
       const std::string topic_night = app_name_ + "/night_availability";
       std::string payload_night = (power_on_ && (mode_ == Mode::COOL || mode_ == Mode::DRY || mode_ == Mode::HEAT)) ? "available" : "unavailable";
-      mqtt_->publish(topic_night, payload_night, 1, true);
+      publish_async(topic_night, payload_night, 1, true);
 
       const std::string topic_fan_speed = app_name_ + "/fan_speed_availability";
       std::string payload_fan_speed = (eco_ == false) ? "available" : "unavailable";
-      mqtt_->publish(topic_fan_speed, payload_fan_speed, 1, true);
+      publish_async(topic_fan_speed, payload_fan_speed, 1, true);
 
       const std::string topic_target_temp = app_name_ + "/target_temp_availability";
       std::string payload_target_temp = (mode_ != Mode::AUTO && eco_ == false) ? "available" : "unavailable";
-      mqtt_->publish(topic_target_temp, payload_target_temp, 1, true);
+      publish_async(topic_target_temp, payload_target_temp, 1, true);
 
       const std::string topic_purifier = app_name_ + "/purifier_availability";
       std::string payload_purifier = (power_on_) ? "available" : "unavailable";
-      mqtt_->publish(topic_purifier, payload_purifier, 1, true);
+      publish_async(topic_purifier, payload_purifier, 1, true);
 
       const std::string topic_clean = app_name_ + "/clean_availability";
       std::string payload_clean = (!power_on_) ? "available" : "unavailable";
-      mqtt_->publish(topic_clean, payload_clean, 1, true);
+      publish_async(topic_clean, payload_clean, 1, true);
     }
 
     std::string ACW02::build_common_config_suffix() const {
@@ -796,12 +800,12 @@ namespace esphome {
 
       std::string config_topic = "homeassistant/climate/" + topic_base + "/config";
       if (recreate) {
-        mqtt_->publish(config_topic, std::string(""), 1, true);
+        publish_async(config_topic, std::string(""), 1, true);
         set_timeout("mqtt_publish_discovery_climate_publish", mqtt_delay_rebuild_, [this, config_topic, payload]() {
-          mqtt_->publish(config_topic, payload, 1, true);
+          publish_async(config_topic, payload, 1, true);
         });
       } else {
-        mqtt_->publish(config_topic, payload, 1, true);
+        publish_async(config_topic, payload, 1, true);
       }
     }
 
@@ -830,12 +834,12 @@ namespace esphome {
       })";
 
       if (recreate) {
-        mqtt_->publish(config_topic, std::string(""), 1, true);
+        publish_async(config_topic, std::string(""), 1, true);
         set_timeout("mqtt_publish_discovery_mode_select_publish", mqtt_delay_rebuild_, [this, config_topic, payload]() {
-          mqtt_->publish(config_topic, payload, 1, true);
+          publish_async(config_topic, payload, 1, true);
         });
       } else {
-        mqtt_->publish(config_topic, payload, 1, true);
+        publish_async(config_topic, payload, 1, true);
       }
     }
 
@@ -874,12 +878,12 @@ namespace esphome {
       })";
 
       if (recreate) {
-        mqtt_->publish(config_topic, std::string(""), 1, true);
+        publish_async(config_topic, std::string(""), 1, true);
         set_timeout("mqtt_publish_discovery_fan_select_publish", mqtt_delay_rebuild_, [this, config_topic, payload]() {
-          mqtt_->publish(config_topic, payload, 1, true);
+          publish_async(config_topic, payload, 1, true);
         });
       } else {
-        mqtt_->publish(config_topic, payload, 1, true);
+        publish_async(config_topic, payload, 1, true);
       }
     }
 
@@ -907,12 +911,12 @@ namespace esphome {
       })";
 
       if (recreate) {
-        mqtt_->publish(config_topic, std::string(""), 1, true);
+        publish_async(config_topic, std::string(""), 1, true);
         set_timeout("mqtt_publish_discovery_unit_select_publish", mqtt_delay_rebuild_, [this, config_topic, payload]() {
-          mqtt_->publish(config_topic, payload, 1, true);
+          publish_async(config_topic, payload, 1, true);
         });
       } else {
-        mqtt_->publish(config_topic, payload, 1, true);
+        publish_async(config_topic, payload, 1, true);
       }
     }
 
@@ -941,12 +945,12 @@ namespace esphome {
       })";
 
       if (recreate) {
-        mqtt_->publish(config_topic, std::string(""), 1, true);
+        publish_async(config_topic, std::string(""), 1, true);
         set_timeout("mqtt_publish_discovery_swing_select_publish", mqtt_delay_rebuild_, [this, config_topic, payload]() {
-          mqtt_->publish(config_topic, payload, 1, true);
+          publish_async(config_topic, payload, 1, true);
         });
       } else {
-        mqtt_->publish(config_topic, payload, 1, true);
+        publish_async(config_topic, payload, 1, true);
       }
     }
 
@@ -975,12 +979,12 @@ namespace esphome {
       })";
 
       if (recreate) {
-        mqtt_->publish(config_topic, std::string(""), 1, true);
+        publish_async(config_topic, std::string(""), 1, true);
         set_timeout("mqtt_publish_discovery_swing_horizontal_select_publish", mqtt_delay_rebuild_, [this, config_topic, payload]() {
-          mqtt_->publish(config_topic, payload, 1, true);
+          publish_async(config_topic, payload, 1, true);
         });
       } else {
-        mqtt_->publish(config_topic, payload, 1, true);
+        publish_async(config_topic, payload, 1, true);
       }
     }
 
@@ -1020,12 +1024,12 @@ namespace esphome {
 
 
       if (recreate) {
-        mqtt_->publish(config_topic, std::string(""), 1, true);
+        publish_async(config_topic, std::string(""), 1, true);
         set_timeout("mqtt_publish_discovery_clean_switch_publish", mqtt_delay_rebuild_, [this, config_topic, payload]() {
-          mqtt_->publish(config_topic, payload, 1, true);
+          publish_async(config_topic, payload, 1, true);
         });
       } else {
-        mqtt_->publish(config_topic, payload, 1, true);
+        publish_async(config_topic, payload, 1, true);
       }
     }
 
@@ -1066,12 +1070,12 @@ namespace esphome {
       })";
 
       if (recreate) {
-        mqtt_->publish(config_topic, std::string(""), 1, true);
+        publish_async(config_topic, std::string(""), 1, true);
         set_timeout("mqtt_publish_discovery_eco_switch_publish", mqtt_delay_rebuild_, [this, config_topic, payload]() {
-          mqtt_->publish(config_topic, payload, 1, true);
+          publish_async(config_topic, payload, 1, true);
         });
       } else {
-        mqtt_->publish(config_topic, payload, 1, true);
+        publish_async(config_topic, payload, 1, true);
       }
     }
 
@@ -1101,12 +1105,12 @@ namespace esphome {
       })";
 
       if (recreate) {
-        mqtt_->publish(config_topic, std::string(""), 1, true);
+        publish_async(config_topic, std::string(""), 1, true);
         set_timeout("mqtt_publish_discovery_display_switch_publish", mqtt_delay_rebuild_, [this, config_topic, payload]() {
-          mqtt_->publish(config_topic, payload, 1, true);
+          publish_async(config_topic, payload, 1, true);
         });
       } else {
-        mqtt_->publish(config_topic, payload, 1, true);
+        publish_async(config_topic, payload, 1, true);
       }
     }
 
@@ -1146,12 +1150,12 @@ namespace esphome {
       })";
 
       if (recreate) {
-        mqtt_->publish(config_topic, std::string(""), 1, true);
+        publish_async(config_topic, std::string(""), 1, true);
         set_timeout("mqtt_publish_discovery_night_switch_publish", mqtt_delay_rebuild_, [this, config_topic, payload]() {
-          mqtt_->publish(config_topic, payload, 1, true);
+          publish_async(config_topic, payload, 1, true);
         });
       } else {
-        mqtt_->publish(config_topic, payload, 1, true);
+        publish_async(config_topic, payload, 1, true);
       }
     }
 
@@ -1191,12 +1195,12 @@ namespace esphome {
       })";
 
       if (recreate) {
-        mqtt_->publish(config_topic, std::string(""), 1, true);
+        publish_async(config_topic, std::string(""), 1, true);
         set_timeout("mqtt_publish_discovery_purifier_switch_publish", mqtt_delay_rebuild_, [this, config_topic, payload]() {
-          mqtt_->publish(config_topic, payload, 1, true);
+          publish_async(config_topic, payload, 1, true);
         });
       } else {
-        mqtt_->publish(config_topic, payload, 1, true);
+        publish_async(config_topic, payload, 1, true);
       }
     }
 
@@ -1245,12 +1249,12 @@ namespace esphome {
       })";
 
       if (recreate) {
-        mqtt_->publish(config_topic, std::string(""), 1, true);
+        publish_async(config_topic, std::string(""), 1, true);
         set_timeout("mqtt_publish_discovery_temperature_number_publish", mqtt_delay_rebuild_, [this, config_topic, payload]() {
-          mqtt_->publish(config_topic, payload, 1, true);
+          publish_async(config_topic, payload, 1, true);
         });
       } else {
-        mqtt_->publish(config_topic, payload, 1, true);
+        publish_async(config_topic, payload, 1, true);
       }
     }
 
@@ -1281,12 +1285,12 @@ namespace esphome {
       })";
 
       if (recreate) {
-        mqtt_->publish(config_topic, std::string(""), 1, true);
+        publish_async(config_topic, std::string(""), 1, true);
         set_timeout("mqtt_publish_discovery_temp_sensor", mqtt_delay_rebuild_, [this, config_topic, payload]() {
-          mqtt_->publish(config_topic, payload, 1, true);
+          publish_async(config_topic, payload, 1, true);
         });
       } else {
-        mqtt_->publish(config_topic, payload, 1, true);
+        publish_async(config_topic, payload, 1, true);
       }
     }
 
@@ -1312,32 +1316,30 @@ namespace esphome {
       })";
 
       if (recreate) {
-        mqtt_->publish(config_topic, std::string(""), 1, true);
+        publish_async(config_topic, std::string(""), 1, true);
         set_timeout("mqtt_publish_discovery_last_cmd_origin_sensor", mqtt_delay_rebuild_, [this, config_topic, payload]() {
-          mqtt_->publish(config_topic, payload, 1, true);
+          publish_async(config_topic, payload, 1, true);
         });
       } else {
-        mqtt_->publish(config_topic, payload, 1, true);
+        publish_async(config_topic, payload, 1, true);
       }
     }
 
     void ACW02::rebuild_mqtt_entity() {
-      schedule_delayed_calls("mqtt_discovery_step", {
-      [this]() { publish_discovery_climate(true); },
-      [this]() { publish_discovery_mode_select(true); },
-      [this]() { publish_discovery_fan_select(true); },
-      [this]() { publish_discovery_swing_select(true); },
-      [this]() { publish_discovery_swing_horizontal_select(true); },
-      [this]() { publish_discovery_unit_select(true); },
-      [this]() { publish_discovery_clean_switch(true); },
-      [this]() { publish_discovery_eco_switch(true); },
-      [this]() { publish_discovery_display_switch(true); },
-      [this]() { publish_discovery_night_switch(true); },
-      [this]() { publish_discovery_purifier_switch(true); },
-      [this]() { publish_discovery_temperature_number(true); },
-      [this]() { publish_discovery_temperature_sensor(true); },
-      [this]() { publish_discovery_last_cmd_origin_sensor(true); }
-    }, schedule_base_delay, schedule_step_delay);
+      publish_discovery_climate(true);
+      publish_discovery_mode_select(true);
+      publish_discovery_fan_select(true);
+      publish_discovery_swing_select(true);
+      publish_discovery_swing_horizontal_select(true);
+      publish_discovery_unit_select(true);
+      publish_discovery_clean_switch(true);
+      publish_discovery_eco_switch(true);
+      publish_discovery_display_switch(true);
+      publish_discovery_night_switch(true);
+      publish_discovery_purifier_switch(true);
+      publish_discovery_temperature_number(true);
+      publish_discovery_temperature_sensor(true);
+      publish_discovery_last_cmd_origin_sensor(true);
     }
 
     void ACW02::apply_disable_settings() {
@@ -1579,16 +1581,8 @@ namespace esphome {
       }
     }
 
-    void ACW02::schedule_delayed_calls(const std::string &base_name, const std::vector<std::function<void()>> &calls, uint32_t base_delay, uint32_t step_delay) {
-      for (size_t i = 0; i < calls.size(); ++i) {
-        std::function<void()> func = calls[i];
-        std::string name = base_name + "_" + to_string(i);
-        uint32_t delay = base_delay + i * step_delay;
-
-        set_timeout(name, delay, [func]() {
-          func();
-        });
-      }
+    void ACW02::publish_async(const std::string &topic, const std::string &payload, int qos, bool retain) {
+      mqtt_publish_queue_.push_back(MqttPublishEntry{topic, payload, qos, retain});
     }
 
     Fan ACW02::str_to_fan(const std::string& lang, const std::string &s) {

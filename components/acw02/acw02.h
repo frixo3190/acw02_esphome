@@ -137,6 +137,7 @@ class ACW02 : public Component, public uart::UARTDevice {
 
   // MQTT publics function
   void mqtt_connexion();
+  void mqtt_initializer();
   void mqtt_callback(const std::string &topic, const std::string &payload);
   void publish_state();
   void publish_availability();
@@ -238,8 +239,13 @@ class ACW02 : public Component, public uart::UARTDevice {
   bool disable_swing_horizontal_ {false};
 
   // Protected variables optimization
-  uint32_t schedule_base_delay = 100;
-  uint32_t schedule_step_delay = 50;
+  struct MqttPublishEntry {
+    std::string topic;
+    std::string payload;
+    int qos;
+    bool retain;
+  };
+  std::deque<MqttPublishEntry> mqtt_publish_queue_;
 
   // Protected functions for command queue
   void process_tx_queue();
@@ -255,7 +261,7 @@ class ACW02 : public Component, public uart::UARTDevice {
   void force_cool_mode_if_disabled();
 
   // Protected functions optimization
-  void schedule_delayed_calls(const std::string &base_name, const std::vector<std::function<void()>> &calls, uint32_t base_delay, uint32_t step_delay);
+  void publish_async(const std::string &topic, const std::string &payload, int qos, bool retain);
 
   // Protected functions for AC convert
   static Fan str_to_fan(const std::string& lang, const std::string &speed);
