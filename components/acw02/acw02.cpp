@@ -14,6 +14,7 @@ namespace esphome {
       #if defined(DBOARD)
         app_board_ = DBOARD;
       #endif
+
       mqtt_connexion();
       app_name_ = App.get_name();
       app_friendly_name_ = App.get_friendly_name();
@@ -377,6 +378,10 @@ namespace esphome {
       ESP_LOGI(TAG, "MQTT port saved : %d", port);
     }
 
+    void ACW02::set_mqtt_connected_sensor(esphome::binary_sensor::BinarySensor *sensor) {
+      this->mqtt_connected_sensor_ = sensor;
+    }
+
     void ACW02::reload_ac_info() {
       send_command_basic(get_status_frame_);
     }
@@ -572,6 +577,7 @@ namespace esphome {
       if (mqtt_) {
         mqtt_->set_on_connect([this](bool first) {
           ESP_LOGI(TAG, "MQTT connected → publishing discovery and state");
+          if (mqtt_connected_sensor_) mqtt_connected_sensor_->publish_state(true);
           set_timeout("mqtt_discovery_delay", 100, [this]() {
             this->set_interval("mqtt_publish_flush", 50, [this]() {
               if (!mqtt_publish_queue_.empty()) {
@@ -602,6 +608,7 @@ namespace esphome {
         });
         mqtt_->set_on_disconnect([this](mqtt::MQTTClientDisconnectReason reason) {
           ESP_LOGI(TAG, "MQTT disconnected (reason=%d)", static_cast<int>(reason));
+          if (mqtt_connected_sensor_) mqtt_connected_sensor_->publish_state(false);
         });
       }
     }
@@ -1393,7 +1400,7 @@ namespace esphome {
       frame[4] = 0x18;
       frame[5] = frame[6] = 0x00;
       frame[7] = 0xA1;
-
+      
       uint8_t fan_n = (static_cast<uint8_t>(fan_) & 0x0F) << 4;
       uint8_t pwr   = (power_on_ ? 1 : 0) << 3;
       uint8_t mode  = static_cast<uint8_t>(mode_) & 0x07;

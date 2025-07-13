@@ -188,12 +188,26 @@ text_sensor:
   - platform: template
     name: "Z-INFO: IP Address"
     id: ip_address_sensor
+    icon: mdi:ip
     lambda: |-
       return { id(ac_ctrl).get_ip_address() };
     update_interval: 5s
   - platform: template
     name: "Z-INFO: Local Address"
     id: address_sensor
+    icon: mdi:ip
     lambda: |-
       return { id(ac_ctrl).get_address() };
     update_interval: 5s
+
+binary_sensor:
+  - platform: template
+    id: mqtt_conn_status
+    name: "Z-INFO: MQTT"
+    device_class: connectivity
+
+interval:
+  - interval: 1s
+    then:
+      lambda: |-
+        id(ac_ctrl).set_mqtt_connected_sensor(id(mqtt_conn_status));

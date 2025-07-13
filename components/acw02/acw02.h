@@ -11,6 +11,7 @@
 #include "esphome/core/application.h"
 #include <algorithm>
 #include "esphome/components/wifi/wifi_component.h"
+#include "esphome/components/binary_sensor/binary_sensor.h"
 #include "localization.h"
 
 namespace esphome {
@@ -90,6 +91,7 @@ class ACW02 : public Component, public uart::UARTDevice {
   void set_mqtt_username(const std::string &value);
   void set_mqtt_password(const std::string &value);
   void set_mqtt_port_from_string(const std::string &value);
+  void set_mqtt_connected_sensor(esphome::binary_sensor::BinarySensor *sensor);
 
 
   // Send command UART
@@ -228,6 +230,7 @@ class ACW02 : public Component, public uart::UARTDevice {
   std::string mqtt_password_;
   int mqtt_port_ = 1883;
   int mqtt_delay_rebuild_ = 300;
+  binary_sensor::BinarySensor *mqtt_connected_sensor_{nullptr};
 
 
   // Protected functions for disable mode
