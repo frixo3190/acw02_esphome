@@ -27,20 +27,22 @@ namespace esphome {
         mqtt_->set_on_connect([this](bool first) {
           ESP_LOGI(TAG, "MQTT connected → publishing discovery and state");
           set_timeout("mqtt_discovery_delay", 100, [this]() {
-            publish_discovery_climate();
-            publish_discovery_mode_select();
-            publish_discovery_fan_select();
-            publish_discovery_swing_select();
-            publish_discovery_swing_horizontal_select();
-            publish_discovery_unit_select();
-            publish_discovery_clean_switch();
-            publish_discovery_eco_switch();
-            publish_discovery_display_switch();
-            publish_discovery_night_switch();
-            publish_discovery_purifier_switch();
-            publish_discovery_temperature_number();
-            publish_discovery_temperature_sensor();
-            publish_discovery_last_cmd_origin_sensor();
+              schedule_delayed_calls("mqtt_discovery_step", {
+                [this]() { publish_discovery_climate(); },
+                [this]() { publish_discovery_mode_select(); },
+                [this]() { publish_discovery_fan_select(); },
+                [this]() { publish_discovery_swing_select(); },
+                [this]() { publish_discovery_swing_horizontal_select(); },
+                [this]() { publish_discovery_unit_select(); },
+                [this]() { publish_discovery_clean_switch(); },
+                [this]() { publish_discovery_eco_switch(); },
+                [this]() { publish_discovery_display_switch(); },
+                [this]() { publish_discovery_night_switch(); },
+                [this]() { publish_discovery_purifier_switch(); },
+                [this]() { publish_discovery_temperature_number(); },
+                [this]() { publish_discovery_temperature_sensor(); },
+                [this]() { publish_discovery_last_cmd_origin_sensor(); }
+              }, schedule_base_delay, schedule_step_delay);
           });
           mqtt_->subscribe(app_name_ + "/cmd/#", [this](const std::string &topic, const std::string &payload) {
             mqtt_callback(topic, payload);
@@ -287,9 +289,11 @@ namespace esphome {
 
       if (oldValue != newValue) {
         use_fahrenheit_ = newValue;
-        publish_discovery_climate(true);
-        publish_discovery_temperature_number(true);
-        publish_discovery_temperature_sensor(true);
+        schedule_delayed_calls("mqtt_discovery_step", {
+          [this]() { publish_discovery_climate(true); },
+          [this]() { publish_discovery_temperature_number(true); },
+          [this]() { publish_discovery_temperature_sensor(true); },
+        }, schedule_base_delay, schedule_step_delay);
       }
     }
 
@@ -1318,20 +1322,22 @@ namespace esphome {
     }
 
     void ACW02::rebuild_mqtt_entity() {
-      publish_discovery_climate(true);
-      publish_discovery_mode_select(true);
-      publish_discovery_fan_select(true);
-      publish_discovery_swing_select(true);
-      publish_discovery_swing_horizontal_select(true);
-      publish_discovery_unit_select(true);
-      publish_discovery_clean_switch(true);
-      publish_discovery_eco_switch(true);
-      publish_discovery_display_switch(true);
-      publish_discovery_night_switch(true);
-      publish_discovery_purifier_switch(true);
-      publish_discovery_temperature_number(true);
-      publish_discovery_temperature_sensor(true);
-      publish_discovery_last_cmd_origin_sensor(true);
+      schedule_delayed_calls("mqtt_discovery_step", {
+      [this]() { publish_discovery_climate(true); },
+      [this]() { publish_discovery_mode_select(true); },
+      [this]() { publish_discovery_fan_select(true); },
+      [this]() { publish_discovery_swing_select(true); },
+      [this]() { publish_discovery_swing_horizontal_select(true); },
+      [this]() { publish_discovery_unit_select(true); },
+      [this]() { publish_discovery_clean_switch(true); },
+      [this]() { publish_discovery_eco_switch(true); },
+      [this]() { publish_discovery_display_switch(true); },
+      [this]() { publish_discovery_night_switch(true); },
+      [this]() { publish_discovery_purifier_switch(true); },
+      [this]() { publish_discovery_temperature_number(true); },
+      [this]() { publish_discovery_temperature_sensor(true); },
+      [this]() { publish_discovery_last_cmd_origin_sensor(true); }
+    }, schedule_base_delay, schedule_step_delay);
     }
 
     void ACW02::apply_disable_settings() {
@@ -1570,6 +1576,18 @@ namespace esphome {
       if (tmp != mode_) {
         mode_ = tmp;
         send_command();
+      }
+    }
+
+    void ACW02::schedule_delayed_calls(const std::string &base_name, const std::vector<std::function<void()>> &calls, uint32_t base_delay, uint32_t step_delay) {
+      for (size_t i = 0; i < calls.size(); ++i) {
+        std::function<void()> func = calls[i];
+        std::string name = base_name + "_" + to_string(i);
+        uint32_t delay = base_delay + i * step_delay;
+
+        set_timeout(name, delay, [func]() {
+          func();
+        });
       }
     }
 

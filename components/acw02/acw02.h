@@ -237,6 +237,10 @@ class ACW02 : public Component, public uart::UARTDevice {
   bool disable_swing_vertical_ {false};
   bool disable_swing_horizontal_ {false};
 
+  // Protected variables optimization
+  uint32_t schedule_base_delay = 100;
+  uint32_t schedule_step_delay = 50;
+
   // Protected functions for command queue
   void process_tx_queue();
 
@@ -249,6 +253,9 @@ class ACW02 : public Component, public uart::UARTDevice {
 
   // force mode if select disable mode
   void force_cool_mode_if_disabled();
+
+  // Protected functions optimization
+  void schedule_delayed_calls(const std::string &base_name, const std::vector<std::function<void()>> &calls, uint32_t base_delay, uint32_t step_delay);
 
   // Protected functions for AC convert
   static Fan str_to_fan(const std::string& lang, const std::string &speed);
