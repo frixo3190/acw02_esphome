@@ -205,9 +205,14 @@ binary_sensor:
     id: mqtt_conn_status
     name: "Z-INFO: MQTT"
     device_class: connectivity
+  - platform: template
+    id: filter_dirty
+    name: "Z-INFO: Filtre à nettoyer"
+    device_class: problem
 
 interval:
   - interval: 1s
     then:
       lambda: |-
         id(ac_ctrl).set_mqtt_connected_sensor(id(mqtt_conn_status));
+        id(ac_ctrl).set_filter_dirty_sensor(id(filter_dirty));

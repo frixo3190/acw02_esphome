@@ -93,6 +93,9 @@ class ACW02 : public Component, public uart::UARTDevice {
   void set_mqtt_port_from_string(const std::string &value);
   void set_mqtt_connected_sensor(esphome::binary_sensor::BinarySensor *sensor);
 
+  // Setters sensor fault/warn
+  void set_filter_dirty_sensor(binary_sensor::BinarySensor *sensor);
+
 
   // Send command UART
   void reload_ac_info();
@@ -206,6 +209,9 @@ class ACW02 : public Component, public uart::UARTDevice {
   bool from_remote_{false};
   Swing  swing_position_{Swing::P1};
   SwingHorizontal  swing_horizontal_{SwingHorizontal::STOP};
+
+  // variables AC fault/warn
+  binary_sensor::BinarySensor *filter_dirty_sensor_{nullptr};
 
   // variables persisted AC settings
   ESPPreferenceObject mute_pref_;

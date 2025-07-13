@@ -382,6 +382,10 @@ namespace esphome {
       this->mqtt_connected_sensor_ = sensor;
     }
 
+    void ACW02::set_filter_dirty_sensor(binary_sensor::BinarySensor *sensor) {
+      this->filter_dirty_sensor_ = sensor;
+    }
+
     void ACW02::reload_ac_info() {
       send_command_basic(get_status_frame_);
     }
@@ -1461,6 +1465,7 @@ namespace esphome {
     void ACW02::decode_state(const std::vector<uint8_t> &f) {
 
       if (f.size() == 28 && f[0] == 0x7A && f[1] == 0x7A && f[2] == 0xD5 && f[3] == 0x21) {
+        uint8_t warn = f[10];
         uint8_t fault = f[12];
         if (fault != 0x00) {
           std::string fault_msg;
@@ -1471,6 +1476,22 @@ namespace esphome {
           }
 
           ESP_LOGE(TAG, "AC error : fault_code=0x%02X (%s)", fault, fault_msg.c_str());
+        } else if (warn != 0x00) {
+          std::string warn_msg;
+          switch (warn) {
+            case 0x80: 
+              warn_msg = "filter_clean";
+              if (filter_dirty_sensor_) {
+                filter_dirty_sensor_->publish_state(true);
+              }
+              break;
+            default: warn_msg = "unknown_warn"; break;
+          }
+          ESP_LOGW(TAG, "AC warn : warn_code=0x%02X (%s)", warn, warn_msg.c_str());
+        } else {
+          if (filter_dirty_sensor_) {
+            filter_dirty_sensor_->publish_state(false);
+          }
         }
         return;
       }
