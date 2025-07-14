@@ -61,6 +61,16 @@ or
 
 ### PCB comming soon
 
+### Option : QRCODE info
+#### You can generate a QR code to store module information.
+
+- To do this, open the create_QRcode_info.html file in your browser.
+
+- Import the esphome-acw02-en.yaml or esphome-acw02-fr.yaml file.
+
+- Verify the information and click on the QR code to download it.
+
+- Print it and stick it on the module.
 
 ### Note: important
 This component requires MQTT to function. I invite you to check how to install and configure it in Home Assistant.
