@@ -5,6 +5,8 @@ substitutions:
   api_encrypted_key: "D2oldc0VP++fni6src89tCSC0UwBhNPgyc8vgYN8/mA="
   ota_password: "REPLACE_WITH_YOUR_PASSWORD"
   ap_password: "fallbackpassword"
+  web_server_username: admin
+  web_server_password: admin
   board: esp32dev
 
 esphome:
@@ -21,8 +23,8 @@ esp32:
 web_server:
   port: 80
   auth:
-    username: !secret web_server_username
-    password: !secret web_server_password
+    username: ${web_server_username}
+    password: ${web_server_password}
   version: 3
   local : true
   
