@@ -1,0 +1,12 @@
+{
+  "files.exclude": {
+    "**/.esphome/build": true
+  },
+  "files.watcherExclude": {
+    "**/.esphome/build/**": true
+  },
+  "search.exclude": {
+    "**/.esphome/build": true
+  },
+  "C_Cpp.default.configurationProvider": "disable"
+}
