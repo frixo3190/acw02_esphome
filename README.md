@@ -24,6 +24,8 @@ edite substitutions, you can modify
  - api_encrypted_key
  - ota_password
  - ap_password
+ - web_server_username
+ - web_server_password
 
 ```
 substitutions:
@@ -33,6 +35,8 @@ substitutions:
   api_encrypted_key: "D2oldc0VP++fni6src89tCSC0UwBhNPgyc8vgYN8/mA="
   ota_password: "REPLACE_WITH_YOUR_PASSWORD"
   ap_password: "fallbackpassword"
+  web_server_username: admin
+  web_server_password: admin
   board: esp32dev
 ```
 
