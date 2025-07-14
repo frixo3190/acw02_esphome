@@ -48,8 +48,10 @@ open file secrets.yaml and put on this file your WIFI settings and your desired 
 ```
 wifi_ssid: "testesp32"
 wifi_password: "testesp32"
-web_server_username: admin
-web_server_password: admin
+wifi_ssid2: "testesp32"
+wifi_password2: "testesp32"
+wifi_ssid3: "testesp32"
+wifi_password3: "testesp32"
 ```
 
 ### build 
