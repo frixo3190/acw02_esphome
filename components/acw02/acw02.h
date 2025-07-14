@@ -103,7 +103,6 @@ class ACW02 : public Component, public uart::UARTDevice {
   // Getters publics globals
   std::string get_mac_address();
   std::string get_address();
-  std::string get_ip_address();
 
   // Getters publics AC
   std::string get_mode_string_climate() const;

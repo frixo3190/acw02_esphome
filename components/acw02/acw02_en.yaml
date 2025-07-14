@@ -186,28 +186,51 @@ button:
 
 text_sensor:
   - platform: template
-    name: "Z-INFO: IP Address"
-    id: ip_address_sensor
-    icon: mdi:ip
-    lambda: |-
-      return { id(ac_ctrl).get_ip_address() };
-    update_interval: 5s
-  - platform: template
-    name: "Z-INFO: Local Address"
+    name: "WiFi: mDNS"
     id: address_sensor
-    icon: mdi:ip
+    entity_category: "diagnostic"
     lambda: |-
       return { id(ac_ctrl).get_address() };
     update_interval: 5s
+  - platform: wifi_info
+    ip_address:
+      name: "WiFi: IP"
+    ssid:
+      name: "WiFi: Connected Access Point"
+    bssid:
+      name: "WiFi: BSSID"
+    mac_address:
+      name: "WiFi: MAC"
+  - platform: version
+    name: "ESP: Version"
+
+sensor:
+  - platform: wifi_signal
+    name: "WiFi: Signal"
+    update_interval: 10s
+  - platform: uptime
+    name: "ESP: UpTime"
+    update_interval: 10s
+  - platform: internal_temperature
+    name: "ESP: CPU Temperature"
+    update_interval: 10s
+  - platform: template
+    name: "ESP: Free Memory"
+    lambda: |-
+      return heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024.0;
+    unit_of_measurement: "kB"
+    update_interval: 10s
+    entity_category: "diagnostic"
 
 binary_sensor:
   - platform: template
     id: mqtt_conn_status
-    name: "Z-INFO: MQTT"
+    name: "MQTT"
     device_class: connectivity
+    entity_category: "diagnostic"
   - platform: template
     id: filter_dirty
-    name: "Z-INFO: Filtre dirty"
+    name: "Filter to clean"
     device_class: problem
 
 interval:
