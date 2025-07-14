@@ -203,14 +203,47 @@ text_sensor:
       name: "WiFi: MAC"
   - platform: version
     name: "ESP: Version"
+  - platform: template
+    name: "ESP: Up Time"
+    id: formatted_uptime
+    entity_category: "diagnostic"
+    update_interval: 5s
+    lambda: |-
+      int seconds = (int) id(raw_uptime).state;
+      int years = seconds / 31536000;
+      seconds %= 31536000;
+      int months = seconds / 2592000;
+      seconds %= 2592000;
+      int days = seconds / 86400;
+      seconds %= 86400;
+      int hours = seconds / 3600;
+      seconds %= 3600;
+      int minutes = seconds / 60;
+      int secs = seconds % 60;
+      char buffer[80];
+      if (years > 0)
+        snprintf(buffer, sizeof(buffer), "%dy %dm %dd %02dh %02dmin %02ds", years, months, days, hours, minutes, secs);
+      else if (months > 0)
+        snprintf(buffer, sizeof(buffer), "%dm %dd %02dh %02dmin %02ds", months, days, hours, minutes, secs);
+      else if (days > 0)
+        snprintf(buffer, sizeof(buffer), "%dd %02dh %02dmin %02ds", days, hours, minutes, secs);
+      else if (hours > 0)
+        snprintf(buffer, sizeof(buffer), "%02dh %02dmin %02ds", hours, minutes, secs);
+      else if (minutes > 0)
+        snprintf(buffer, sizeof(buffer), "%02dmin %02ds", minutes, secs);
+      else
+        snprintf(buffer, sizeof(buffer), "%02ds", secs);
+      return std::string(buffer);
 
 sensor:
   - platform: wifi_signal
     name: "WiFi: Signal"
     update_interval: 10s
   - platform: uptime
-    name: "ESP: UpTime"
-    update_interval: 10s
+    id: raw_uptime
+    name: "ESP: Up Time (s)"
+    update_interval: 5s
+    internal: true
   - platform: internal_temperature
     name: "ESP: CPU Temperature"
     update_interval: 10s
