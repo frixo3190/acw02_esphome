@@ -22,4 +22,4 @@ jobs:
         run: pip install --upgrade esphome
 
       - name: Compile firmware
-        run: esphome compile esphome-acw02-fr.yaml
+        run: esphome compile esphome-acw02-error.yaml
