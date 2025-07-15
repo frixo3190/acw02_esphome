@@ -229,6 +229,7 @@ binary_sensor:
     id: filter_dirty
     name: "Filtre à nettoyer"
     device_class: problem
+    internal: true
 
 interval:
   - interval: 1s

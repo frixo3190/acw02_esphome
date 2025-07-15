@@ -599,6 +599,7 @@ namespace esphome {
             publish_discovery_temperature_number();
             publish_discovery_temperature_sensor();
             publish_discovery_last_cmd_origin_sensor();
+            publish_discovery_filter_dirty_sensor();
             send_command_basic(get_status_frame_);
           });
           mqtt_->subscribe(app_name_ + "/cmd/#", [this](const std::string &topic, const std::string &payload) {
@@ -679,7 +680,8 @@ namespace esphome {
       payload += "\"swing\":\"" + swing_to_string(app_lang_, swing_position_) + "\",";
       payload += "\"swing_horizontal\":\"" + swing_horizontal_to_string(app_lang_, swing_horizontal_) + "\",";
       payload += "\"unit\":\"" + std::string(use_fahrenheit_ ? "°F" : "°C") + "\",";
-      payload += "\"last_cmd_origin\":\"" + std::string(from_remote_ ? "Remote" : "ESP") + "\"";
+      payload += "\"last_cmd_origin\":\"" + std::string(from_remote_ ? "Remote" : "ESP") + "\",";
+      payload += "\"filter_dirty\":\"" + std::string(filter_dirty_ ? "true" : "false") + "\"";
       payload += "}";
 
       publish_async(app_name_ + "/state", payload, 0, true);
@@ -1300,7 +1302,7 @@ namespace esphome {
       }
     }
 
-        void ACW02::publish_discovery_last_cmd_origin_sensor(bool recreate) {
+    void ACW02::publish_discovery_last_cmd_origin_sensor(bool recreate) {
       if (!mqtt_) return;
 
       const std::string topic_base = app_name_;
@@ -1331,6 +1333,40 @@ namespace esphome {
       }
     }
 
+    void ACW02::publish_discovery_filter_dirty_sensor(bool recreate) {
+      if (!mqtt_)
+        return;
+
+      const std::string topic_base = app_name_;
+      const std::string unique_id = app_sanitize_name_ + "_mqtt_sensor_filter_dirty";
+      std::string config_topic = "homeassistant/binary_sensor/" + topic_base + "-filter-dirty/config";
+
+      std::string payload = R"({
+        "name": ")" + get_localized_name(app_lang_, "filterToClean") + R"(",
+        "object_id": ")" + unique_id + R"(",
+        "unique_id": ")" + unique_id + R"(",
+        "stat_t": ")" + topic_base + R"(/state",
+        "icon": "mdi:air-filter",
+        "val_tpl": "{{ value_json.filter_dirty }}",
+        "device_class": "problem",
+        "avty_t": ")" + topic_base + R"(/status",
+        "pl_on": "true",
+        "pl_off": "false",
+        "pl_avail": "online",
+        "pl_not_avail": "offline")" +
+        build_common_config_suffix() + R"(
+      })";
+
+      if (recreate) {
+        publish_async(config_topic, std::string(""), 1, true);
+        set_timeout("mqtt_publish_discovery_filter_dirty_sensor", mqtt_delay_rebuild_, [this, config_topic, payload]() {
+          publish_async(config_topic, payload, 1, true);
+        });
+      } else {
+        publish_async(config_topic, payload, 1, true);
+      }
+    }
+
     void ACW02::rebuild_mqtt_entity() {
       publish_discovery_climate(true);
       publish_discovery_mode_select(true);
@@ -1346,6 +1382,7 @@ namespace esphome {
       publish_discovery_temperature_number(true);
       publish_discovery_temperature_sensor(true);
       publish_discovery_last_cmd_origin_sensor(true);
+      publish_discovery_filter_dirty_sensor(true);
     }
 
     void ACW02::apply_disable_settings() {
@@ -1460,6 +1497,7 @@ namespace esphome {
     void ACW02::decode_state(const std::vector<uint8_t> &f) {
 
       if (f.size() == 28 && f[0] == 0x7A && f[1] == 0x7A && f[2] == 0xD5 && f[3] == 0x21) {
+        bool old_filter_dirty_ = filter_dirty_;
         uint8_t warn = f[10];
         uint8_t fault = f[12];
         if (fault != 0x00) {
@@ -1476,6 +1514,7 @@ namespace esphome {
           switch (warn) {
             case 0x80: 
               warn_msg = "filter_clean";
+              filter_dirty_ = true;
               if (filter_dirty_sensor_) {
                 filter_dirty_sensor_->publish_state(true);
               }
@@ -1484,9 +1523,13 @@ namespace esphome {
           }
           ESP_LOGW(TAG, "AC warn : warn_code=0x%02X (%s)", warn, warn_msg.c_str());
         } else {
+          filter_dirty_ = false;
           if (filter_dirty_sensor_) {
             filter_dirty_sensor_->publish_state(false);
           }
+        }
+        if (mqtt_ && old_filter_dirty_ != filter_dirty_) {
+          publish_state();
         }
         return;
       }

@@ -11,7 +11,7 @@ install python 3.11 from microsoft store
 
 ### esphome:
 ```
-pip install esphome
+pip install esphome==2025.6.3
 ```
 
 ### Settings

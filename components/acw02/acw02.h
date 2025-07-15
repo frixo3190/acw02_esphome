@@ -160,6 +160,8 @@ class ACW02 : public Component, public uart::UARTDevice {
   void publish_discovery_temperature_number(bool recreate = false);
   void publish_discovery_temperature_sensor(bool recreate = false);
   void publish_discovery_last_cmd_origin_sensor(bool recreate = false);
+  void publish_discovery_filter_dirty_sensor(bool recreate = false);
+
   // MQTT publics function for rebuild all mqtt entities
   void rebuild_mqtt_entity();
   // MQTT publics function for apply disable option mode
@@ -205,7 +207,8 @@ class ACW02 : public Component, public uart::UARTDevice {
   bool force_clean_ {false};
   bool use_fahrenheit_ {false};
   bool option_recalculate_climate_ {false};
-  bool from_remote_{false};
+  bool from_remote_ {false};
+  bool filter_dirty_ {false};
   Swing  swing_position_{Swing::P1};
   SwingHorizontal  swing_horizontal_{SwingHorizontal::STOP};
 
