@@ -27,6 +27,7 @@ web_server:
     password: ${web_server_password}
   version: 3
   local : true
+  include_internal: true
   
 logger:
   level: INFO
@@ -89,4 +90,3 @@ packages:
 acw02:
   id: ac_ctrl
   uart_id: uart_acw02
-  
