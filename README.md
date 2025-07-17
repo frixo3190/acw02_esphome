@@ -67,7 +67,7 @@ or
 
 ### PCB
 #### Gerber file présent in PCB directory
-[GERBER File](PCB/Gerber_climEspHome_esp32_d1_mini_PCB_climEspHome_esp32_d1_mini_2025-07-03.zip)
+[GERBER File](https://github.com/devildant/acw02_esphome/raw/main/PCB/Gerber_climEspHome_esp32_d1_mini_PCB_climEspHome_esp32_d1_mini_2025-07-03.zip)
 
 ![front](PCB/images/pcb/front.PNG)
 
