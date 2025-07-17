@@ -1,7 +1,6 @@
 #include "acw02.h"
 #include "esphome/core/log.h"
 #include "esphome/core/helpers.h"
-#include <WiFi.h>
 
 namespace esphome {
   namespace acw02 {
@@ -16,9 +15,12 @@ namespace esphome {
         app_board_ = DBOARD;
       #endif
 
+      mqtt_connexion();
       app_name_ = App.get_name();
       app_friendly_name_ = App.get_friendly_name();
       app_sanitize_name_ = sanitize_name(app_name_);
+      app_mac_ = get_mac_address();
+
       send_command_basic(keepalive_frame_);
 
       mute_pref_ = global_preferences->make_preference<bool>(1U, "ac_mute");
@@ -37,9 +39,6 @@ namespace esphome {
       disable_swing_horizontal_pref_.load(&disable_swing_horizontal_);
       option_recalculate_climate_pref_ = global_preferences->make_preference<bool>(8U, "ac_option_recalculate_climate");
       option_recalculate_climate_pref_.load(&option_recalculate_climate_);
-      set_timeout("init_setup", 1000, [this]() {
-        mqtt_connexion();
-      });
 
       set_timeout("test", 10000, [this]() {
         ESP_LOGD(TAG, "Setup %s ", "INIT");
@@ -392,9 +391,12 @@ namespace esphome {
     }
 
     std::string ACW02::get_mac_address() {
-      String mac = WiFi.macAddress();
-      mac.replace(":", "");
-      return std::string(mac.c_str());
+      uint8_t mac[6];
+      esp_read_mac(mac, ESP_MAC_WIFI_STA);
+      char buf[13];
+      snprintf(buf, sizeof(buf), "%02x%02x%02x%02x%02x%02x",
+      mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+      return std::string(buf);
     }
 
     std::string ACW02::get_address() {
@@ -555,16 +557,13 @@ namespace esphome {
 
       set_timeout("mqtt_connect", 2000, [this]() {
         if (wifi::global_wifi_component->is_connected()) {
-          set_timeout("mqtt_connect_init", 500, [this]() {
-            app_mac_ = get_mac_address();
-            ESP_LOGI(TAG, "Wi-Fi OK; attempting MQTT connection…");
-            mqtt_->enable();
-            mqtt_initializer();
-            set_timeout("mqtt_retry", 5000, [this]() {
-              if (!mqtt_->is_connected()) {
-                mqtt_->disable();
-              }
-            });
+          ESP_LOGI(TAG, "Wi-Fi OK; attempting MQTT connection…");
+          mqtt_->enable();
+          mqtt_initializer();
+          set_timeout("mqtt_retry", 5000, [this]() {
+            if (!mqtt_->is_connected()) {
+              mqtt_->disable();
+            }
           });
         } else {
           ESP_LOGI(TAG, "Wi-Fi not connected; retrying in 5 s");
