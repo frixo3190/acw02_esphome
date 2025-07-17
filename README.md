@@ -75,24 +75,39 @@ or
 
 #### Components: 
 - [12v => 5v (x1): D24V10F5](https://shop.mchobby.be/fr/regulateurs/554--regul-5v-1a-step-down-d24v10f5-3232100005549-pololu.html) [manufacturer](https://www.pololu.com/product/2831)
+
   ![D24V10F5](PCB/images/components/D24V10F5.PNG)
+
 - [4 Channels Logic Level Converter Bi-Directional Shifter (x1): CYT1076](https://amzn.eu/d/2MhG08s)
+
   ![CYT1076](PCB/images/components/4%20Channels%20Logic%20Level%20Converter%20Bi-Directional%20Shifter.PNG)
+
 - [ESP32-WROOM-32 D1 Mini NodeMCU (x1)](https://amzn.eu/d/3mS1B7W)
+
   ![D24V10F5](PCB/images/components/ESP32-WROOM-32%20D1%20Mini%20NodeMCU.PNG)
+
 - [5 pins male 2.54mm (x1) : MaleL7.5-1X5P](https://fr.aliexpress.com/item/1005007128029220.html?spm=a2g0o.order_detail.order_detail_item.3.23f47d56yxv1SG&gatewayAdapt=glo2fra)
+
   ![MaleL7.5-1X5P](PCB/images/components/5%20pin%20male%202.54.PNG)
+
 - [6 pins male 2.54mm (x2) : MaleL7.5-1X6p](https://fr.aliexpress.com/item/1005007128029220.html?spm=a2g0o.order_detail.order_detail_item.3.23f47d56yxv1SG&gatewayAdapt=glo2fra)
+
   ![MaleL7.5-1X5P](PCB/images/components/6%20pin%20male%202.54.PNG)
+
 - [10 pins male 2.54mm (x2) : MaleL7.5-1X10P](https://fr.aliexpress.com/item/1005007128029220.html?spm=a2g0o.order_detail.order_detail_item.3.23f47d56yxv1SG&gatewayAdapt=glo2fra)
+
   ![MaleL7.5-1X5P](PCB/images/components/10%20pin%20male%202.54.PNG)
+
 - [connector : JST XA 2.5 male 4 pins (Reverse direction) (x1)](https://www.aliexpress.com/item/1005008857984831.html?spm=a2g0o.cart.0.0.1dbf38daf0fL06&mp=1&pdp_npi=5%40dis%21EUR%21EUR%206.99%21EUR%206.99%21%21EUR%206.99%21%21%21%40210388c917527810571957734e8cea%2112000048990124847%21ct%21FR%211681384252%21%211%210)
+
   ![JST XA 2.5 male 4 pins (Reverse direction)](PCB/images/components/connector.PNG)
 
   Important: take reverse connexion for have this cable order : 
+
   ![connector](PCB/images/components/connector%202.PNG)
 
 PCB solder and cable:
+
 ![pcb front](PCB/images/components/pcb%20front.PNG)
 
 ![pcb back](PCB/images/components/pcb%20back.PNG)
