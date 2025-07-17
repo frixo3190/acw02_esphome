@@ -75,7 +75,7 @@ or
 
 #### Components: 
 - [12v => 5v (x1): D24V10F5](https://shop.mchobby.be/fr/regulateurs/554--regul-5v-1a-step-down-d24v10f5-3232100005549-pololu.html) [manufacturer](https://www.pololu.com/product/2831)
-  [![D24V10F5](PCB/images/components/D24V10F5.PNG)]
+  [(PCB/images/components/D24V10F5.PNG)]
 - [4 Channels Logic Level Converter Bi-Directional Shifter (x1): CYT1076](https://amzn.eu/d/2MhG08s)
   [![CYT1076](PCB/images/components/4%20Channels%20Logic%20Level%20Converter%20Bi-Directional%20Shifter.PNG)]
 - [ESP32-WROOM-32 D1 Mini NodeMCU (x1)](https://amzn.eu/d/3mS1B7W)
