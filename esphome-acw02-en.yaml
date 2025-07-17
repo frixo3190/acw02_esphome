@@ -37,8 +37,9 @@ api:
     key: ${api_encrypted_key}
 
 ota:
-  platform: esphome
-  password: ${ota_password}
+  - platform: esphome
+    password: ${ota_password}
+  - platform: web_server
 
 wifi:
   ssid: !secret wifi_ssid
