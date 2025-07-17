@@ -106,7 +106,7 @@ or
 
   ![connector](PCB/images/components/connector%202.PNG)
 
-PCB solder and cable:
+##### PCB solder and cable:
 
 ![pcb front](PCB/images/components/pcb%20front.PNG)
 
@@ -116,6 +116,10 @@ PCB solder and cable:
 - RX  : BLACK
 - TX  : YELLOW
 - GND : GREEN
+
+Note: solder pins between the esp32 and the PCB (red square)
+
+![back](PCB/images/components/esp32%20solder%20pins.png)
 
 ### 3d file comming soon
 
