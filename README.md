@@ -141,7 +141,7 @@ Note: solder pins between the esp32 and the PCB (red square)
 
 ![insert M3](3Dfiles/images/bottom%20case%20insert.png)
 
-- [Optional : thermo white](https://amzn.eu/d/8Y1PVUU)
+- [Optional : thermo white 4,8 mm x 10 m](https://amzn.eu/d/8Y1PVUU)
 
 ![thermo](3Dfiles/images/thermo.PNG)
 
