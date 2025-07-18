@@ -121,7 +121,7 @@ Note: solder pins between the esp32 and the PCB (red square)
 
 ![back](PCB/images/components/esp32%20solder%20pins.png)
 
-[IMPORTANT : see solder board helper section](##### solder board helper)
+[IMPORTANT : see solder board helper section](#solder-board-helper)
 
 ### 3d files
 #### 3d file present in 3D files directory
@@ -149,15 +149,11 @@ Note: solder pins between the esp32 and the PCB (red square)
 
 ![2](3Dfiles/images/bottom%20case%20+%20pcb%20screw.png)
 
+![5](3Dfiles/images/top%20case%20screw.png)
+
 ![3](3Dfiles/images/case%20with%20pcb.jpg)
 
 ![4](3Dfiles/images/case%20with%20pcb%20+%20button.jpg)
-
-![5](3Dfiles/images/top%20case%20screw.png)
-
-![6](3Dfiles/images/case%20with%20pcb.jpg)
-
-![7](3Dfiles/images/case%20with%20pcb%20+%20button.jpg)
 
 ![8](3Dfiles/images/case%20close.jpg)
 
