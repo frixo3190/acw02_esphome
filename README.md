@@ -1,4 +1,4 @@
-# acw02_esphome (for teknopoint AC only for the moment)
+# acw02_esphome (for teknopoint AC and Airton AC which uses the acw02 WIFI module from tuya)
 
 ## installation : 
 ### python:
