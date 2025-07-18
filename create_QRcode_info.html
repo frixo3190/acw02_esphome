@@ -464,11 +464,16 @@ The following functions can try to help:
         if (!use_png) {
 			const svg_template = document.querySelector("#qrcodetpl svg");
 			const svg_clone = svg_template.cloneNode(true);
-			svg_clone.setAttribute("width", "68.6mm");
-			svg_clone.setAttribute("height", "48.9mm");
+			// marge en pixels
+      const margin_px = 100;
 
-            const target = svg_clone.querySelector("#inserted_qrcode");
-            if (target) {
+      // ajuster le viewBox pour inclure le décalage
+      svg_clone.setAttribute("viewBox", `-100 -100 1124 868`); // 1024 + 100, 768 + 100
+      svg_clone.setAttribute("width", "75.3mm"); // 68.6 + (100 * mm/px)
+      svg_clone.setAttribute("height", "55.4mm"); // 48.9 + (100 * mm/px)
+
+        const target = svg_clone.querySelector("#inserted_qrcode");
+        if (target) {
 				const raw = window.qr_code_svg;
 				const inner = raw.substring(raw.indexOf("<path"), raw.lastIndexOf("</svg>"));
 
