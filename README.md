@@ -128,6 +128,7 @@ Note: solder pins between the esp32 and the PCB (red square)
 
 - [acw02 case bot.stl](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/acw02%20case%20bot.stl)
 - [acw02 case top.stl](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/acw02%20case%20top.stl)
+- [Alternative : acw02 case top cable with thermo.stl](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/acw02%20case%20top%20cable%20with%20thermo.stl)
 - [button.stl](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/button.stl)
 - [solder board.stl](3Dfiles/solder%20board%2016%20hold.stl)
 
@@ -139,6 +140,12 @@ Note: solder pins between the esp32 and the PCB (red square)
 - [insert M3(OD4.2mm) Length 3mm 50pcs (x2)](https://www.aliexpress.com/item/1005003582355741.html?spm=a2g0o.order_list.order_list_main.10.1eba18024FtenS)
 
 ![insert M3](3Dfiles/images/bottom%20case%20insert.png)
+
+- [Optional : thermo white](https://amzn.eu/d/8Y1PVUU)
+
+![thermo](3Dfiles/images/thermo.PNG)
+
+![thermo in place](3Dfiles/images/alternative%20cable%20with%20thermo.jpg)
 
 - countersunk head screw M2x6mm (x4)
 - screw M3x4mm (x2)
