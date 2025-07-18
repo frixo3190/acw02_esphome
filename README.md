@@ -158,6 +158,9 @@ Note: solder pins between the esp32 and the PCB (red square)
 ![8](3Dfiles/images/case%20close.jpg)
 
 ##### solder board helper
+
+[solder board.stl](3Dfiles/solder%20board%2016%20hold.stl)
+
 ![solder board 1](3Dfiles/images/solder%20board1.jpg)
 
 ![solder board 2](3Dfiles/images/solder%20board2.jpg)
