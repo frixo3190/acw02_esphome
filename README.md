@@ -66,7 +66,7 @@ or
 ```
 
 ### PCB
-#### Gerber file présent in PCB directory
+#### Gerber file present in PCB directory
 [GERBER File](https://github.com/devildant/acw02_esphome/raw/main/PCB/Gerber_climEspHome_esp32_d1_mini_PCB_climEspHome_esp32_d1_mini_2025-07-03.zip)
 
 ![front](PCB/images/pcb/front.PNG)
@@ -121,8 +121,50 @@ Note: solder pins between the esp32 and the PCB (red square)
 
 ![back](PCB/images/components/esp32%20solder%20pins.png)
 
-### 3d file comming soon
+[IMPORTANT : see solder board helper section](##### solder board helper)
 
+### 3d files
+#### 3d file present in 3D files directory
+
+- [acw02 case bot.stl](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/acw02%20case%20bot.stl)
+- [acw02 case top.stl](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/acw02%20case%20top.stl)
+- [button.stl](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/button.stl)
+- [solder board.stl](3Dfiles/solder%20board%2016%20hold.stl)
+
+##### Components:
+- [insert M2(OD3.2mm) Length 2.5mm 50pcs (x4)](https://www.aliexpress.com/item/1005003582355741.html?spm=a2g0o.order_list.order_list_main.10.1eba18024FtenS)
+
+![insert M2](3Dfiles/images/bottom%20case%20insert.png)
+
+- [insert M3(OD4.2mm) Length 3mm 50pcs (x2)](https://www.aliexpress.com/item/1005003582355741.html?spm=a2g0o.order_list.order_list_main.10.1eba18024FtenS)
+
+![insert M3](3Dfiles/images/bottom%20case%20insert.png)
+
+- countersunk head screw M2x6mm (x4)
+- screw M3x4mm (x2)
+
+##### Assembly:
+
+![1](3Dfiles/images/button.PNG)
+
+![2](3Dfiles/images/bottom%20case%20+%20pcb%20screw.png)
+
+![3](3Dfiles/images/case%20with%20pcb.jpg)
+
+![4](3Dfiles/images/case%20with%20pcb%20+%20button.jpg)
+
+![5](3Dfiles/images/top%20case%20screw.png)
+
+![6](3Dfiles/images/case%20with%20pcb.jpg)
+
+![7](3Dfiles/images/case%20with%20pcb%20+%20button.jpg)
+
+![8](3Dfiles/images/case%20close.jpg)
+
+##### solder board helper
+![solder board 1](3Dfiles/images/solder%20board1.jpg)
+
+![solder board 2](3Dfiles/images/solder%20board2.jpg)
 
 ### Option : QRCODE info
 #### You can generate a QR code to store module information.
