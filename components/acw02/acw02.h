@@ -76,6 +76,9 @@ class ACW02 : public Component, public uart::UARTDevice {
   void set_unit(const std::string &unit); 
   void set_clean(bool on);
 
+  // G1 : MQTT
+  void set_g1_mqtt_options(bool on);
+
   // Setters publics disable option mode
   void set_disable_mode_auto(bool on);
   void set_disable_mode_heat(bool on);
@@ -124,6 +127,9 @@ class ACW02 : public Component, public uart::UARTDevice {
   bool is_clean_on() const;
   bool is_using_fahrenheit() const;
 
+  // G1: MQTT
+   bool is_g1_mqtt_options() const;
+
   // Getters publics disable option mode
   bool is_disable_mode_auto() const;
   bool is_disable_mode_heat() const;
@@ -158,7 +164,12 @@ class ACW02 : public Component, public uart::UARTDevice {
   void publish_discovery_display_switch(bool recreate = false);
   void publish_discovery_night_switch(bool recreate = false);
   void publish_discovery_purifier_switch(bool recreate = false);
+  void publish_discovery_g1_mute_switch(bool recreate = false);
+  void publish_discovery_g1_option_recalculate_climate_switch(bool recreate = false);
   void publish_discovery_temperature_number(bool recreate = false);
+  void publish_discovery_g1_reload_button(bool recreate = false);
+  void publish_discovery_g1_rebuild_mqtt_entities_button(bool recreate = false);
+  void publish_discovery_g1_get_status_button(bool recreate = false);
   void publish_discovery_temperature_sensor(bool recreate = false);
   void publish_discovery_last_cmd_origin_sensor(bool recreate = false);
   void publish_discovery_filter_dirty_sensor(bool recreate = false);
@@ -208,6 +219,7 @@ class ACW02 : public Component, public uart::UARTDevice {
   bool force_clean_ {false};
   bool use_fahrenheit_ {false};
   bool option_recalculate_climate_ {false};
+  bool option_g1_mqtt_ {false};
   bool from_remote_ {false};
   bool filter_dirty_ {false};
   Swing  swing_position_{Swing::P1};
@@ -225,6 +237,7 @@ class ACW02 : public Component, public uart::UARTDevice {
   ESPPreferenceObject disable_swing_vertical_pref_; 
   ESPPreferenceObject disable_swing_horizontal_pref_; 
   ESPPreferenceObject option_recalculate_climate_pref_;
+  ESPPreferenceObject option_G1_MQTT_pref_;
 
   // variables persisted MQTT
   ESPPreferenceObject mqtt_broker_address_pref_;

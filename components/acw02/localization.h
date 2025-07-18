@@ -27,7 +27,12 @@ static const std::map<std::string, std::map<std::string, std::string>> LOCALIZED
             {"temp", "Temp cible"},
             {"ambient", "Température"},
             {"lastCmdOrigin", "Origine commande"},
-            {"filterToClean", "Filtre à nettoyer"}
+            {"filterToClean", "Filtre à nettoyer"},
+            {"g1Mute", "G1: Commande silencieuse"},
+            {"g1OptionRecalculateClimate", "G1: Auto calc climate (eco/auto)"},
+            {"restartModule", "G1: Redémarrer"},
+            {"rebuildMQTT", "G1: Reconstruire les entitées MQTT"},
+            {"getStatus", "G1: Actualiser data"}
         }},
         {"en", {
             {"climate", "AC"},
@@ -44,7 +49,12 @@ static const std::map<std::string, std::map<std::string, std::string>> LOCALIZED
             {"temp", "Target Temp"},
             {"ambient", "Temperature"},
             {"lastCmdOrigin", "Command origin"},
-            {"filterToClean", "Filter to clean"}
+            {"filterToClean", "Filter to clean"},
+            {"g1Mute", "G1: Mute command"},
+            {"g1OptionRecalculateClimate", "G1: Auto calc climate (eco/auto)"},
+            {"restartModule", "G1: Restart"},
+            {"rebuildMQTT", "G1: Rebuild MQTT entities"},
+            {"getStatus", "G1: Refresh data"}
         }}
     };
 

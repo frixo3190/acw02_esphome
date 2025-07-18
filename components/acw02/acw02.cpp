@@ -39,6 +39,8 @@ namespace esphome {
       disable_swing_horizontal_pref_.load(&disable_swing_horizontal_);
       option_recalculate_climate_pref_ = global_preferences->make_preference<bool>(8U, "ac_option_recalculate_climate");
       option_recalculate_climate_pref_.load(&option_recalculate_climate_);
+      option_G1_MQTT_pref_ = global_preferences->make_preference<bool>(9U, "ac_option_g1_mqtt");
+      option_G1_MQTT_pref_.load(&option_g1_mqtt_);
 
       set_timeout("test", 10000, [this]() {
         ESP_LOGD(TAG, "Setup %s ", "INIT");
@@ -247,8 +249,12 @@ namespace esphome {
     }
 
     void ACW02::set_mute(bool on) {
-      mute_ = on;
-      mute_pref_.save(&mute_);
+      if (mute_ != on) {
+        mute_ = on;
+        mute_pref_.save(&mute_);
+        publish_state();
+      }
+      
     }
 
     void ACW02::set_unit(const std::string &unit) {
@@ -283,6 +289,18 @@ namespace esphome {
           force_clean_ = false;
           send_command_basic(build_frame(true));
         }
+      }
+    }
+
+    void ACW02::set_g1_mqtt_options(bool on) {
+      if (option_g1_mqtt_ != on) {
+        option_g1_mqtt_ = on;
+        option_G1_MQTT_pref_.save(&option_g1_mqtt_);
+        publish_discovery_g1_mute_switch(true);
+        publish_discovery_g1_option_recalculate_climate_switch(true);
+        publish_discovery_g1_reload_button(true);
+        publish_discovery_g1_rebuild_mqtt_entities_button(true);
+        publish_discovery_g1_get_status_button(true);
       }
     }
 
@@ -333,6 +351,7 @@ namespace esphome {
         option_recalculate_climate_ = on;
         option_recalculate_climate_pref_.save(&option_recalculate_climate_);
         publish_discovery_climate(true);
+        publish_state();
       }
     }
 
@@ -471,6 +490,10 @@ namespace esphome {
       return use_fahrenheit_;
     }
 
+    bool ACW02::is_g1_mqtt_options() const {
+      return option_g1_mqtt_;
+    }
+    
     bool ACW02::is_disable_mode_auto() const {
       return disable_mode_auto_;
     }
@@ -596,7 +619,12 @@ namespace esphome {
             publish_discovery_display_switch();
             publish_discovery_night_switch();
             publish_discovery_purifier_switch();
+            publish_discovery_g1_mute_switch();
+            publish_discovery_g1_option_recalculate_climate_switch();
             publish_discovery_temperature_number();
+            publish_discovery_g1_reload_button();
+            publish_discovery_g1_rebuild_mqtt_entities_button();
+            publish_discovery_g1_get_status_button();
             publish_discovery_temperature_sensor();
             publish_discovery_last_cmd_origin_sensor();
             publish_discovery_filter_dirty_sensor();
@@ -654,6 +682,16 @@ namespace esphome {
       } else if (cmd == "unit") {
         set_unit(payload);
         send_command();
+      } else if (cmd == "g1_mute") {
+        set_mute(payload == "on" ? true : false);
+      } else if (cmd == "g1_option_recalculate_climate") {
+        set_option_recalculate_climate(payload == "on" ? true : false);
+      } else if (cmd == "g1_restart_module_ac") {
+        esphome::App.safe_reboot();
+      } else if (cmd == "g1_rebuild_mqtt_entities") {
+        rebuild_mqtt_entity();
+      } else if (cmd == "g1_get_status") {
+        reload_ac_info();
       }
       publish_state();
     }
@@ -681,7 +719,9 @@ namespace esphome {
       payload += "\"swing_horizontal\":\"" + swing_horizontal_to_string(app_lang_, swing_horizontal_) + "\",";
       payload += "\"unit\":\"" + std::string(use_fahrenheit_ ? "°F" : "°C") + "\",";
       payload += "\"last_cmd_origin\":\"" + std::string(from_remote_ ? "Remote" : "ESP") + "\",";
-      payload += "\"filter_dirty\":\"" + std::string(filter_dirty_ ? "true" : "false") + "\"";
+      payload += "\"filter_dirty\":\"" + std::string(filter_dirty_ ? "true" : "false") + "\",";
+      payload += "\"g1_mute\":\"" + std::string(mute_ ? "on" : "off") + "\",";
+      payload += "\"g1_option_recalculate_climate\":\"" + std::string(option_recalculate_climate_ ? "on" : "off") + "\"";
       payload += "}";
 
       publish_async(app_name_ + "/state", payload, 0, true);
@@ -1212,6 +1252,88 @@ namespace esphome {
       }
     }
 
+    void ACW02::publish_discovery_g1_mute_switch(bool recreate) {
+      if (!mqtt_)
+      return;
+
+      const std::string topic_base = app_name_;
+      const std::string unique_id = app_sanitize_name_ + "_mqtt_g1_mute";
+
+      std::string config_topic = "homeassistant/switch/" + topic_base + "-g1-mute/config";
+
+      if (!option_g1_mqtt_) {
+        publish_async(config_topic, std::string(""), 1, true);
+        return;
+      }
+
+      std::string payload = R"({
+        "name": ")" + get_localized_name(app_lang_, "g1Mute") + R"(",
+        "object_id": ")" + unique_id + R"(",
+        "unique_id": ")" + unique_id + R"(",
+        "cmd_t": ")" + topic_base + R"(/cmd/g1_mute",
+        "stat_t": ")" + topic_base + R"(/state",
+        "val_tpl": "{{ value_json.g1_mute }}",
+        "pl_on": "on",
+        "pl_off": "off",
+        "icon": "mdi:volume-off",
+        "entity_category": "config",
+        "avty_t": ")" + topic_base + R"(/status",
+        "pl_avail": "online",
+        "pl_not_avail": "offline")" +
+        build_common_config_suffix() + R"(
+      })";
+
+      if (recreate) {
+        publish_async(config_topic, std::string(""), 1, true);
+        set_timeout("mqtt_publish_discovery_g1_mute_switch_publish", mqtt_delay_rebuild_, [this, config_topic, payload]() {
+          publish_async(config_topic, payload, 1, true);
+        });
+      } else {
+        publish_async(config_topic, payload, 1, true);
+      }
+    }
+
+    void ACW02::publish_discovery_g1_option_recalculate_climate_switch(bool recreate) {
+      if (!mqtt_)
+      return;
+
+      const std::string topic_base = app_name_;
+      const std::string unique_id = app_sanitize_name_ + "_mqtt_g1_option_recalculate_climate";
+
+      std::string config_topic = "homeassistant/switch/" + topic_base + "-g1-option-recalculate-climate/config";
+
+      if (!option_g1_mqtt_) {
+        publish_async(config_topic, std::string(""), 1, true);
+        return;
+      }
+
+      std::string payload = R"({
+        "name": ")" + get_localized_name(app_lang_, "g1OptionRecalculateClimate") + R"(",
+        "object_id": ")" + unique_id + R"(",
+        "unique_id": ")" + unique_id + R"(",
+        "cmd_t": ")" + topic_base + R"(/cmd/g1_option_recalculate_climate",
+        "stat_t": ")" + topic_base + R"(/state",
+        "val_tpl": "{{ value_json.g1_option_recalculate_climate }}",
+        "pl_on": "on",
+        "pl_off": "off",
+        "entity_category": "config",
+        "icon": "mdi:autorenew",
+        "avty_t": ")" + topic_base + R"(/status",
+        "pl_avail": "online",
+        "pl_not_avail": "offline")" +
+        build_common_config_suffix() + R"(
+      })";
+
+      if (recreate) {
+        publish_async(config_topic, std::string(""), 1, true);
+        set_timeout("mqtt_publish_discovery_g1_option_recalculate_climate_switch_publish", mqtt_delay_rebuild_, [this, config_topic, payload]() {
+          publish_async(config_topic, payload, 1, true);
+        });
+      } else {
+        publish_async(config_topic, payload, 1, true);
+      }
+    }
+
     void ACW02::publish_discovery_temperature_number(bool recreate) {
       if (!mqtt_)
       return;
@@ -1259,6 +1381,114 @@ namespace esphome {
       if (recreate) {
         publish_async(config_topic, std::string(""), 1, true);
         set_timeout("mqtt_publish_discovery_temperature_number_publish", mqtt_delay_rebuild_, [this, config_topic, payload]() {
+          publish_async(config_topic, payload, 1, true);
+        });
+      } else {
+        publish_async(config_topic, payload, 1, true);
+      }
+    }
+
+    void ACW02::publish_discovery_g1_reload_button(bool recreate) {
+      if (!mqtt_)
+        return;
+
+      const std::string topic_base = app_name_;
+      const std::string unique_id = app_sanitize_name_ + "_mqtt_g1_restart_module_ac";
+      const std::string config_topic = "homeassistant/button/" + topic_base + "-g1-restart-module-ac/config";
+
+      if (!option_g1_mqtt_) {
+        publish_async(config_topic, std::string(""), 1, true);
+        return;
+      }
+
+      std::string payload = R"({
+        "name": ")" + get_localized_name(app_lang_, "restartModule") + R"(",
+        "object_id": ")" + unique_id + R"(",
+        "unique_id": ")" + unique_id + R"(",
+        "cmd_t": ")" + topic_base + R"(/cmd/g1_restart_module_ac",
+        "icon": "mdi:restart",
+        "entity_category": "config",
+        "avty_t": ")" + topic_base + R"(/status",
+        "pl_avail": "online",
+        "pl_not_avail": "offline")" +
+        build_common_config_suffix() + R"(
+      })";
+
+      if (recreate) {
+        publish_async(config_topic, std::string(""), 1, true);
+        set_timeout("mqtt_publish_discovery_g1_reload_button_publish", mqtt_delay_rebuild_, [this, config_topic, payload]() {
+          publish_async(config_topic, payload, 1, true);
+        });
+      } else {
+        publish_async(config_topic, payload, 1, true);
+      }
+    }
+
+    void ACW02::publish_discovery_g1_rebuild_mqtt_entities_button(bool recreate) {
+      if (!mqtt_)
+        return;
+
+      const std::string topic_base = app_name_;
+      const std::string unique_id = app_sanitize_name_ + "_mqtt_g1_rebuild_mqtt_entities";
+      const std::string config_topic = "homeassistant/button/" + topic_base + "-g1-rebuild-mqtt-entities/config";
+
+      if (!option_g1_mqtt_) {
+        publish_async(config_topic, std::string(""), 1, true);
+        return;
+      }
+
+      std::string payload = R"({
+        "name": ")" + get_localized_name(app_lang_, "rebuildMQTT") + R"(",
+        "object_id": ")" + unique_id + R"(",
+        "unique_id": ")" + unique_id + R"(",
+        "cmd_t": ")" + topic_base + R"(/cmd/g1_rebuild_mqtt_entities",
+        "icon": "mdi:cloud-refresh-variant",
+        "entity_category": "config",
+        "avty_t": ")" + topic_base + R"(/status",
+        "pl_avail": "online",
+        "pl_not_avail": "offline")" +
+        build_common_config_suffix() + R"(
+      })";
+
+      if (recreate) {
+        publish_async(config_topic, std::string(""), 1, true);
+        set_timeout("publish_discovery_g1_rebuild_mqtt_entities_button", mqtt_delay_rebuild_, [this, config_topic, payload]() {
+          publish_async(config_topic, payload, 1, true);
+        });
+      } else {
+        publish_async(config_topic, payload, 1, true);
+      }
+    }
+
+    void ACW02::publish_discovery_g1_get_status_button(bool recreate) {
+      if (!mqtt_)
+        return;
+
+      const std::string topic_base = app_name_;
+      const std::string unique_id = app_sanitize_name_ + "_mqtt_g1_get_status";
+      const std::string config_topic = "homeassistant/button/" + topic_base + "-g1-get-status/config";
+
+      if (!option_g1_mqtt_) {
+        publish_async(config_topic, std::string(""), 1, true);
+        return;
+      }
+
+      std::string payload = R"({
+        "name": ")" + get_localized_name(app_lang_, "getStatus") + R"(",
+        "object_id": ")" + unique_id + R"(",
+        "unique_id": ")" + unique_id + R"(",
+        "cmd_t": ")" + topic_base + R"(/cmd/g1_get_status",
+        "icon": "mdi:cloud-refresh-variant",
+        "entity_category": "config",
+        "avty_t": ")" + topic_base + R"(/status",
+        "pl_avail": "online",
+        "pl_not_avail": "offline")" +
+        build_common_config_suffix() + R"(
+      })";
+
+      if (recreate) {
+        publish_async(config_topic, std::string(""), 1, true);
+        set_timeout("publish_discovery_g1_get_status_button", mqtt_delay_rebuild_, [this, config_topic, payload]() {
           publish_async(config_topic, payload, 1, true);
         });
       } else {
@@ -1379,7 +1609,12 @@ namespace esphome {
       publish_discovery_display_switch(true);
       publish_discovery_night_switch(true);
       publish_discovery_purifier_switch(true);
+      publish_discovery_g1_mute_switch(true);
+      publish_discovery_g1_option_recalculate_climate_switch(true);
       publish_discovery_temperature_number(true);
+      publish_discovery_g1_reload_button(true);
+      publish_discovery_g1_rebuild_mqtt_entities_button(true);
+      publish_discovery_g1_get_status_button(true);
       publish_discovery_temperature_sensor(true);
       publish_discovery_last_cmd_origin_sensor(true);
       publish_discovery_filter_dirty_sensor(true);

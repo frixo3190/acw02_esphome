@@ -53,6 +53,17 @@ text:
 
 switch:
   - platform: template
+    name: "G1: MQTT version options"
+    id: g1_mqtt_options
+    entity_category: "config"
+    lambda: |-
+      return id(ac_ctrl).is_g1_mqtt_options();
+    turn_on_action:
+      - lambda: id(ac_ctrl).set_g1_mqtt_options(true);
+    turn_off_action:
+      - lambda: id(ac_ctrl).set_g1_mqtt_options(false);
+
+  - platform: template
     name: "G1: Mute command"
     id: mute_commande_api
     icon: mdi:volume-off
@@ -137,7 +148,7 @@ switch:
       - lambda: id(ac_ctrl).set_disable_swing_horizontal(false);
 
   - platform: template
-    name: "G1: auto calc climate (eco/auto)"
+    name: "G1: Auto calc climate (eco/auto)"
     id: option_recalculate_climate
     icon: mdi:autorenew
     entity_category: "config"
@@ -154,7 +165,7 @@ button:
     id: restart_module_ac
 
   - platform: restart
-    name: "MQTT: validate"
+    name: "MQTT: Validate"
     id: validate_mqtt
   
   - platform: template
