@@ -189,3 +189,14 @@ This component requires MQTT to function. I invite you to check how to install a
 > ⚠️ **WARNING**  
 > Be careful with what you're doing, and make sure you have the necessary knowledge before attempting anything.  
 > I will not be responsible if you damage your device (air conditioner, ESP, etc.).
+
+
+## 🛡️ License
+
+This repository uses two different licenses based on content type:
+
+- **Code** (`*.yaml`, `*.cpp`, `*.h`) — licensed under [GNU GPLv3](https://www.gnu.org/licenses/gpl-3.0.html)
+- **PCB files** (`*.zip` Gerber, EasyEDA `*.json`) — licensed under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/)
+- **3D models** (`*.f3d`, `*.stl`) — licensed under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/)
+
+> Commercial use of PCB and 3D files is **strictly prohibited**.
