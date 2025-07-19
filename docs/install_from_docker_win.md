@@ -25,6 +25,8 @@ wsl --install
 
 ## 📦 Share USB to container
 
+### Manually (important for understand script):
+
 1. Connect your ESP via USB  
 2. Run PowerShell as administrator  
 3. List USB devices:
@@ -51,12 +53,35 @@ wsl --install
    ```
    ![usbipd attach](../docker/images/list%20usbipd3.PNG)
 
-### 🔁 Reverse commands
+   
+#### 🔁 Reverse commands
 
 ```powershell
 usbipd detach --busid 3-3
 usbipd unbind --busid 3-3
 ```
+
+---
+
+### With script:
+
+1. Connect your ESP via USB  
+2. Run PowerShell as administrator  
+3. run cmd bellow for attach usb, this script ask you the BUSID
+
+   ```powershell
+   attach-usb.bat
+   ```
+   ![usbipd attach](../docker/images/usbipd%20attach.PNG)
+
+
+#### 🔁 Reverse commands
+1. run cmd bellow for attach usb, this script ask you the BUSID
+
+   ```powershell
+   detach-usb.bat
+   ```
+   ![usbipd attach](../docker/images/usbipd%20detach.PNG)
 
 ---
 
@@ -69,6 +94,10 @@ usbipd unbind --busid 3-3
    ```powershell
    docker-compose build
    docker-compose up -d esphome
+   ```
+   or use script 
+   ```powershell
+   start-docker.bat
    ```
 
 3. Build and push firmware to USB:
@@ -87,6 +116,12 @@ usbipd unbind --busid 3-3
 - `build-compile-only-fr.bat` : build only (FR), no flash  
 - `build-compile-only-en.bat` : build only (EN), no flash  
 - `open-container.bat` : enter Docker container
+- `start-docker.bat` : only start docker
+- `stop-docker.bat` : only stop docker
+- `attach-usb.bat` : script for attach usb to docker
+- `detach-usb.bat` : script for detach usb to docker
+- `start-docker-with-attach-USB.bat` : run attach USB to docker and start docker
+- `stop-docker-with-attach-USB.bat` : run stop docker and detach USB to docker
 
 ---
 
