@@ -2,7 +2,7 @@
 setlocal
 
 echo Stopping esphome container...
-docker-compose stop esphome
+docker compose stop esphome
 
 echo.
 echo Waiting 3 seconds before Detach...

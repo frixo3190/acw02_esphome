@@ -2,10 +2,10 @@
 setlocal
 
 echo Starting esphome container...
-docker-compose build
+docker compose build
 
 echo.
 echo Waiting 3 seconds before UP...
 timeout /t 3 /nobreak >nul
 
-docker-compose up -d esphome
+docker compose up -d esphome

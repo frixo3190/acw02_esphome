@@ -92,8 +92,8 @@ usbipd unbind --busid 3-3
 1. Open PowerShell in the `docker` directory (inside the `acw02_esphome` project)  
 2. Run commands one by one:
    ```powershell
-   docker-compose build
-   docker-compose up -d esphome
+   docker compose build
+   docker compose up -d esphome
    ```
    or use script 
    ```powershell
