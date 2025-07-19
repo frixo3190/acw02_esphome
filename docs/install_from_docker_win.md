@@ -1,75 +1,98 @@
-# build from docker (windows)
+# 🔧 Build from Docker (Windows)
 
-## install Docker Desktop on windows
+## 🐳 Install Docker Desktop on Windows
 
-you can install it from Microsoft store ou directly on : [link](https://docs.docker.com/desktop/setup/install/windows-install/)
+You can install it from the Microsoft Store or directly from:  
+[Docker Windows Install Docs](https://docs.docker.com/desktop/setup/install/windows-install/)
 
-## install WSL 
+---
 
-run powershell as admin, and run this command: 
- ```wsl --install```
+## 🐧 Install WSL
 
-## install usbipd
-
-[Windows docs](https://learn.microsoft.com/fr-fr/windows/wsl/connect-usb)
-
-[repo github for download](https://github.com/dorssel/usbipd-win)
-
-
-## shared usb to container 
-
-1) connect in usb your esp
-2) run powershell as admin
-3) run command for list usb
-
- ```usbipd list```
-
-![usbipdlist](../docker/images/list%20usbipd.PNG)
-
-4) find you esp, for esp32 : Silicon Labs CP210x USB to UART Bridge (COMX)
-5) take the BUSID associate and run command bellow with this BUSID (replace 3-3 by yours BUSID)
-
- ```usbipd bind --busid 3-3```
-
-6) run ugain the  usbipd list
-
-![usbipdlist](../docker/images/list%20usbipd2.PNG)
-
-7) Attach the usb (replace 3-3 by yours BUSID)
-
- ```usbipd attach --wsl --busid 3-3```
-
-![usbipdlist](../docker/images/list%20usbipd3.PNG)
-
-### reverse command : 
+Run PowerShell as administrator and execute:  
+```powershell
+wsl --install
 ```
+
+---
+
+## 🔌 Install usbipd
+
+- [Windows docs](https://learn.microsoft.com/fr-fr/windows/wsl/connect-usb)  
+- [GitHub repo for download](https://github.com/dorssel/usbipd-win)
+
+---
+
+## 📦 Share USB to container
+
+1. Connect your ESP via USB  
+2. Run PowerShell as administrator  
+3. List USB devices:
+   ```powershell
+   usbipd list
+   ```
+   ![usbipd list](../docker/images/list%20usbipd.PNG)
+
+4. Find your ESP (e.g. for ESP32: *Silicon Labs CP210x USB to UART Bridge (COMX)*)  
+5. Get the associated BUSID and bind it (replace `3-3` with your BUSID):
+   ```powershell
+   usbipd bind --busid 3-3
+   ```
+
+6. Run the list command again:
+   ```powershell
+   usbipd list
+   ```
+   ![usbipd list 2](../docker/images/list%20usbipd2.PNG)
+
+7. Attach USB to WSL:
+   ```powershell
+   usbipd attach --wsl --busid 3-3
+   ```
+   ![usbipd attach](../docker/images/list%20usbipd3.PNG)
+
+### 🔁 Reverse commands
+
+```powershell
 usbipd detach --busid 3-3
 usbipd unbind --busid 3-3
 ```
 
-## Build component
-### install
-1) open power shell on docker directory (present in project acw02_esphome)
-2) run command one by one
- ```
- docker-compose build
- docker-compose up -d esphome
-  ```
+---
 
-3) build and push fw to usb 
+## 🛠️ Build component
 
- ```build-fr.bat```
- 
- or (depending the langue want)
- 
- ```build-en.bat```
- 
- #### optionnal cmd
-  - build-force-device-fr.bat : (FR language) for build and select directly the device (--device /dev/ttyUSB0)
-  - build-force-device-en.bat : (EN language) for build and select directly the device (--device /dev/ttyUSB0)
-  - build-compile-only-fr.bat : (FR language) for build only without publish on usb or ota
-  - build-compile-only-en.bat : (EN language) for build only without publish on usb or ota
-  - open-container.bat : enter on container
+### ⚙️ Install
 
-### bin files
-you can bin files in directory docker/bin_generated
+1. Open PowerShell in the `docker` directory (inside the `acw02_esphome` project)  
+2. Run commands one by one:
+   ```powershell
+   docker-compose build
+   docker-compose up -d esphome
+   ```
+
+3. Build and push firmware to USB:
+   ```powershell
+   build-fr.bat
+   ```
+   or (depending on language):
+   ```powershell
+   build-en.bat
+   ```
+
+### 🧪 Optional commands
+
+- `build-force-device-fr.bat` : build in FR and directly select device (`--device /dev/ttyUSB0`)  
+- `build-force-device-en.bat` : build in EN and directly select device  
+- `build-compile-only-fr.bat` : build only (FR), no flash  
+- `build-compile-only-en.bat` : build only (EN), no flash  
+- `open-container.bat` : enter Docker container
+
+---
+
+## 📁 Bin files
+
+You can find the generated `.bin` files in:  
+```
+docker/bin_generated
+```
