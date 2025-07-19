@@ -1,25 +1,35 @@
-# installation : 
-### python:
-install python 3.11 from microsoft store
+# 🔧 Installation
 
-## update pip:
+### 🐍 Python
+
+Install Python 3.11 from the Microsoft Store.
+
+---
+
+## 📦 Update pip
+
 ```powershell
- pip install --upgrade pip
+pip install --upgrade pip
 ```
 
-## esphome:
+---
+
+## 🧱 Install ESPHome
+
 ```powershell
 pip install esphome==2025.7.1
 ```
 
+---
 
-## build 
+## 🛠️ Build
+
+To build the firmware in French:
 ```powershell
-.\build-fr.bat
+build-fr.bat
 ```
 
-or 
-
+Or in English:
 ```powershell
-.\build-en.bat
+build-en.bat
 ```
