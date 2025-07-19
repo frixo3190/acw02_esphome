@@ -1,0 +1,28 @@
+name: ESPHome Test Build
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Print UTC time
+        run: date -u
+
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      - name: Install latest ESPHome
+        run: pip install --upgrade esphome
+
+      - name: Compile
+        run: esphome compile esphome-acw02-fr.yaml
