@@ -35,6 +35,7 @@ logger:
 api:
   encryption:
     key: ${api_encrypted_key}
+  reboot_timeout: 0s #in test for not forcing using esphome native
 
 ota:
   - platform: esphome
