@@ -22,14 +22,14 @@ run powershell as admin, and run this command:
 2) run powershell as admin
 3) run command for list usb
 
-```usbipd list```
+ ```usbipd list```
 
 ![usbipdlist](../docker/images/list%20usbipd.PNG)
 
 4) find you esp, for esp32 : Silicon Labs CP210x USB to UART Bridge (COMX)
 5) take the BUSID associate and run command bellow with this BUSID (replace 3-3 by yours BUSID)
 
-```usbipd bind --busid 3-3```
+ ```usbipd bind --busid 3-3```
 
 6) run ugain the  usbipd list
 
@@ -37,7 +37,7 @@ run powershell as admin, and run this command:
 
 7) Attach the usb (replace 3-3 by yours BUSID)
 
-```usbipd attach --wsl --busid 3-3```
+ ```usbipd attach --wsl --busid 3-3```
 
 ![usbipdlist](../docker/images/list%20usbipd3.PNG)
 
@@ -51,18 +51,19 @@ usbipd unbind --busid 3-3
 ### install
 1) open power shell on docker directory (present in project acw02_esphome)
 2) run command one by one
-```
-docker-compose build
-docker-compose up -d esphome
  ```
+ docker-compose build
+ docker-compose up -d esphome
+  ```
+
 3) build and push fw to usb 
 
-```build-fr.bat```
-
-or (depending the langue want)
-
-```build-en.bat```
-
+ ```build-fr.bat```
+ 
+ or (depending the langue want)
+ 
+ ```build-en.bat```
+ 
  #### optionnal cmd
   - build-force-device-fr.bat : (FR language) for build and select directly the device (--device /dev/ttyUSB0)
   - build-force-device-en.bat : (EN language) for build and select directly the device (--device /dev/ttyUSB0)
