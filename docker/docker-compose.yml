@@ -1,0 +1,14 @@
+services:
+  esphome:
+    build:
+      context: .
+      args:
+        ESPHOME_VERSION: ${ESPHOME_VERSION}
+    container_name: esphome-builder
+    volumes:
+      - ../:/src:ro
+      - ./bin_generated:/output
+    devices:
+      - /dev/ttyUSB0:/dev/ttyUSB0
+    stdin_open: true
+    tty: true

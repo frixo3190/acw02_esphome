@@ -1,0 +1,1 @@
+docker exec -it esphome-builder /entrypoint.sh run /src/esphome-acw02-en.yaml

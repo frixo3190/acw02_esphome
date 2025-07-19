@@ -1,0 +1,1 @@
+this directory contains the bin generate with build or run cmd
