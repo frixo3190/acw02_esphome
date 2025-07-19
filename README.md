@@ -1,21 +1,7 @@
 # acw02_esphome (for teknopoint AC and Airton AC which uses the acw02 WIFI module from tuya)
 
-## installation : 
-### python:
-install python 3.11 from microsoft store
-
-### update pip:
-```
- pip install --upgrade pip
-```
-
-### esphome:
-```
-pip install esphome==2025.7.1
-```
-
-### Settings
-#### Base settings
+## Settings
+### Base settings
 open esphome-acw02-en.yaml or esphome-acw02-fr.yaml (depending on your preferred language EN or FR)
 
 edite substitutions, you can modify 
@@ -43,7 +29,7 @@ substitutions:
 I recommend going to this page to obtain a unique api_encrypted_key:
 https://esphome.io/components/api.html
 
-#### WIFI & WEB server settings
+### WIFI & WEB server settings
 open file secrets.yaml and put on this file your WIFI settings and your desired username and password for the web server
 ```
 wifi_ssid: "testesp32"
@@ -54,26 +40,16 @@ wifi_ssid3: "testesp32"
 wifi_password3: "testesp32"
 ```
 
-### build 
-```
-.\build-fr.bat
-```
 
-or 
-
-```
-.\build-en.bat
-```
-
-### PCB
-#### Gerber file present in PCB directory
+## PCB
+### Gerber file present in PCB directory
 [GERBER File](https://github.com/devildant/acw02_esphome/raw/main/PCB/Gerber_climEspHome_esp32_d1_mini_PCB_climEspHome_esp32_d1_mini_2025-07-03.zip)
 
 ![front](PCB/images/pcb/front.PNG)
 
 ![back](PCB/images/pcb/back.PNG)
 
-#### Components: 
+### Components: 
 - [12v => 5v (x1): D24V10F5](https://shop.mchobby.be/fr/regulateurs/554--regul-5v-1a-step-down-d24v10f5-3232100005549-pololu.html) [manufacturer](https://www.pololu.com/product/2831)
 
   ![D24V10F5](PCB/images/components/D24V10F5.PNG)
@@ -106,7 +82,7 @@ or
 
   ![connector](PCB/images/components/connector%202.PNG)
 
-##### PCB solder and cable:
+#### PCB solder and cable:
 
 ![pcb front](PCB/images/components/pcb%20front.PNG)
 
@@ -123,8 +99,8 @@ Note: solder pins between the esp32 and the PCB (red square)
 
 [IMPORTANT : see solder board helper section](#solder-board-helper)
 
-### 3d files
-#### 3d file present in 3D files directory
+## 3d files
+### 3d file present in 3D files directory
 
 - [acw02 case bot.stl](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/acw02%20case%20bot.stl)
 - [acw02 case top.stl](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/acw02%20case%20top.stl)
@@ -132,7 +108,7 @@ Note: solder pins between the esp32 and the PCB (red square)
 - [button.stl](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/button.stl)
 - [solder board.stl](3Dfiles/solder%20board%2016%20hold.stl)
 
-##### Components:
+#### Components:
 - [insert M2(OD3.2mm) Length 2.5mm 50pcs (x4)](https://www.aliexpress.com/item/1005003582355741.html?spm=a2g0o.order_list.order_list_main.10.1eba18024FtenS)
 
 ![insert M2](3Dfiles/images/bottom%20case%20insert.png)
@@ -150,7 +126,7 @@ Note: solder pins between the esp32 and the PCB (red square)
 - countersunk head screw M2x6mm (x4)
 - screw M3x4mm (x2)
 
-##### Assembly:
+#### Assembly:
 
 ![1](3Dfiles/images/button.PNG)
 
@@ -164,7 +140,7 @@ Note: solder pins between the esp32 and the PCB (red square)
 
 ![8](3Dfiles/images/case%20close.jpg)
 
-##### solder board helper
+#### solder board helper
 
 [solder board.stl](3Dfiles/solder%20board%2016%20hold.stl)
 
@@ -172,7 +148,7 @@ Note: solder pins between the esp32 and the PCB (red square)
 
 ![solder board 2](3Dfiles/images/solder%20board2.jpg)
 
-### Option : QRCODE info
+## Option : QRCODE info
 #### You can generate a QR code to store module information.
 
 - To do this, open the create_QRcode_info.html file in your browser.
@@ -183,7 +159,7 @@ Note: solder pins between the esp32 and the PCB (red square)
 
 - Print it and stick it on the module.
 
-### Note: important
+## Note: important
 This component requires MQTT to function. I invite you to check how to install and configure it in Home Assistant.
 
 > ⚠️ **WARNING**  
@@ -191,7 +167,7 @@ This component requires MQTT to function. I invite you to check how to install a
 > I will not be responsible if you damage your device (air conditioner, ESP, etc.).
 
 
-## 🛡️ License
+# 🛡️ License
 
 This repository uses two different licenses based on content type:
 
