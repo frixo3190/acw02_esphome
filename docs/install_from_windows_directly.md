@@ -1,4 +1,4 @@
-# 🔧 Installation
+# 🔧 Build from Windows
 
 ### 🐍 Python
 

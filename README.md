@@ -42,6 +42,7 @@ wifi_password3: "testesp32"
 
 ## Build
 [Build from windows](docs/install_from_windows_directly.md)
+
 [Build from windows with docker](docs/install_from_docker_win.md)
 
 ## PCB
