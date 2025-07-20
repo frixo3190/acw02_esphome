@@ -208,6 +208,27 @@
 				</g>
 			</svg>
 		</div>
+		<div id="qrcodetplreverse" style="display:none;">
+		<?xml version="1.0" standalone="no"?>
+			<svg viewBox="0 0 1024 768" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" stroke-linecap="round" stroke-linejoin="round" fill-rule="evenodd" xml:space="preserve" style="background-color:rgb(255,255,255);">
+				  <g transform="rotate(180, 512.00, 0) scale(1, -1) ">
+				<defs>
+				<clipPath id="clipId0">
+				<path d="M0,768 1024,768 1024,0 0,0 z" />
+				</clipPath>
+				</defs>
+				<rect width="100%" height="100%" fill="rgb(255,255,255)" />
+				<g clip-path="url(#clipId0)" fill="none" stroke="rgb(0,0,0)" stroke-width="0.1">
+				<circle cx="970.06" cy="697.659" r="39.5106" />
+				<circle cx="53.9399" cy="70.3407" r="39.5106" />
+				<polyline points="60.5549,26.9413 57.141,26.5569 53.7075,26.4407 50.2755,26.5933 46.8658,27.0138 43.4995,27.6996 40.1972,28.6465 36.979,29.8488 33.8646,31.2991 30.8732,32.9884 28.0231,34.9065 25.3316,37.0415 22.8154,39.3805 20.4897,41.9091 18.3689,44.6118 16.466,47.4721 14.7925,50.4724 13.3588,53.5944 12.1735,56.8189 11.2441,60.1262 10.5761,63.4961 10.1736,66.9079 10.0392,70.3407 10.1736,73.7736 10.5761,77.1854 11.2441,80.5552 12.1735,83.8626 13.3588,87.0871 14.7925,90.2091 16.466,93.2094 18.3689,96.0696 20.4897,98.7723 22.8154,101.301 25.3316,103.64 28.0231,105.775 30.8732,107.693 33.8646,109.382 36.979,110.833 40.1972,112.035 43.4995,112.982 46.8658,113.668 50.2755,114.088 53.7075,114.241 57.141,114.125 60.5549,113.74 60.5549,654.26 60.5549,654.26 57.141,653.875 53.7075,653.759 50.2755,653.912 46.8658,654.332 43.4995,655.018 40.1972,655.965 36.979,657.167 33.8646,658.618 30.8732,660.307 28.0231,662.225 25.3316,664.36 22.8154,666.699 20.4897,669.228 18.3689,671.93 16.466,674.791 14.7925,677.791 13.3588,680.913 12.1735,684.137 11.2441,687.445 10.5761,690.815 10.1736,694.226 10.0392,697.659 10.1736,701.092 10.5761,704.504 11.2441,707.874 12.1735,711.181 13.3588,714.406 14.7925,717.528 16.466,720.528 18.3689,723.388 20.4897,726.091 22.8154,728.619 25.3316,730.958 28.0231,733.094 30.8732,735.012 33.8646,736.701 36.979,738.151 40.1972,739.353 43.4995,740.3 46.8658,740.986 50.2755,741.407 53.7075,741.559 57.141,741.443 60.5549,741.059 963.445,741.059 963.445,741.059 966.859,741.443 970.292,741.559 973.725,741.407 977.134,740.986 980.5,740.3 983.803,739.353 987.021,738.151 990.135,736.701 993.127,735.012 995.977,733.094 998.668,730.958 1001.18,728.619 1003.51,726.091 1005.63,723.388 1007.53,720.528 1009.21,717.528 1010.64,714.406 1011.83,711.181 1012.76,707.874 1013.42,704.504 1013.83,701.092 1013.96,697.659 1013.83,694.226 1013.42,690.815 1012.76,687.445 1011.83,684.137 1010.64,680.913 1009.21,677.791 1007.53,674.791 1005.63,671.93 1003.51,669.228 1001.18,666.699 998.668,664.36 995.977,662.225 993.127,660.307 990.135,658.618 987.021,657.167 983.803,655.965 980.5,655.018 977.134,654.332 973.725,653.912 970.292,653.759 966.859,653.875 963.445,654.26 963.445,311.393 992.712,282.126 992.712,26.9413 60.5549,26.9413" />
+				<circle cx="809.091" cy="70.3407" r="39.5106" />
+				<circle cx="53.9399" cy="697.659" r="39.5106" />
+				</g>
+				</g>
+				<g id="inserted_text"></g>
+			</svg>
+		</div>
     </div>
 
 <script type="text/javascript">
@@ -269,6 +290,8 @@
         // Bad practice, but XSS should not be possible
         qrcode.innerHTML = `<div class="error"><b>QR code generation failed:</b><br>${message}</div>`;
     }
+	
+	
 
     const updateQRCode = () => {
         const max_size_fit_window = Math.min(qrcode.clientWidth, qrcode.clientHeight, QR_MAX_SIZE);
@@ -283,29 +306,97 @@
         try {
             window.qr_code_object = qrcodegen.QrCode.encodeText(text, ecc_level);
             window.qr_code_svg = toSvgString(qr_code_object, QR_BORDER_SIZE, QR_WHITE, QR_BLACK);            
-            const svg_template = document.querySelector("#qrcodetpl svg");
-			const svg_clone = svg_template.cloneNode(true);
-			const target = svg_clone.querySelector("#inserted_qrcode");
+            const svg_top = document.querySelector("#qrcodetpl svg").cloneNode(true);
+			const svg_bottom = document.querySelector("#qrcodetplreverse svg").cloneNode(true);
 
-			if (target) {
+			const target_qr = svg_top.querySelector("#inserted_qrcode");
+			const target_text = svg_bottom.querySelector("#inserted_text");
+
+			if (target_qr && window.qr_code_svg) {
 				const raw = window.qr_code_svg;
 				const inner = raw.substring(raw.indexOf("<path"), raw.lastIndexOf("</svg>"));
-
-				const fixed_pixel_size = 1250; // taille finale du QR code dans le SVG (px)
-				const module_count = qr_code_object.size; // nombre de modules
-				const scale = fixed_pixel_size / module_count; // ajusté pour obtenir exactement 250 px
-
-				const cx = 1050; // coordonnées pour centrer le QR dans ton SVG
+				const module_count = qr_code_object.size;
+				const fixed_pixel_size = 1150;
+				const scale = fixed_pixel_size / module_count;
+				const cx = 1050;
 				const cy = 320;
 				const half = module_count / 2;
 
-				target.innerHTML = `<g transform="translate(${cx}, ${cy}) scale(${scale.toFixed(6)}) translate(${-half}, ${-half})">
+				target_qr.innerHTML = `
+				  <g transform="translate(${cx}, ${cy}) scale(${scale.toFixed(6)}) translate(${-half}, ${-half})">
 					<rect width="${module_count}" height="${module_count}" fill="white"/>${inner}
-				</g>`;
+				  </g>`;
 			}
 
+			if (target_text) {
+				const user_text = input_area.value || "No content";
+
+				const module_count = qr_code_object.size;
+				const fixed_pixel_size = 1150;
+				const scale = fixed_pixel_size / module_count;
+
+				const size = module_count * scale;
+				const x = 288;
+				const y = 96;
+
+				function formatTextAuto(text) {
+				  return text
+					.split('\n')
+					.map(line => {
+					  const match = line.match(/^(.+?)\s*[:：]\s*(.*)$/);
+					  if (match) {
+						const label = match[1].trim();
+						const value = match[2].trim();
+						if (!value) {
+						  return `<b>${label}:</b>`;
+						}
+						const isKey = value.length > 20 || /^[A-Za-z0-9+/=]+$/.test(value);
+						return `<b>${label}:</b> ${isKey ? `<code>${value}</code>` : value}`;
+					  }
+					  const isProbablyKey = line.length > 20 || /^[A-Za-z0-9+/=]+$/.test(line);
+					  return isProbablyKey ? `<code>${line}</code>` : `<b>${line}</b>`;
+					})
+					.join('<br>');
+				}
+				target_text.innerHTML = `
+				  <foreignObject x="${x}" y="${y}" width="${size}" height="${size}">
+					<div xmlns="http://www.w3.org/1999/xhtml"
+						 style="width:100%; height:100%; box-sizing:border-box;">
+					  <div style="text-align:center; line-height:1.3; font-size:19px;width:600px; height:600px;
+								  white-space:normal; overflow-wrap:break-word;
+								  border: 2px solid black; padding: 12px; box-sizing: border-box;border-radius:5px;">
+						${formatTextAuto(user_text)}
+					  </div>
+					</div>
+				  </foreignObject>
+				`;
+			}
+
+			const wrapper = document.createElement("div");
+			wrapper.style.display = "flex";
+			wrapper.style.flexDirection = "column";
+			wrapper.style.alignItems = "center";
+			wrapper.style.justifyContent = "center";
+			wrapper.style.width = "100%";
+			wrapper.style.height = "100%";
+			wrapper.style.overflow = "hidden";
+
+			svg_top.style.flex = "1 1 auto";
+			svg_bottom.style.flex = "1 1 auto";
+
+			// 👉 Création du trait de pliage
+			const foldLine = document.createElement("div");
+			foldLine.style.width = "80%";
+			foldLine.style.height = "1px";
+			foldLine.style.borderTop = "1px dashed #444";
+			foldLine.style.margin = "8px 0";
+
+			wrapper.appendChild(svg_top);
+			wrapper.appendChild(foldLine); // 💡 Ajout ici entre les deux SVG
+			wrapper.appendChild(svg_bottom);
+
 			qrcode.innerHTML = "";
-			qrcode.appendChild(svg_clone);
+			qrcode.appendChild(wrapper);
         } catch (error) {
             window.qr_code_svg = null;
             window.qr_code_object = null;
@@ -456,61 +547,123 @@ The following functions can try to help:
 
     // Provide a way to download the QR code by clicking it
    const download_qr_code_as_file = () => {
-    if (window.qr_code_svg) {
-        const use_png = USE_PNG_DOWNLOAD;
-        const date_string = new Date().toISOString().replace("T", "_").replace(/\.\d+.$/, "_UTC").replaceAll(":", "-");
-        const file_extension = use_png ? "png" : "svg";
+  if (window.qr_code_svg) {
+    const use_png = USE_PNG_DOWNLOAD;
+    const date_string = new Date().toISOString().replace("T", "_").replace(/\.\d+.$/, "_UTC").replaceAll(":", "-");
+    const file_extension = use_png ? "png" : "svg";
 
-        if (!use_png) {
-			const svg_template = document.querySelector("#qrcodetpl svg");
-			const svg_clone = svg_template.cloneNode(true);
-			// marge en pixels
-      const margin_px = 100;
+    if (!use_png) {
+      const svg_top = document.querySelector("#qrcodetpl svg").cloneNode(true);
+      const svg_bottom = document.querySelector("#qrcodetplreverse svg").cloneNode(true);
 
-      // ajuster le viewBox pour inclure le décalage
-      svg_clone.setAttribute("viewBox", `-100 -100 1124 868`); // 1024 + 100, 768 + 100
-      svg_clone.setAttribute("width", "75.3mm"); // 68.6 + (100 * mm/px)
-      svg_clone.setAttribute("height", "55.4mm"); // 48.9 + (100 * mm/px)
+      const target = svg_top.querySelector("#inserted_qrcode");
+      const target_text = svg_bottom.querySelector("#inserted_text");
 
-        const target = svg_clone.querySelector("#inserted_qrcode");
-        if (target) {
-				const raw = window.qr_code_svg;
-				const inner = raw.substring(raw.indexOf("<path"), raw.lastIndexOf("</svg>"));
+      const fixed_pixel_size = 1150;
+      const module_count = qr_code_object.size;
+      const scale = fixed_pixel_size / module_count;
+      const cx = 1050;
+      const cy = 320;
+      const half = module_count / 2;
+      const size = module_count * scale;
 
-				const fixed_pixel_size = 1250; // taille finale du QR code dans le SVG (px)
-				const module_count = qr_code_object.size; // nombre de modules
-				const scale = fixed_pixel_size / module_count; // ajusté pour obtenir exactement 250 px
+      if (target) {
+        const raw = window.qr_code_svg;
+        const inner = raw.substring(raw.indexOf("<path"), raw.lastIndexOf("</svg>"));
+        target.innerHTML = `<g transform="translate(${cx}, ${cy}) scale(${scale.toFixed(6)}) translate(${-half}, ${-half})">
+          <rect width="${module_count}" height="${module_count}" fill="white"/>${inner}
+        </g>`;
+      }
 
-				const cx = 1050; // coordonnées pour centrer le QR dans ton SVG
-				const cy = 320;
-				const half = module_count / 2;
+      if (target_text) {
+        const user_text = input_area.value || "No content";
+        const x = 288;
+        const y = 96;
 
-				target.innerHTML = `<g transform="translate(${cx}, ${cy}) scale(${scale.toFixed(6)}) translate(${-half}, ${-half})">
-					<rect width="${module_count}" height="${module_count}" fill="white"/>${inner}
-				</g>`;
-			}
+       function formatTextAuto(text) {
+		  return text
+			.split('\n')
+			.map(line => {
+			  const match = line.match(/^(.+?)\s*[:：]\s*(.*)$/);
+			  if (match) {
+				const label = match[1].trim();
+				const value = match[2].trim();
+				if (!value) {
+				  return `<b>${label}:</b>`;
+				}
+				const isKey = value.length > 20 || /^[A-Za-z0-9+/=]+$/.test(value);
+				return `<b>${label}:</b> ${isKey ? `<code>${value}</code>` : value}`;
+			  }
+			  const isProbablyKey = line.length > 20 || /^[A-Za-z0-9+/=]+$/.test(line);
+			  return isProbablyKey ? `<code>${line}</code>` : `<b>${line}</b>`;
+			})
+			.join('<br>');
+		}
+		target_text.innerHTML = `
+		  <foreignObject x="${x}" y="${y}" width="${size}" height="${size}">
+			<div xmlns="http://www.w3.org/1999/xhtml"
+				 style="width:100%; height:100%; box-sizing:border-box;">
+			  <div style="text-align:center; line-height:1.3; font-size:19px;width:600px; height:600px;
+						  white-space:normal; overflow-wrap:break-word;
+						  border: 2px solid black; padding: 12px; box-sizing: border-box;border-radius:5px;">
+				${formatTextAuto(user_text)}
+			  </div>
+			</div>
+		  </foreignObject>
+		`;
+      }
 
-            const serializer = new XMLSerializer();
-            const full_svg = serializer.serializeToString(svg_clone);
-            const blob = new Blob([full_svg], { type: "image/svg+xml" });
-            const url = URL.createObjectURL(blob);
+      // Crée un SVG global avec les deux parties
+      const wrapper_svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      wrapper_svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+      wrapper_svg.setAttribute("viewBox", `-100 -100 1124 1680`); // double hauteur
+      wrapper_svg.setAttribute("width", "75.3mm");
+      wrapper_svg.setAttribute("height", "110.8mm"); // double de 55.4mm
 
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = window.dev_name + `_${date_string}.svg`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-        } else {
-            // PNG standard
-            const download_link_tag = document.createElement("a");
-            download_link_tag.href = get_qr_code_data_url(true);
-            download_link_tag.download = `qr_code_${date_string}.png`;
-            download_link_tag.click();
-        }
+      // Décalage de la partie du bas
+      const g_top = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      const g_bottom = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      g_bottom.setAttribute("transform", "translate(0, 768)");
+
+      g_top.append(...svg_top.children);
+      g_bottom.append(...svg_bottom.children);
+
+      // Trait de pliage
+      const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      line.setAttribute("x1", "0");
+      line.setAttribute("x2", "1024");
+      line.setAttribute("y1", "768");
+      line.setAttribute("y2", "768");
+      line.setAttribute("stroke", "#444");
+      line.setAttribute("stroke-dasharray", "5,5");
+      line.setAttribute("stroke-width", "1");
+
+      wrapper_svg.appendChild(g_top);
+      wrapper_svg.appendChild(line);
+      wrapper_svg.appendChild(g_bottom);
+
+      const serializer = new XMLSerializer();
+      const full_svg = serializer.serializeToString(wrapper_svg);
+      const blob = new Blob([full_svg], { type: "image/svg+xml" });
+      const url = URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = window.dev_name + `_${date_string}.svg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } else {
+      // PNG standard
+      const download_link_tag = document.createElement("a");
+      download_link_tag.href = get_qr_code_data_url(true);
+      download_link_tag.download = `qr_code_${date_string}.png`;
+      download_link_tag.click();
     }
+  }
 }
+
 
 
     const get_qr_code_data_url = (use_png) => {
@@ -558,10 +711,10 @@ The following functions can try to help:
         updateQRCode();
     };
 
-    window.addEventListener("resize", on_window_resize);
+    //window.addEventListener("resize", on_window_resize);
 
     // sometimes the event does not get called (for example when closing the browser console). So we call it regularly just to be sure
-    setInterval(on_window_resize, 1000)
+   setInterval(on_window_resize, 1000)
     // Call it shortly after loading the page to determine the inital layout
     setTimeout(on_window_resize, 10);
 
@@ -4771,18 +4924,18 @@ module.exports = yaml;
 		var textValue = "";
         if (substitutions) {
 			if (substitutions.lang == "fr") {
-				textValue += substitutions.dev_friendly + "\n\n\n";
+				textValue += "\n" + substitutions.dev_friendly + "\n\n";
 				if (substitutions.hasOwnProperty("api_encrypted_key")) {
-					textValue += "API encrypted key (ha): " + substitutions.api_encrypted_key + "\n";
+					textValue += "API encrypted key (ha):\n" + substitutions.api_encrypted_key + "\n\n";
 				}
-				textValue += "OTA mot de passe: " + substitutions.ota_password + "\n\n\n";
+				textValue += "OTA mot de passe:\n" + substitutions.ota_password + "\n\n";
 				if (substitutions.hasOwnProperty("web_server_username")) {
 					textValue += "Serveur Web (logs):\n\n";
 					textValue += "Url: " + substitutions.dev_name + ".local\n";
 					textValue += "Login: " + substitutions.web_server_username + "\n";
-					textValue += "Mot de passe: " + substitutions.web_server_password + "\n\n\n";
+					textValue += "Mot de passe: " + substitutions.web_server_password + "\n\n";
 				}
-				textValue += "Point d'acces WIFI changement WIFI (1 min sans reussir a se connecté):\n\n";
+				textValue += "Point d'acces pour changer WIFI (~1 min):\n\n";
 				textValue += "Reseau WIFI créer (ssid): " + substitutions.dev_friendly + "\n";
 				textValue += "WIFI Mot de passe: " + substitutions.ap_password + "\n";
 				textValue += "Adresse pour changer le WIFI: 192.168.4.1\n";
@@ -4791,21 +4944,21 @@ module.exports = yaml;
 					textValue += "Mot de passe: " + substitutions.web_server_password + "\n";
 				}
 			} else {
-				textValue += substitutions.dev_friendly + "\n\n\n";
+				textValue += "\n" + substitutions.dev_friendly + "\n\n";
 				if (substitutions.hasOwnProperty("api_encrypted_key")) {
-					textValue += "API encrypted key (ha): " + substitutions.api_encrypted_key + "\n";
+					textValue += "API encrypted key (ha):\n" + substitutions.api_encrypted_key + "\n\n";
 				}
-				textValue += "OTA password: " + substitutions.ota_password + "\n\n\n";
+				textValue += "OTA password:\n" + substitutions.ota_password + "\n\n";
 				if (substitutions.hasOwnProperty("web_server_username")) {
 					textValue += "Web server (logs):\n\n";
 					textValue += "Url: " + substitutions.dev_name + ".local\n";
 					textValue += "Login: " + substitutions.web_server_username + "\n";
-					textValue += "Password: " + substitutions.web_server_password + "\n\n\n";
+					textValue += "Password: " + substitutions.web_server_password + "\n\n";
 				}
-				textValue += "Wi-Fi access point – change Wi-Fi (1 min without successful connection):\n\n";
-				textValue += "Created Wi-Fi network (SSID): " + substitutions.dev_friendly + "\n";
-				textValue += "Wi-Fi password: " + substitutions.ap_password + "\n";
-				textValue += "Address to change Wi-Fi: 192.168.4.1\n";
+				textValue += "WIFI access point for change WIFI (~1 min):\n\n";
+				textValue += "Created WIFI network (SSID): " + substitutions.dev_friendly + "\n";
+				textValue += "WIFI password: " + substitutions.ap_password + "\n";
+				textValue += "Address to change WIFI: 192.168.4.1\n";
 				if (substitutions.hasOwnProperty("web_server_username")) {
 					textValue += "Login: " + substitutions.web_server_username + "\n";
 					textValue += "Password: " + substitutions.web_server_password + "\n";
