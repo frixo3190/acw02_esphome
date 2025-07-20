@@ -5,6 +5,8 @@ components/acw02/__pycache__/
 
 .esphome/
 
+perso/
+
 
 secrets.yaml
 
