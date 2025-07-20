@@ -1,19 +1,25 @@
-# acw02_esphome (for teknopoint AC and Airton AC which uses the acw02 WIFI module from tuya)
+# acw02_esphome  
+(for Teknopoint and Airton AC units using the Tuya ACW02 Wi-Fi module)
 
-## Settings
-### Base settings
-open esphome-acw02-en.yaml or esphome-acw02-fr.yaml (depending on your preferred language EN or FR)
+---
 
-edite substitutions, you can modify 
- - dev_name
- - dev_friendly
- - api_encrypted_key
- - ota_password
- - ap_password
- - web_server_username
- - web_server_password
+## ⚙️ Settings
 
-```
+### 📁 Base Configuration
+
+Open `esphome-acw02-en.yaml` or `esphome-acw02-fr.yaml` depending on your preferred language.
+
+Edit the `substitutions` section — you can modify:
+
+- `dev_name`
+- `dev_friendly`
+- `api_encrypted_key`
+- `ota_password`
+- `ap_password`
+- `web_server_username`
+- `web_server_password`
+
+```yaml
 substitutions:
   dev_name: acw02-salon
   dev_friendly: ACW02 salon
@@ -26,12 +32,15 @@ substitutions:
   board: esp32dev
 ```
 
-I recommend going to this page to obtain a unique api_encrypted_key:
-https://esphome.io/components/api.html
+🔑 I recommend visiting [this page](https://esphome.io/components/api.html) to generate a unique `api_encrypted_key`.
 
-### WIFI & WEB server settings
-open file secrets.yaml and put on this file your WIFI settings and your desired username and password for the web server
-```
+---
+
+### 📶 Wi-Fi & Web Server Configuration
+
+Open `secrets.yaml` and fill in your Wi-Fi credentials and desired web server access:
+
+```yaml
 wifi_ssid: "testesp32"
 wifi_password: "testesp32"
 wifi_ssid2: "testesp32"
@@ -40,147 +49,154 @@ wifi_ssid3: "testesp32"
 wifi_password3: "testesp32"
 ```
 
-## Build
-[Build from windows](docs/install_from_windows_directly.md)
+---
 
-[Build from windows with docker](docs/install_from_docker_win.md)
+## 🛠️ Build
+
+- [Build on Windows (native)](docs/install_from_windows_directly.md)  
+- [Build on Windows with Docker](docs/install_from_docker_win.md)
+
+---
 
 ## 🔍 Interface Details
 
-[Interface Details](docs/interface_details.md)
+👉 [See Interface Details](docs/interface_details.md)
 
-## PCB
-### Gerber file present in PCB directory
-[GERBER File](https://github.com/devildant/acw02_esphome/raw/main/PCB/Gerber_climEspHome_esp32_d1_mini_PCB_climEspHome_esp32_d1_mini_2025-07-03.zip)
+---
 
-![front](PCB/images/pcb/front.PNG)
+## 🧩 PCB
 
+### 📂 Gerber files available in the `PCB/` directory:
+
+📥 [Download GERBER file](https://github.com/devildant/acw02_esphome/raw/main/PCB/Gerber_climEspHome_esp32_d1_mini_PCB_climEspHome_esp32_d1_mini_2025-07-03.zip)
+
+![front](PCB/images/pcb/front.PNG)  
 ![back](PCB/images/pcb/back.PNG)
 
-### Components: 
-- [12v => 5v (x1): D24V10F5](https://shop.mchobby.be/fr/regulateurs/554--regul-5v-1a-step-down-d24v10f5-3232100005549-pololu.html) [manufacturer](https://www.pololu.com/product/2831)
+---
 
+### 📦 Components
+
+- **[12V → 5V Regulator D24V10F5](https://shop.mchobby.be/fr/regulateurs/554--regul-5v-1a-step-down-d24v10f5-3232100005549-pololu.html)**  
+  [Manufacturer](https://www.pololu.com/product/2831)  
   ![D24V10F5](PCB/images/components/D24V10F5.PNG)
 
-- [4 Channels Logic Level Converter Bi-Directional Shifter (x1): CYT1076](https://amzn.eu/d/2MhG08s)
-
+- **[4 Channels Logic Level Converter Bi-Directional Shifter (x1): CYT1076](https://amzn.eu/d/2MhG08s)**  
   ![CYT1076](PCB/images/components/4%20Channels%20Logic%20Level%20Converter%20Bi-Directional%20Shifter.PNG)
 
-- [ESP32-WROOM-32 D1 Mini NodeMCU (x1)](https://amzn.eu/d/3mS1B7W)
+- **[ESP32-WROOM-32 D1 Mini NodeMCU (x1)](https://amzn.eu/d/3mS1B7W)**  
+  ![ESP32](PCB/images/components/ESP32-WROOM-32%20D1%20Mini%20NodeMCU.PNG)
 
-  ![D24V10F5](PCB/images/components/ESP32-WROOM-32%20D1%20Mini%20NodeMCU.PNG)
-
-- [5 pins male 2.54mm (x1) : MaleL7.5-1X5P](https://fr.aliexpress.com/item/1005007128029220.html?spm=a2g0o.order_detail.order_detail_item.3.23f47d56yxv1SG&gatewayAdapt=glo2fra)
-
+- **[5 pins male 2.54mm (x1): MaleL7.5-1X5P](https://fr.aliexpress.com/item/1005007128029220.html)**  
   ![MaleL7.5-1X5P](PCB/images/components/5%20pin%20male%202.54.PNG)
 
-- [6 pins male 2.54mm (x2) : MaleL7.5-1X6p](https://fr.aliexpress.com/item/1005007128029220.html?spm=a2g0o.order_detail.order_detail_item.3.23f47d56yxv1SG&gatewayAdapt=glo2fra)
-
+- **[6 pins male 2.54mm (x2): MaleL7.5-1X6P](https://fr.aliexpress.com/item/1005007128029220.html)**  
   ![MaleL7.5-1X5P](PCB/images/components/6%20pin%20male%202.54.PNG)
 
-- [10 pins male 2.54mm (x2) : MaleL7.5-1X10P](https://fr.aliexpress.com/item/1005007128029220.html?spm=a2g0o.order_detail.order_detail_item.3.23f47d56yxv1SG&gatewayAdapt=glo2fra)
-
+- **[10 pins male 2.54mm (x2): MaleL7.5-1X10P](https://fr.aliexpress.com/item/1005007128029220.html)**  
   ![MaleL7.5-1X5P](PCB/images/components/10%20pin%20male%202.54.PNG)
 
-- [connector : JST XA 2.5 male 4 pins (Reverse direction) (x1)](https://www.aliexpress.com/item/1005008857984831.html?spm=a2g0o.cart.0.0.1dbf38daf0fL06&mp=1&pdp_npi=5%40dis%21EUR%21EUR%206.99%21EUR%206.99%21%21EUR%206.99%21%21%21%40210388c917527810571957734e8cea%2112000048990124847%21ct%21FR%211681384252%21%211%210)
+- **[Connector: JST XA 2.5 male 4 pins (Reverse direction) (x1)](https://www.aliexpress.com/item/1005008857984831.html)**  
+  ![JST](PCB/images/components/connector.PNG)
 
-  ![JST XA 2.5 male 4 pins (Reverse direction)](PCB/images/components/connector.PNG)
+📌 Important: Use reverse wiring for the following order:  
+![JST order](PCB/images/components/connector%202.PNG)
 
-  Important: take reverse connexion for have this cable order : 
+---
 
-  ![connector](PCB/images/components/connector%202.PNG)
+### 🧵 PCB Soldering & Wiring
 
-#### PCB solder and cable:
-
-![pcb front](PCB/images/components/pcb%20front.PNG)
-
+![pcb front](PCB/images/components/pcb%20front.PNG)  
 ![pcb back](PCB/images/components/pcb%20back.PNG)
 
-- 12v : RED
-- RX  : BLACK
-- TX  : YELLOW
-- GND : GREEN
+- RED = 12V  
+- BLACK = RX  
+- YELLOW = TX  
+- GREEN = GND
 
-Note: solder pins between the esp32 and the PCB (red square)
+🔧 Solder pins between ESP32 and PCB (red square):  
+![solder](PCB/images/components/esp32%20solder%20pins.png)
 
-![back](PCB/images/components/esp32%20solder%20pins.png)
+📌 [See Solder Board Helper section](#solder-board-helper)
 
-[IMPORTANT : see solder board helper section](#solder-board-helper)
+---
 
-## 3d files
-### 3d file present in 3D files directory
+## 🧱 3D Files
 
-- [acw02 case bot.stl](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/acw02%20case%20bot.stl)
-- [acw02 case top.stl](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/acw02%20case%20top.stl)
-- [Alternative : acw02 case top cable with thermo.stl](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/acw02%20case%20top%20cable%20with%20thermo.stl)
+### 📂 Available in the `3Dfiles/` directory:
+
+- [acw02 case bottom (.stl)](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/acw02%20case%20bot.stl)
+- [acw02 case top (.stl)](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/acw02%20case%20top.stl)
+- [Alternative: top case with thermo cable hole](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/acw02%20case%20top%20cable%20with%20thermo.stl)
 - [button.stl](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/button.stl)
-- [solder board.stl](3Dfiles/solder%20board%2016%20hold.stl)
+- [solder board holder](3Dfiles/solder%20board%2016%20hold.stl)
 
-#### Components:
-- [insert M2(OD3.2mm) Length 2.5mm 50pcs (x4)](https://www.aliexpress.com/item/1005003582355741.html?spm=a2g0o.order_list.order_list_main.10.1eba18024FtenS)
+---
 
-![insert M2](3Dfiles/images/bottom%20case%20insert.png)
+### 🔩 Components
 
-- [insert M3(OD4.2mm) Length 3mm 50pcs (x2)](https://www.aliexpress.com/item/1005003582355741.html?spm=a2g0o.order_list.order_list_main.10.1eba18024FtenS)
+- [insert M2(OD3.2mm) Length 2.5mm 50pcs (x4)](https://www.aliexpress.com/item/1005003582355741.html)  
+  ![insert M2](3Dfiles/images/bottom%20case%20insert.png)
 
-![insert M3](3Dfiles/images/bottom%20case%20insert.png)
+- [insert M3(OD4.2mm) Length 3mm 50pcs (x2)](https://www.aliexpress.com/item/1005003582355741.html)  
+  ![insert M3](3Dfiles/images/bottom%20case%20insert.png)
 
-- [Optional : thermo white 4,8 mm x 10 m](https://amzn.eu/d/8Y1PVUU)
+- [Optional: thermo white 4.8 mm x 10 m](https://amzn.eu/d/8Y1PVUU)  
+  ![thermo](3Dfiles/images/thermo.PNG)  
+  ![thermo in place](3Dfiles/images/alternative%20cable%20with%20thermo.jpg)
 
-![thermo](3Dfiles/images/thermo.PNG)
+- Countersunk head screw M2x6mm (x4)  
+- Screw M3x4mm (x2)
 
-![thermo in place](3Dfiles/images/alternative%20cable%20with%20thermo.jpg)
+---
 
-- countersunk head screw M2x6mm (x4)
-- screw M3x4mm (x2)
+### 🧷 Assembly
 
-#### Assembly:
+1. ![button](3Dfiles/images/button.PNG)  
+2. ![bottom case](3Dfiles/images/bottom%20case%20+%20pcb%20screw.png)  
+3. ![case + PCB](3Dfiles/images/case%20with%20pcb.jpg)  
+4. ![case + PCB + button](3Dfiles/images/case%20with%20pcb%20+%20button.jpg)  
+5. ![top case](3Dfiles/images/top%20case%20screw.png)  
+6. ![closed](3Dfiles/images/case%20close.jpg)
 
-![1](3Dfiles/images/button.PNG)
+---
 
-![2](3Dfiles/images/bottom%20case%20+%20pcb%20screw.png)
+### 🧰 Solder Board Helper
 
-![5](3Dfiles/images/top%20case%20screw.png)
+[solder_board.stl](3Dfiles/solder%20board%2016%20hold.stl)  
+![solder1](3Dfiles/images/solder%20board1.jpg)  
+![solder2](3Dfiles/images/solder%20board2.jpg)
 
-![3](3Dfiles/images/case%20with%20pcb.jpg)
+---
 
-![4](3Dfiles/images/case%20with%20pcb%20+%20button.jpg)
+## 🧾 Option: QR Code Info
 
-![8](3Dfiles/images/case%20close.jpg)
+You can generate a QR code to store module information:
 
-#### solder board helper
+1. Open `create_QRcode_info.html` in your browser.  
+2. Import your YAML file (`esphome-acw02-en.yaml` or `esphome-acw02-fr.yaml`).  
+3. Verify the data and click the QR code to download.  
+4. Print and stick it on the module.
 
-[solder board.stl](3Dfiles/solder%20board%2016%20hold.stl)
+---
 
-![solder board 1](3Dfiles/images/solder%20board1.jpg)
+## ❗ Notes
 
-![solder board 2](3Dfiles/images/solder%20board2.jpg)
-
-## Option : QRCODE info
-#### You can generate a QR code to store module information.
-
-- To do this, open the create_QRcode_info.html file in your browser.
-
-- Import the esphome-acw02-en.yaml or esphome-acw02-fr.yaml file.
-
-- Verify the information and click on the QR code to download it.
-
-- Print it and stick it on the module.
-
-## Note: important
-This component requires MQTT to function. I invite you to check how to install and configure it in Home Assistant.
+This component requires **MQTT** to work properly.  
+Please ensure you understand how to configure it with Home Assistant.
 
 > ⚠️ **WARNING**  
 > Be careful with what you're doing, and make sure you have the necessary knowledge before attempting anything.  
-> I will not be responsible if you damage your device (air conditioner, ESP, etc.).
+> I am not responsible for any damage to your AC unit, ESP module, or other hardware.
 
+---
 
 # 🛡️ License
 
-This repository uses two different licenses based on content type:
+This repository uses multiple licenses depending on content type:
 
-- **Code** (`*.yaml`, `*.cpp`, `*.h`) — licensed under [GNU GPLv3](https://www.gnu.org/licenses/gpl-3.0.html)
-- **PCB files** (`*.zip` Gerber, EasyEDA `*.json`) — licensed under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/)
-- **3D models** (`*.f3d`, `*.stl`) — licensed under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/)
+- **Code** (`*.yaml`, `*.cpp`, `*.h`) — [GNU GPLv3](https://www.gnu.org/licenses/gpl-3.0.html)
+- **PCB files** (`*.zip`, `*.json`) — [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/)
+- **3D models** (`*.f3d`, `*.stl`) — [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 
 > Commercial use of PCB and 3D files is **strictly prohibited**.
