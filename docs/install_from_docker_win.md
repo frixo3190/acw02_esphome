@@ -93,29 +93,28 @@ usbipd unbind --busid 3-3
 2. Run commands one by one:
    ```powershell
    docker compose build
-   docker compose up -d esphome
+   docker compose up -d esphome-usb
+   docker compose up -d esphome-ota
    ```
    or use script 
    ```powershell
    start-docker.bat
    ```
 
-3. Build and push firmware to USB:
+3. Build and push firmware to USB (params ota | usb):
    ```powershell
    build-fr.bat
    ```
-   or (depending on language):
+   or (depending on language) (params ota | usb):
    ```powershell
    build-en.bat
    ```
 
 ### 🧪 Optional commands
 
-- `build-force-device-fr.bat` : build in FR and directly select device (`--device /dev/ttyUSB0`)  
-- `build-force-device-en.bat` : build in EN and directly select device  
 - `build-compile-only-fr.bat` : build only (FR), no flash  
 - `build-compile-only-en.bat` : build only (EN), no flash  
-- `open-container.bat` : enter Docker container
+- `open-container.bat` : enter Docker container (params ota | usb)
 - `start-docker.bat` : only start docker
 - `stop-docker.bat` : only stop docker
 - `attach-usb.bat` : script for attach usb to docker

@@ -1,10 +1,21 @@
 services:
-  esphome:
+  esphome-ota:
     build:
       context: .
       args:
         ESPHOME_VERSION: ${ESPHOME_VERSION}
-    container_name: esphome-builder
+    container_name: esphome-builder-ota
+    volumes:
+      - ../:/src:ro
+      - ./bin_generated:/output
+    stdin_open: true
+    tty: true
+  esphome-usb:
+    build:
+      context: .
+      args:
+        ESPHOME_VERSION: ${ESPHOME_VERSION}
+    container_name: esphome-builder-usb
     volumes:
       - ../:/src:ro
       - ./bin_generated:/output

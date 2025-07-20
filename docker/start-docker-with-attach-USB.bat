@@ -38,7 +38,8 @@ echo.
 echo Waiting 3 seconds before UP...
 timeout /t 3 /nobreak >nul
 
-docker compose up -d esphome
+docker compose up -d esphome-usb
+docker compose up -d esphome-ota
 
 pause
 

@@ -1,1 +1,2 @@
-docker exec -it esphome-builder /entrypoint.sh compile /src/esphome-acw02-en.yaml
+docker exec -it esphome-builder-ota /entrypoint.sh compile /src/esphome-acw02-en.yaml
+
