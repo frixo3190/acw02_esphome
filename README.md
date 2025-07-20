@@ -45,6 +45,10 @@ wifi_password3: "testesp32"
 
 [Build from windows with docker](docs/install_from_docker_win.md)
 
+## 🔍 Interface Details
+
+[Interface Details](docs/interface_details.md)
+
 ## PCB
 ### Gerber file present in PCB directory
 [GERBER File](https://github.com/devildant/acw02_esphome/raw/main/PCB/Gerber_climEspHome_esp32_d1_mini_PCB_climEspHome_esp32_d1_mini_2025-07-03.zip)
