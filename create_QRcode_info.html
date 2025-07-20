@@ -23,7 +23,7 @@
 
         // ================== Start of user settings ==================
         // You can modify these settings without breaking stuff
-
+		window.dev_name = "qr_code_with_model";
         // Thanks to @d3xbot for providing the numbers
         // ERROR_CORRECTION_LEVEL L – up to 7% damage - MAX_BYTES: 2953
         // ERROR_CORRECTION_LEVEL M – up to 15% damage - MAX_BYTES: 2331
@@ -497,7 +497,7 @@ The following functions can try to help:
 
             const link = document.createElement("a");
             link.href = url;
-            link.download = `qr_code_with_model_${date_string}.svg`;
+            link.download = window.dev_name + `_${date_string}.svg`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -4812,6 +4812,7 @@ module.exports = yaml;
 				}
 			}	
 			textarea.value = textValue;
+			window.dev_name = substitutions.dev_name;
         } else {
           textarea.value = "Aucune section 'substitutions' trouvée.";
         }
