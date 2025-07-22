@@ -342,29 +342,38 @@
 				function formatTextAuto(text) {
 				  return text
 					.split('\n')
-					.map(line => {
-					  const match = line.match(/^(.+?)\s*[:：]\s*(.*)$/);
-					  if (match) {
-						const label = match[1].trim();
-						const value = match[2].trim();
-						if (!value) {
-						  return `<b>${label}:</b>`;
-						}
-						const isKey = value.length > 20 || /^[A-Za-z0-9+/=]+$/.test(value);
-						return `<b>${label}:</b> ${isKey ? `<code>${value}</code>` : value}`;
+					.map((line, index) => {
+					  if (index === 0) {
+						return `<b>${line}</b>`; // première ligne toujours en gras
 					  }
+
+					  const match = line.match(/^(.+?:)(\s*)(.*)$/);
+					  if (match) {
+						const label = match[1];
+						const spacing = match[2];
+						const value = match[3];
+
+						if (value === "") {
+						  return `<b>${label}</b>`;
+						}
+
+						const isKey = value.length > 20 || /^[A-Za-z0-9+/=]+$/.test(value);
+						return `<b>${label}</b>${spacing}${isKey ? `<code>${value}</code>` : value}`;
+					  }
+
 					  const isProbablyKey = line.length > 20 || /^[A-Za-z0-9+/=]+$/.test(line);
-					  return isProbablyKey ? `<code>${line}</code>` : `<b>${line}</b>`;
+					  return isProbablyKey ? `<code>${line}</code>` : line;
 					})
 					.join('<br>');
 				}
+
 				target_text.innerHTML = `
 				  <foreignObject x="${x}" y="${y}" width="${size}" height="${size}">
 					<div xmlns="http://www.w3.org/1999/xhtml"
 						 style="width:100%; height:100%; box-sizing:border-box;">
-					  <div style="text-align:center; line-height:1.3; font-size:19px;width:600px; height:600px;
+					  <div style="text-align:center; line-height:1.3; font-size:22.5px;width:600px; height:600px;font-family:monospace;
 								  white-space:normal; overflow-wrap:break-word;
-								  border: 2px solid black; padding: 12px; box-sizing: border-box;border-radius:10px;transform: rotate(180deg);">
+								  border: 2px solid black; padding: 12px; box-sizing: border-box;transform: rotate(180deg);">
 						${formatTextAuto(user_text)}
 					  </div>
 					</div>
@@ -583,29 +592,38 @@ The following functions can try to help:
        function formatTextAuto(text) {
 		  return text
 			.split('\n')
-			.map(line => {
-			  const match = line.match(/^(.+?)\s*[:：]\s*(.*)$/);
-			  if (match) {
-				const label = match[1].trim();
-				const value = match[2].trim();
-				if (!value) {
-				  return `<b>${label}:</b>`;
-				}
-				const isKey = value.length > 20 || /^[A-Za-z0-9+/=]+$/.test(value);
-				return `<b>${label}:</b> ${isKey ? `<code>${value}</code>` : value}`;
+			.map((line, index) => {
+			  if (index === 0) {
+				return `<b>${line}</b>`; // première ligne toujours en gras
 			  }
+
+			  const match = line.match(/^(.+?:)(\s*)(.*)$/);
+			  if (match) {
+				const label = match[1];
+				const spacing = match[2];
+				const value = match[3];
+
+				if (value === "") {
+				  return `<b>${label}</b>`;
+				}
+
+				const isKey = value.length > 20 || /^[A-Za-z0-9+/=]+$/.test(value);
+				return `<b>${label}</b>${spacing}${isKey ? `<code>${value}</code>` : value}`;
+			  }
+
 			  const isProbablyKey = line.length > 20 || /^[A-Za-z0-9+/=]+$/.test(line);
-			  return isProbablyKey ? `<code>${line}</code>` : `<b>${line}</b>`;
+			  return isProbablyKey ? `<code>${line}</code>` : line;
 			})
 			.join('<br>');
 		}
+
 		target_text.innerHTML = `
 		  <foreignObject x="${x}" y="${y}" width="${size}" height="${size}">
 			<div xmlns="http://www.w3.org/1999/xhtml"
 				 style="width:100%; height:100%; box-sizing:border-box;">
-			  <div style="text-align:center; line-height:1.3; font-size:19px;width:600px; height:600px;
+			  <div style="text-align:center; line-height:1.3; font-size:22.5px;width:600px; height:600px;font-family:monospace;
 						  white-space:normal; overflow-wrap:break-word;
-						  border: 2px solid black; padding: 12px; box-sizing: border-box;border-radius:10px;transform: rotate(180deg);">
+						  border: 2px solid black; padding: 12px; box-sizing: border-box;transform: rotate(180deg);">
 				${formatTextAuto(user_text)}
 			  </div>
 			</div>
@@ -618,7 +636,7 @@ The following functions can try to help:
       wrapper_svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
       wrapper_svg.setAttribute("viewBox", `-100 -100 1124 1680`); // double hauteur
       wrapper_svg.setAttribute("width", "77.3mm");
-      wrapper_svg.setAttribute("height", "112.8mm"); // double de 55.4mm
+      wrapper_svg.setAttribute("height", "112.8mm");
 
       // Décalage de la partie du bas
       const g_top = document.createElementNS("http://www.w3.org/2000/svg", "g");
@@ -4924,18 +4942,18 @@ module.exports = yaml;
 		var textValue = "";
         if (substitutions) {
 			if (substitutions.lang == "fr") {
-				textValue += "\n" + substitutions.dev_friendly + "\n\n";
+				textValue += substitutions.dev_friendly + "\n\n";
 				if (substitutions.hasOwnProperty("api_encrypted_key")) {
 					textValue += "API encrypted key (ha):\n" + substitutions.api_encrypted_key + "\n\n";
 				}
 				textValue += "OTA mot de passe:\n" + substitutions.ota_password + "\n\n";
 				if (substitutions.hasOwnProperty("web_server_username")) {
-					textValue += "Serveur Web (logs):\n\n";
+					textValue += "Serveur Web (logs):\n";
 					textValue += "Url: " + substitutions.dev_name + ".local\n";
 					textValue += "Login: " + substitutions.web_server_username + "\n";
 					textValue += "Mot de passe: " + substitutions.web_server_password + "\n\n";
 				}
-				textValue += "Point d'acces pour changer WIFI (~1 min):\n\n";
+				textValue += "Point d'acces pour changer WIFI (~1 min):\n";
 				textValue += "Reseau WIFI créer (ssid): " + substitutions.dev_friendly + "\n";
 				textValue += "WIFI Mot de passe: " + substitutions.ap_password + "\n";
 				textValue += "Adresse pour changer le WIFI: 192.168.4.1\n";
@@ -4944,18 +4962,18 @@ module.exports = yaml;
 					textValue += "Mot de passe: " + substitutions.web_server_password + "\n";
 				}
 			} else {
-				textValue += "\n" + substitutions.dev_friendly + "\n\n";
+				textValue += substitutions.dev_friendly + "\n\n";
 				if (substitutions.hasOwnProperty("api_encrypted_key")) {
 					textValue += "API encrypted key (ha):\n" + substitutions.api_encrypted_key + "\n\n";
 				}
 				textValue += "OTA password:\n" + substitutions.ota_password + "\n\n";
 				if (substitutions.hasOwnProperty("web_server_username")) {
-					textValue += "Web server (logs):\n\n";
+					textValue += "Web server (logs):\n";
 					textValue += "Url: " + substitutions.dev_name + ".local\n";
 					textValue += "Login: " + substitutions.web_server_username + "\n";
 					textValue += "Password: " + substitutions.web_server_password + "\n\n";
 				}
-				textValue += "WIFI access point for change WIFI (~1 min):\n\n";
+				textValue += "WIFI access point for change WIFI (~1 min):\n";
 				textValue += "Created WIFI network (SSID): " + substitutions.dev_friendly + "\n";
 				textValue += "WIFI password: " + substitutions.ap_password + "\n";
 				textValue += "Address to change WIFI: 192.168.4.1\n";
