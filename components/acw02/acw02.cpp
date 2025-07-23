@@ -41,6 +41,11 @@ namespace esphome {
       option_recalculate_climate_pref_.load(&option_recalculate_climate_);
       option_G1_MQTT_pref_ = global_preferences->make_preference<bool>(9U, "ac_option_g1_mqtt");
       option_G1_MQTT_pref_.load(&option_g1_mqtt_);
+      previous_temp_c_pref_ = global_preferences->make_preference<bool>(10U, "ac_previous_temp_c");
+      previous_temp_c_pref_.load(&previous_target_temp_c_);
+      previous_temp_f_pref_ = global_preferences->make_preference<bool>(11U, "ac_previous_temp_f");
+      previous_temp_f_pref_.load(&previous_target_temp_f_);
+      
 
       set_timeout("test", 10000, [this]() {
         ESP_LOGD(TAG, "Setup %s ", "INIT");
@@ -92,8 +97,20 @@ namespace esphome {
         mode_ = str_to_mode_climate(mode);
         if (mode_ != Mode::COOL) set_eco_internal(false, false);
         if (mode_ == Mode::FAN) night_ = false;
-        if (mode_ == Mode::AUTO) recalculate_climate_depending_by_option();
-        if (previous_mode == Mode::AUTO) recalculate_climate_depending_by_option();
+        if (mode_ == Mode::AUTO) {
+          previous_target_temp_c_ = target_temp_c_;
+          previous_temp_c_pref_.save(&previous_target_temp_c_);
+          previous_target_temp_f_ = target_temp_f_;
+          previous_temp_f_pref_.save(&previous_target_temp_f_);
+          target_temp_c_ = 25.0f;
+          target_temp_f_ = 77.0f;
+          publish_discovery_climate();
+        }
+        if (previous_mode == Mode::AUTO) {
+          target_temp_c_ = previous_target_temp_c_;
+          target_temp_f_ = previous_target_temp_f_;
+          publish_discovery_climate();
+        }
       } else {
         power_on_ = false;
       }
@@ -106,8 +123,20 @@ namespace esphome {
         mode_ = str_to_mode(app_lang_, mode);
         if (mode_ != Mode::COOL) set_eco_internal(false, false);
         if (mode_ == Mode::FAN) night_ = false;
-        if (mode_ == Mode::AUTO) recalculate_climate_depending_by_option();
-        if (previous_mode == Mode::AUTO) recalculate_climate_depending_by_option();
+        if (mode_ == Mode::AUTO) {
+          previous_target_temp_c_ = target_temp_c_;
+          previous_temp_c_pref_.save(&previous_target_temp_c_);
+          previous_target_temp_f_ = target_temp_f_;
+          previous_temp_f_pref_.save(&previous_target_temp_f_);
+          target_temp_c_ = 25.0f;
+          target_temp_f_ = 77.0f;
+          publish_discovery_climate();
+        }
+        if (previous_mode == Mode::AUTO) {
+          target_temp_c_ = previous_target_temp_c_;
+          target_temp_f_ = previous_target_temp_f_;
+          publish_discovery_climate();
+        }
       } else {
         power_on_ = false;
       }
@@ -207,7 +236,7 @@ namespace esphome {
           previous_fan_ = fan_;
           fan_ = Fan::AUTO;
           recalculate_climate_depending_by_option();
-          ESP_LOGI(TAG, "set_eco %s", "store previous fan et enable auto");
+          ESP_LOGI(TAG, "set_eco %s", "store previous fan and enable auto");
         } else {
           fan_ = previous_fan_;
           recalculate_climate_depending_by_option();
@@ -774,12 +803,14 @@ namespace esphome {
 
       const std::string temp_suffix = use_fahrenheit_ ? "_f" : "_c";
 
-      bool disable_set_temp = false;
-      if (option_recalculate_climate_) {
-        if (eco_ || mode_ == Mode::AUTO) {
-          disable_set_temp = true;
-        }
+      std::string mintemp = use_fahrenheit_ ? "61" : "16";
+      std::string maxtemp = use_fahrenheit_ ? "88" : "31";
+
+      if (eco_ || mode_ == Mode::AUTO) {
+        mintemp = use_fahrenheit_ ? std::to_string(target_temp_f_) : std::to_string(target_temp_c_);
+        maxtemp = mintemp;
       }
+      
       std::string payload = R"({
         "name": ")" + get_localized_name(app_lang_, "climate") + R"(",
         "object_id": ")" + unique_id + R"(",
@@ -797,16 +828,10 @@ namespace esphome {
         "mode_stat_t": ")" + topic_base + R"(/state",
         "mode_stat_tpl": "{{ value_json.mode_climate }}",
         "mode_cmd_t": ")" + topic_base + R"(/cmd/mode_climate",
-        "modes": )" + build_modes_json_climate() + R"(,)";
-
-        if (disable_set_temp == false) {
-          payload += R"(
-          "temp_cmd_t": ")" + topic_base + "/cmd/temp" + temp_suffix + R"(",
-          "temp_stat_t": ")" + topic_base + R"(/state",
-          "temp_stat_tpl": "{{ value_json.temp)" + temp_suffix + R"( }}",)";
-        }
-
-        payload += R"(
+        "modes": )" + build_modes_json_climate() + R"(,
+        "temp_cmd_t": ")" + topic_base + "/cmd/temp" + temp_suffix + R"(",
+        "temp_stat_t": ")" + topic_base + R"(/state",
+        "temp_stat_tpl": "{{ value_json.temp)" + temp_suffix + R"( }}",
         "curr_temp_t": ")" + topic_base + R"(/state",
         "curr_temp_tpl": "{{ value_json.ambient)" + temp_suffix + R"( }}",
         "fan_mode_cmd_t": ")" + topic_base + R"(/cmd/fan",
@@ -839,8 +864,8 @@ namespace esphome {
         "pow_cmd_t": ")" + topic_base + R"(/cmd/power_climate",
         "pow_stat_t": ")" + topic_base + R"(/state",
         "pow_stat_tpl": "{{ value_json.power_climate }}",
-        "min_temp": )" + (use_fahrenheit_ ? "61" : "16") + R"(,
-        "max_temp": )" + (use_fahrenheit_ ? "88" : "31") + R"(,
+        "min_temp": )" + (mintemp) + R"(,
+        "max_temp": )" + (maxtemp) + R"(,
         "temp_step": 1,
         "avty_t":")" + topic_base + R"(/status")" +
         build_common_config_suffix() + R"(
@@ -1863,7 +1888,7 @@ namespace esphome {
       if (previous_eco != eco_) {
         recalculate_climate_depending_by_option();
       } else if (previous_mode != mode_ && (previous_mode == Mode::AUTO || mode_ == Mode::AUTO)) {
-        recalculate_climate_depending_by_option();
+        publish_discovery_climate();
       } else if (previous_fahrenheit != use_fahrenheit_) {
         publish_discovery_climate(true);
       }
@@ -1877,7 +1902,7 @@ namespace esphome {
       if (mode_ == Mode::FAN && is_disable_mode_fan())   tmp = Mode::COOL;
       if (mode_ == Mode::DRY && is_disable_mode_dry())   tmp = Mode::COOL;
       if (tmp != mode_) {
-        mode_ = tmp;
+        set_mode(mode_to_string_climate(tmp));
         send_command();
       }
     }
@@ -2084,7 +2109,10 @@ namespace esphome {
     void ACW02::recalculate_climate_depending_by_option() {
       if (option_recalculate_climate_) {
         publish_discovery_climate(true);
+      } else {
+        publish_discovery_climate();
       }
+      
     }
 
   }

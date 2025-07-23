@@ -148,7 +148,7 @@ switch:
       - lambda: id(ac_ctrl).set_disable_swing_horizontal(false);
 
   - platform: template
-    name: "G1: Auto calc climate (eco/auto)"
+    name: "G1: Auto calc climate (eco)"
     id: option_recalculate_climate
     icon: mdi:autorenew
     entity_category: "config"

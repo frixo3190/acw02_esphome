@@ -26,6 +26,7 @@ web_server:
     username: ${web_server_username}
     password: ${web_server_password}
   version: 3
+  log: true
   local : true
   include_internal: true
   

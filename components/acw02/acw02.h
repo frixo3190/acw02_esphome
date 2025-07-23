@@ -209,6 +209,10 @@ class ACW02 : public Component, public uart::UARTDevice {
   uint8_t target_temp_f_ {78};
   float ambient_temp_c_ {0.0f};
   float ambient_temp_f_ {0.0f};
+
+  // variables ac previous target temp (mode auto)
+  uint8_t previous_target_temp_c_ {26};
+  uint8_t previous_target_temp_f_ {78};
   
   bool eco_ {false};
   bool night_ {false};
@@ -244,6 +248,10 @@ class ACW02 : public Component, public uart::UARTDevice {
   ESPPreferenceObject mqtt_username_pref_;
   ESPPreferenceObject mqtt_password_pref_;
   ESPPreferenceObject mqtt_port_pref_;
+
+  // variables persisted previous target temp (mode auto)
+  ESPPreferenceObject previous_temp_c_pref_;
+  ESPPreferenceObject previous_temp_f_pref_;
 
   // variables MQTT
   mqtt::MQTTClientComponent *mqtt_ = nullptr;
