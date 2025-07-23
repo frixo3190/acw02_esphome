@@ -154,7 +154,7 @@ wifi_password3: "testesp32"
 
 #### Common
 - [button.stl](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/button.stl)
-- [solder board holder](3Dfiles/solder%20board%2016%20hold.stl)
+- [solder board holder](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/solder%20board%2016%20hold.stl)
 
 ---
 
