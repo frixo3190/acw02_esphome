@@ -125,9 +125,34 @@ wifi_password3: "testesp32"
 
 ### 📂 Available in the `3Dfiles/` directory:
 
-- [acw02 case bottom (.stl)](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/acw02%20case%20bot.stl)
-- [acw02 case top (.stl)](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/acw02%20case%20top.stl)
-- [Alternative: top case with thermo cable hole](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/acw02%20case%20top%20cable%20with%20thermo.stl)
+#### Version 1
+
+- [acw02 case bottom (.stl)](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/Version%201/acw02%20case%20bot.stl)
+- [acw02 case top (.stl)](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/Version%201/acw02%20case%20top.stl)
+- [Alternative: top case with thermo cable hole](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/Version%201/acw02%20case%20top%20cable%20with%20thermo.stl)
+
+#### Version 2
+
+- [acw02 case bot with air flow (.stl)](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/Version%201/acw02%20case%20bot.stl)
+- [acw02 case top air flow (.stl)](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/Version%201/acw02%20case%20bot.stl)
+- [acw02 case top cable with thermo air flow (.stl)](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/Version%201/acw02%20case%20bot.stl)
+- [acw02 case top cable with thermo plastic card (.stl)](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/Version%201/acw02%20case%20bot.stl)
+- [acw02 case top plastic card (.stl)](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/Version%201/acw02%20case%20bot.stl)
+- [card (.stl)](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/Version%201/acw02%20case%20bot.stl)
+
+![airflow1](3Dfiles/images/airflow1.jpg)
+
+![airflow2](3Dfiles/images/airflow2.jpg)
+
+![airflow3](3Dfiles/images/airflow3.jpg)
+
+![airflow4](3Dfiles/images/airflow4.jpg)
+
+![airflow5](3Dfiles/images/airflow5.jpg)
+
+![airflow6](3Dfiles/images/airflow6.jpg)
+
+#### Common
 - [button.stl](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/button.stl)
 - [solder board holder](3Dfiles/solder%20board%2016%20hold.stl)
 

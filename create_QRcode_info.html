@@ -292,6 +292,74 @@
     }
 	
 	
+	function createSvgLabel(friendlyName, link) {
+	  const width = 717;
+	  const height = 150;
+
+	  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+	  svg.setAttribute("width", width);
+	  svg.setAttribute("height", height);
+	  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+
+	  const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+
+	  // ✂️ Ligne de découpe (ne bouge pas)
+	  const cutLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
+	  cutLine.setAttribute("x1", "0");
+	  cutLine.setAttribute("x2", width);
+	  cutLine.setAttribute("y1", "10");
+	  cutLine.setAttribute("y2", "10");
+	  cutLine.setAttribute("stroke", "#000");
+	  cutLine.setAttribute("stroke-dasharray", "8");
+	  cutLine.setAttribute("stroke-width", "3");
+	  group.appendChild(cutLine);
+
+	  // ✂️ Icône ciseaux (ne bouge pas non plus)
+	  const scissors = document.createElementNS("http://www.w3.org/2000/svg", "text");
+	  scissors.setAttribute("x", "10");
+	  scissors.setAttribute("y", "10");
+	  scissors.setAttribute("font-size", "16");
+	  scissors.setAttribute("font-family", "monospace");
+	  scissors.setAttribute("alignment-baseline", "middle");
+	  scissors.setAttribute("dominant-baseline", "middle");
+	  scissors.setAttribute("transform", "rotate(-90 20 10)");
+	  scissors.textContent = "✂️";
+	  group.appendChild(scissors);
+
+	  // 🏷️ Cadre du label (décalé 10 px vers le bas)
+	  const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+	  rect.setAttribute("x", "0");
+	  rect.setAttribute("y", "30");
+	  rect.setAttribute("width", width);
+	  rect.setAttribute("height", height - 32);
+	  rect.setAttribute("fill", "white");
+	  rect.setAttribute("stroke", "black");
+	  rect.setAttribute("stroke-width", "4");
+	  group.appendChild(rect);
+
+	  // 🧾 Texte : friendlyName (décalé aussi)
+	  const text1 = document.createElementNS("http://www.w3.org/2000/svg", "text");
+	  text1.setAttribute("x", "30");
+	  text1.setAttribute("y", "80"); // anciennement 70
+	  text1.setAttribute("font-size", "36");
+	  text1.setAttribute("font-family", "monospace");
+	  text1.setAttribute("font-weight", "bold");
+	  text1.textContent = friendlyName;
+	  group.appendChild(text1);
+
+	  // 🔗 Texte : lien (décalé aussi)
+	  const text2 = document.createElementNS("http://www.w3.org/2000/svg", "text");
+	  text2.setAttribute("x", "30");
+	  text2.setAttribute("y", "130"); // anciennement 120
+	  text2.setAttribute("font-size", "28");
+	  text2.setAttribute("font-family", "monospace");
+	  text2.textContent = link;
+	  group.appendChild(text2);
+
+	  svg.appendChild(group);
+	  return svg;
+	}
+
 
     const updateQRCode = () => {
         const max_size_fit_window = Math.min(qrcode.clientWidth, qrcode.clientHeight, QR_MAX_SIZE);
@@ -403,6 +471,8 @@
 			wrapper.appendChild(svg_top);
 			wrapper.appendChild(foldLine); // 💡 Ajout ici entre les deux SVG
 			wrapper.appendChild(svg_bottom);
+			const svg_label = createSvgLabel(window.friendly_name, "https://github.com/devildant/acw02_esphome");
+			wrapper.appendChild(svg_label);
 
 			qrcode.innerHTML = "";
 			qrcode.appendChild(wrapper);
@@ -636,7 +706,7 @@ The following functions can try to help:
       wrapper_svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
       wrapper_svg.setAttribute("viewBox", `-100 -100 1124 1680`); // double hauteur
       wrapper_svg.setAttribute("width", "77.3mm");
-      wrapper_svg.setAttribute("height", "112.8mm");
+      wrapper_svg.setAttribute("height", "132.8mm");
 
       // Décalage de la partie du bas
       const g_top = document.createElementNS("http://www.w3.org/2000/svg", "g");
@@ -659,6 +729,13 @@ The following functions can try to help:
       wrapper_svg.appendChild(g_top);
       wrapper_svg.appendChild(line);
       wrapper_svg.appendChild(g_bottom);
+	  const svg_label = createSvgLabel(window.friendly_name, "https://github.com/devildant/acw02_esphome");
+
+	  const g_label = document.createElementNS("http://www.w3.org/2000/svg", "g");
+	  g_label.setAttribute("transform", "translate(150, 1550)");
+	  g_label.append(...svg_label.children);
+	  wrapper_svg.appendChild(g_label);
+	  
 
       const serializer = new XMLSerializer();
       const full_svg = serializer.serializeToString(wrapper_svg);
@@ -4984,6 +5061,7 @@ module.exports = yaml;
 			}	
 			textarea.value = textValue;
 			window.dev_name = substitutions.dev_name;
+			window.friendly_name = substitutions.dev_friendly;
         } else {
           textarea.value = "Aucune section 'substitutions' trouvée.";
         }
