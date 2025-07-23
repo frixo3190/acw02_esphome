@@ -98,8 +98,6 @@ namespace esphome {
         if (mode_ != Mode::COOL) set_eco_internal(false, false);
         if (mode_ == Mode::FAN) night_ = false;
         if (mode_ == Mode::AUTO) {
-          target_temp_c_ = 25.0f;
-          target_temp_f_ = 77.0f;
           publish_discovery_climate();
         }
         if (previous_mode == Mode::AUTO) {
@@ -120,8 +118,6 @@ namespace esphome {
         if (mode_ != Mode::COOL) set_eco_internal(false, false);
         if (mode_ == Mode::FAN) night_ = false;
         if (mode_ == Mode::AUTO) {
-          target_temp_c_ = 25.0f;
-          target_temp_f_ = 77.0f;
           publish_discovery_climate();
         }
         if (previous_mode == Mode::AUTO) {
@@ -798,10 +794,15 @@ namespace esphome {
       std::string mintemp = use_fahrenheit_ ? "61" : "16";
       std::string maxtemp = use_fahrenheit_ ? "88" : "31";
 
+      if (mode_ == Mode::AUTO) {
+        auto_temp_defined_heat_cool_calculator();
+      }
+
       if (eco_ || mode_ == Mode::AUTO) {
         mintemp = use_fahrenheit_ ? std::to_string(target_temp_f_) : std::to_string(target_temp_c_);
         maxtemp = mintemp;
       }
+      
       
       std::string payload = R"({
         "name": ")" + get_localized_name(app_lang_, "climate") + R"(",
@@ -1876,13 +1877,24 @@ namespace esphome {
         publish_availability();
         publish_state();
       }
+
       if (!eco_ && mode_ != Mode::AUTO) {
           previous_target_temp_c_ = target_temp_c_;
           previous_temp_c_pref_.save(&previous_target_temp_c_);
           previous_target_temp_f_ = target_temp_f_;
           previous_temp_f_pref_.save(&previous_target_temp_f_);
       }
-
+      if (mode_ == Mode::AUTO && from_remote_) {
+          const uint8_t temptarget_temp_c_ = target_temp_c_;
+          const uint8_t tempCalc = auto_temp_defined_heat_cool_calculator();
+          if (tempCalc != temptarget_temp_c_) {
+            const bool prevMute = mute_;
+            mute_ = true;
+            send_command();
+            mute_ = prevMute;
+          }
+      }
+      
       if (previous_eco != eco_) {
         recalculate_climate_depending_by_option();
       } else if (previous_mode != mode_ && (previous_mode == Mode::AUTO || mode_ == Mode::AUTO)) {
@@ -1890,6 +1902,7 @@ namespace esphome {
       } else if (previous_fahrenheit != use_fahrenheit_) {
         publish_discovery_climate(true);
       }
+
       force_cool_mode_if_disabled();
     }
 
@@ -2102,6 +2115,18 @@ namespace esphome {
         options.push_back(kv.second);
       }
       return "[\"" + join(options, R"(",")") + "\"]";
+    }
+
+    uint8_t ACW02::auto_temp_defined_heat_cool_calculator() {
+      if (ambient_temp_c_ < 20) {
+        target_temp_c_ = 20.0f;
+        target_temp_f_ = 68.0f;
+        return target_temp_c_;
+      } else {
+        target_temp_c_ = 25.0f;
+        target_temp_f_ = 77.0f;
+        return target_temp_c_;
+      }
     }
 
     void ACW02::recalculate_climate_depending_by_option() {

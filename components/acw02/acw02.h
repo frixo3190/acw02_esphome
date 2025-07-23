@@ -314,6 +314,9 @@ class ACW02 : public Component, public uart::UARTDevice {
   std::string build_modes_json() const;
   std::string build_fan_speed_json() const;
 
+  // temperature auto
+  uint8_t auto_temp_defined_heat_cool_calculator();
+
   // Protected functions for rebuild climate if mode auto or option eco enable
   void recalculate_climate_depending_by_option();
 };
