@@ -98,10 +98,6 @@ namespace esphome {
         if (mode_ != Mode::COOL) set_eco_internal(false, false);
         if (mode_ == Mode::FAN) night_ = false;
         if (mode_ == Mode::AUTO) {
-          previous_target_temp_c_ = target_temp_c_;
-          previous_temp_c_pref_.save(&previous_target_temp_c_);
-          previous_target_temp_f_ = target_temp_f_;
-          previous_temp_f_pref_.save(&previous_target_temp_f_);
           target_temp_c_ = 25.0f;
           target_temp_f_ = 77.0f;
           publish_discovery_climate();
@@ -124,10 +120,6 @@ namespace esphome {
         if (mode_ != Mode::COOL) set_eco_internal(false, false);
         if (mode_ == Mode::FAN) night_ = false;
         if (mode_ == Mode::AUTO) {
-          previous_target_temp_c_ = target_temp_c_;
-          previous_temp_c_pref_.save(&previous_target_temp_c_);
-          previous_target_temp_f_ = target_temp_f_;
-          previous_temp_f_pref_.save(&previous_target_temp_f_);
           target_temp_c_ = 25.0f;
           target_temp_f_ = 77.0f;
           publish_discovery_climate();
@@ -1883,6 +1875,12 @@ namespace esphome {
       if (mqtt_) {
         publish_availability();
         publish_state();
+      }
+      if (!eco_ && mode_ != Mode::AUTO) {
+          previous_target_temp_c_ = target_temp_c_;
+          previous_temp_c_pref_.save(&previous_target_temp_c_);
+          previous_target_temp_f_ = target_temp_f_;
+          previous_temp_f_pref_.save(&previous_target_temp_f_);
       }
 
       if (previous_eco != eco_) {
