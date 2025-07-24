@@ -36,6 +36,7 @@
 ## ⚙️ Configuration
 
 ![config](images/config.PNG)
+![config](images/resetECOPurifier.PNG)
 
 | #  | Description |
 |---:|-------------|
@@ -57,6 +58,7 @@
 | 16 | Disable horizontal swing (auto-saved; validate button will recreate MQTT entities) |
 | 17 | Disable vertical swing (auto-saved; validate button will recreate MQTT entities) |
 | 18 | Manually recreate MQTT entities (to apply disable settings) |
+| A  | option for reset or not eco/purifier when ac is turn off |
 
 ---
 

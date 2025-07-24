@@ -32,7 +32,8 @@ static const std::map<std::string, std::map<std::string, std::string>> LOCALIZED
             {"g1OptionRecalculateClimate", "G1: Auto calc climate (eco)"},
             {"restartModule", "G1: Redémarrer"},
             {"rebuildMQTT", "G1: Reconstruire les entitées MQTT"},
-            {"getStatus", "G1: Actualiser data"}
+            {"getStatus", "G1: Actualiser data"},
+            {"resetEcoPurifier", "G1: Mode éteint reset Eco/Purificateur"}
         }},
         {"en", {
             {"climate", "AC"},
@@ -54,7 +55,8 @@ static const std::map<std::string, std::map<std::string, std::string>> LOCALIZED
             {"g1OptionRecalculateClimate", "G1: Auto calc climate (eco)"},
             {"restartModule", "G1: Restart"},
             {"rebuildMQTT", "G1: Rebuild MQTT entities"},
-            {"getStatus", "G1: Refresh data"}
+            {"getStatus", "G1: Refresh data"},
+            {"resetEcoPurifier", "G1: Mode Off reset Eco/Purifier"}
         }}
     };
 

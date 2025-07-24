@@ -158,6 +158,18 @@ switch:
       - lambda: id(ac_ctrl).set_option_recalculate_climate(true);
     turn_off_action:
       - lambda: id(ac_ctrl).set_option_recalculate_climate(false);
+  
+  - platform: template
+    name: "G1: Mode Off reset Eco/Purifier"
+    id: reset_eco_purifier_ac_off
+    icon: mdi:lock-reset
+    entity_category: "config"
+    lambda: |-
+      return id(ac_ctrl).is_auto_off_options_when_ac_off();
+    turn_on_action:
+      - lambda: id(ac_ctrl).set_auto_off_options_when_ac_off(true);
+    turn_off_action:
+      - lambda: id(ac_ctrl).set_auto_off_options_when_ac_off(false);
 
 button:
   - platform: restart

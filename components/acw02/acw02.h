@@ -76,7 +76,10 @@ class ACW02 : public Component, public uart::UARTDevice {
   void set_unit(const std::string &unit); 
   void set_clean(bool on);
 
-  // G1 : MQTT
+  // Setters reset option when AC off
+  void set_auto_off_options_when_ac_off(bool on);
+  
+  // Setters G1 : MQTT
   void set_g1_mqtt_options(bool on);
 
   // Setters publics disable option mode
@@ -127,6 +130,9 @@ class ACW02 : public Component, public uart::UARTDevice {
   bool is_clean_on() const;
   bool is_using_fahrenheit() const;
 
+  // reset option when AC off
+  bool is_auto_off_options_when_ac_off() const;
+  
   // G1: MQTT
    bool is_g1_mqtt_options() const;
 
@@ -166,6 +172,7 @@ class ACW02 : public Component, public uart::UARTDevice {
   void publish_discovery_night_switch(bool recreate = false);
   void publish_discovery_purifier_switch(bool recreate = false);
   void publish_discovery_g1_mute_switch(bool recreate = false);
+  void publish_discovery_g1_reset_eco_purifier_ac_off_switch(bool recreate = false);
   void publish_discovery_g1_option_recalculate_climate_switch(bool recreate = false);
   void publish_discovery_temperature_number(bool recreate = false);
   void publish_discovery_g1_reload_button(bool recreate = false);
@@ -246,6 +253,7 @@ class ACW02 : public Component, public uart::UARTDevice {
   ESPPreferenceObject disable_swing_horizontal_pref_; 
   ESPPreferenceObject option_recalculate_climate_pref_;
   ESPPreferenceObject option_G1_MQTT_pref_;
+  ESPPreferenceObject auto_off_options_when_ac_off_pref_;
 
   // variables persisted MQTT
   ESPPreferenceObject mqtt_broker_address_pref_;
@@ -256,6 +264,7 @@ class ACW02 : public Component, public uart::UARTDevice {
   // variables persisted previous target temp (mode auto)
   ESPPreferenceObject previous_temp_c_pref_;
   ESPPreferenceObject previous_temp_f_pref_;
+  
 
   // variables MQTT
   mqtt::MQTTClientComponent *mqtt_ = nullptr;
@@ -274,6 +283,9 @@ class ACW02 : public Component, public uart::UARTDevice {
   bool disable_mode_fan_ {false};
   bool disable_swing_vertical_ {false};
   bool disable_swing_horizontal_ {false};
+
+  // reset option when AC off
+  bool auto_off_options_when_ac_off_ {false};
 
   // Protected variables optimization
   struct MqttPublishEntry {
