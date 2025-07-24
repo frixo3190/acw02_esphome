@@ -7,7 +7,7 @@ jobs:
   manual-release:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # nécessaire pour créer tag et release
+      contents: write
 
     steps:
       - name: Checkout repository
@@ -43,7 +43,8 @@ jobs:
         id: changelog
         run: |
           git fetch --tags
-          LAST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          CURRENT_TAG="${{ steps.tag.outputs.tag_name }}"
+          LAST_TAG=$(git tag --sort=-creatordate | grep -v "$CURRENT_TAG" | head -n1 || echo "")
           {
             echo "### ESPHome version: ${{ steps.esphome.outputs.esphome_version }}"
             echo ""
@@ -61,6 +62,12 @@ jobs:
           git config user.email "github-actions@github.com"
           git tag ${{ steps.tag.outputs.tag_name }}
           git push origin ${{ steps.tag.outputs.tag_name }}
+
+      - name: Create ZIP archive (custom)
+        run: |
+          mkdir "acw02_esphome_${{ steps.tag.outputs.tag_name }}"
+          rsync -a --exclude='.git' ./ "acw02_esphome_${{ steps.tag.outputs.tag_name }}/"
+          zip -r "acw02_esphome_${{ steps.tag.outputs.tag_name }}.zip" "acw02_esphome_${{ steps.tag.outputs.tag_name }}"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
