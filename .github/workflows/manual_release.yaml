@@ -1,4 +1,4 @@
-name: Manual Release with Date Tag
+name: Manual Release with Auto Date Tag
 
 on:
   workflow_dispatch:
@@ -7,41 +7,44 @@ jobs:
   manual-release:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # autorise à créer tag et release
+      contents: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Compute date tag
-        id: date
+      - name: Compute base tag name (YYYY.M.D)
+        id: base
         run: |
-          DATE_TAG=$(date +'%Y.%-m.%-d')
-          echo "date_tag=$DATE_TAG" >> $GITHUB_OUTPUT
+          BASE_TAG=$(date +'%Y.%-m.%-d')
+          echo "base_tag=$BASE_TAG" >> $GITHUB_OUTPUT
 
-      - name: Fetch tags and check if tag exists
-        id: check
+      - name: Find available tag (base or -1/-2/etc.)
+        id: tag
         run: |
           git fetch --tags
-          if git rev-parse "refs/tags/${{ steps.date.outputs.date_tag }}" >/dev/null 2>&1; then
-            echo "exists=1" >> $GITHUB_OUTPUT
-          else
-            echo "exists=0" >> $GITHUB_OUTPUT
-          fi
+          BASE="${{ steps.base.outputs.base_tag }}"
+          TAG="$BASE"
+          i=1
+          while git rev-parse "refs/tags/$TAG" >/dev/null 2>&1; do
+            TAG="${BASE}-${i}"
+            i=$((i+1))
+          done
+          echo "tag_name=$TAG" >> $GITHUB_OUTPUT
+          echo "Using tag: $TAG"
 
       - name: Create git tag
-        if: steps.check.outputs.exists == '0'
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git tag ${{ steps.date.outputs.date_tag }}
-          git push origin ${{ steps.date.outputs.date_tag }}
+          git tag ${{ steps.tag.outputs.tag_name }}
+          git push origin ${{ steps.tag.outputs.tag_name }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.date.outputs.date_tag }}
-          name: Release ${{ steps.date.outputs.date_tag }}
-          files: acw02_esphome_${{ steps.date.outputs.date_tag }}.zip
+          tag_name: ${{ steps.tag.outputs.tag_name }}
+          name: Release ${{ steps.tag.outputs.tag_name }}
+          files: acw02_esphome_${{ steps.tag.outputs.tag_name }}.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
