@@ -19,11 +19,15 @@ jobs:
           DATE_TAG=$(date +'%Y.%-m.%-d')
           echo "date_tag=$DATE_TAG" >> $GITHUB_OUTPUT
 
-      - name: Check if tag already exists
+      - name: Fetch tags and check if tag exists
         id: check
         run: |
-          TAG_EXISTS=$(git ls-remote --tags origin | grep -c "refs/tags/${{ steps.date.outputs.date_tag }}")
-          echo "exists=$TAG_EXISTS" >> $GITHUB_OUTPUT
+          git fetch --tags
+          if git rev-parse "refs/tags/${{ steps.date.outputs.date_tag }}" >/dev/null 2>&1; then
+            echo "exists=1" >> $GITHUB_OUTPUT
+          else
+            echo "exists=0" >> $GITHUB_OUTPUT
+          fi
 
       - name: Create git tag
         if: steps.check.outputs.exists == '0'
