@@ -98,6 +98,7 @@ usbipd unbind --busid 3-3
    ```
    or use script 
    ```powershell
+   build-docker.bat
    start-docker.bat
    ```
 
@@ -112,6 +113,7 @@ usbipd unbind --busid 3-3
 
 ### 🧪 Optional commands
 
+- `build-docker.bat` : build docker container
 - `build-compile-only-fr.bat` : build only (FR), no flash  
 - `build-compile-only-en.bat` : build only (EN), no flash  
 - `open-container.bat` : enter Docker container (params ota | usb)
