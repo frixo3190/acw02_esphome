@@ -1,4 +1,4 @@
-name: Manual Release with Date Tag
+name: Manual Release with Auto Tag and Changelog
 
 on:
   workflow_dispatch:
@@ -7,41 +7,74 @@ jobs:
   manual-release:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # autorise à créer tag et release
+      contents: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Compute date tag
-        id: date
+      - name: Compute base tag name (YYYY.M.D)
+        id: base
         run: |
-          DATE_TAG=$(date +'%Y.%-m.%-d')
-          echo "date_tag=$DATE_TAG" >> $GITHUB_OUTPUT
+          BASE_TAG=$(date +'%Y.%-m.%-d')
+          echo "base_tag=$BASE_TAG" >> $GITHUB_OUTPUT
 
-      - name: Fetch tags and check if tag exists
-        id: check
+      - name: Find available tag (base or -1/-2/etc.)
+        id: tag
         run: |
           git fetch --tags
-          if git rev-parse "refs/tags/${{ steps.date.outputs.date_tag }}" >/dev/null 2>&1; then
-            echo "exists=1" >> $GITHUB_OUTPUT
-          else
-            echo "exists=0" >> $GITHUB_OUTPUT
-          fi
+          BASE="${{ steps.base.outputs.base_tag }}"
+          TAG="$BASE"
+          i=1
+          while git rev-parse "refs/tags/$TAG" >/dev/null 2>&1; do
+            TAG="${BASE}-${i}"
+            i=$((i+1))
+          done
+          echo "tag_name=$TAG" >> $GITHUB_OUTPUT
+          echo "Using tag: $TAG"
+
+      - name: Read ESPHome version from docker/.env
+        id: esphome
+        run: |
+          VERSION=$(grep '^ESPHOME_VERSION=' docker/.env | sed 's/ESPHOME_VERSION[[:space:]]*=[[:space:]]*//')
+          echo "esphome_version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Generate changelog since last tag
+        id: changelog
+        run: |
+          git fetch --tags
+          CURRENT_TAG="${{ steps.tag.outputs.tag_name }}"
+          LAST_TAG=$(git tag --sort=-creatordate | grep -v "$CURRENT_TAG" | head -n1 || echo "")
+          {
+            echo "### ESPHome version: ${{ steps.esphome.outputs.esphome_version }}"
+            echo ""
+            if [ -n "$LAST_TAG" ]; then
+              echo "Changes since $LAST_TAG:"
+              git log "$LAST_TAG"..HEAD --pretty=format:"- %s (%h)"
+            else
+              echo "Initial release"
+            fi
+          } > changelog.txt
 
       - name: Create git tag
-        if: steps.check.outputs.exists == '0'
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git tag ${{ steps.date.outputs.date_tag }}
-          git push origin ${{ steps.date.outputs.date_tag }}
+          git tag ${{ steps.tag.outputs.tag_name }}
+          git push origin ${{ steps.tag.outputs.tag_name }}
+
+      - name: Create ZIP archive (custom)
+        run: |
+          mkdir "acw02_esphome_${{ steps.tag.outputs.tag_name }}"
+          rsync -a --exclude='.git' ./ "acw02_esphome_${{ steps.tag.outputs.tag_name }}/"
+          zip -r "acw02_esphome_${{ steps.tag.outputs.tag_name }}.zip" "acw02_esphome_${{ steps.tag.outputs.tag_name }}"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.date.outputs.date_tag }}
-          name: Release ${{ steps.date.outputs.date_tag }}
-          files: acw02_esphome_${{ steps.date.outputs.date_tag }}.zip
+          tag_name: ${{ steps.tag.outputs.tag_name }}
+          name: Release ${{ steps.tag.outputs.tag_name }}
+          files: acw02_esphome_${{ steps.tag.outputs.tag_name }}.zip
+          body_path: changelog.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
