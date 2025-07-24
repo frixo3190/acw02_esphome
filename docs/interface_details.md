@@ -36,7 +36,7 @@
 ## ⚙️ Configuration
 
 ![config](images/config.PNG)
-![config](images/resetECOPurifier.PNG)
+![config](images/resetECOPurifierACOFF.PNG)
 
 | #  | Description |
 |---:|-------------|
