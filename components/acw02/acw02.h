@@ -208,9 +208,6 @@ class ACW02 : public Component, public uart::UARTDevice {
   uint32_t last_tx_{0};
   static constexpr uint32_t TX_INTERVAL_MS = 300;
 
-  // retry RX
-  int retry_rx_ = 0;
-
   // variables AC
   Mode mode_ {Mode::COOL};
   bool power_on_ {true};

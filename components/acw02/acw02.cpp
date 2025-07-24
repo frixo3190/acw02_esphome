@@ -1908,20 +1908,8 @@ namespace esphome {
 
 
       if (f.size() != 34 || f[0] != 0x7A || f[1] != 0x7A) {
-        if (f.size() > 34) {
-          if (retry_rx_ < 3) {
-            ESP_LOGW(TAG, "Not understrand RX trame retry (%d/3)", retry_rx_);
-            set_timeout("retryRX", 100, [this]() {
-              send_command_basic(get_status_frame_);
-            });
-            retry_rx_ = retry_rx_ + 1;
-          } else {
-            ESP_LOGW(TAG, "Not understrand RX trame max rety 3/3");
-          }
-        }
         return;
       }
-      retry_rx_ = 0;
 
       bool previous_power_on = power_on_;
       bool previous_fahrenheit = use_fahrenheit_;
