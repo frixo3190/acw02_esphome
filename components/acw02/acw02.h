@@ -69,7 +69,7 @@ class ACW02 : public Component, public uart::UARTDevice {
   void set_swing_horizontal(const std::string &pos);       
   void set_display(bool on);
   void set_eco(bool on);
-  void set_eco_internal(bool on, bool sendCmd);
+  void set_eco_internal(bool on, bool sendCmd, bool force = false);
   void set_night(bool on);
   void set_purifier(bool on);
   void set_mute(bool on);
@@ -153,6 +153,7 @@ class ACW02 : public Component, public uart::UARTDevice {
   void publish_state();
   void publish_availability();
   std::string build_common_config_suffix() const;
+  void publish_discovery_climate_deref();
   void publish_discovery_climate(bool recreate = false);
   void publish_discovery_mode_select(bool recreate = false);
   void publish_discovery_fan_select(bool recreate = false);
@@ -199,6 +200,9 @@ class ACW02 : public Component, public uart::UARTDevice {
   std::deque<std::vector<uint8_t>> tx_queue_;
   uint32_t last_tx_{0};
   static constexpr uint32_t TX_INTERVAL_MS = 300;
+
+  // retry RX
+  int retry_rx_ = 0;
 
   // variables AC
   Mode mode_ {Mode::COOL};
@@ -291,7 +295,7 @@ class ACW02 : public Component, public uart::UARTDevice {
   void decode_state(const std::vector<uint8_t> &frame);
 
   // force mode if select disable mode
-  void force_cool_mode_if_disabled();
+  bool force_cool_mode_if_disabled();
 
   // Protected functions optimization
   void publish_async(const std::string &topic, const std::string &payload, int qos, bool retain);
@@ -313,6 +317,9 @@ class ACW02 : public Component, public uart::UARTDevice {
   std::string build_modes_json_climate() const;
   std::string build_modes_json() const;
   std::string build_fan_speed_json() const;
+
+  //reset option on off
+  void reset_options_when_off();
 
   // temperature auto
   uint8_t auto_temp_defined_heat_cool_calculator();

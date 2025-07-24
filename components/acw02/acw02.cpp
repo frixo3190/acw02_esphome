@@ -95,18 +95,24 @@ namespace esphome {
         const Mode previous_mode = mode_;
         power_on_ = true;
         mode_ = str_to_mode_climate(mode);
-        if (mode_ != Mode::COOL) set_eco_internal(false, false);
+        if (mode_ != Mode::COOL) {
+          set_eco_internal(false, false);
+        } else {
+          // force set if eco_ is true (if eco is not disable auto when off)
+          set_eco_internal(eco_, false, eco_);
+        }
         if (mode_ == Mode::FAN) night_ = false;
         if (mode_ == Mode::AUTO) {
-          publish_discovery_climate();
+          publish_discovery_climate_deref();
         }
         if (previous_mode == Mode::AUTO) {
           target_temp_c_ = previous_target_temp_c_;
           target_temp_f_ = previous_target_temp_f_;
-          publish_discovery_climate();
+          publish_discovery_climate_deref();
         }
       } else {
         power_on_ = false;
+        reset_options_when_off();
       }
     }
 
@@ -115,18 +121,24 @@ namespace esphome {
         const Mode previous_mode = mode_;
         power_on_ = true;
         mode_ = str_to_mode(app_lang_, mode);
-        if (mode_ != Mode::COOL) set_eco_internal(false, false);
+        if (mode_ != Mode::COOL) {
+          set_eco_internal(false, false);
+        } else {
+          // force set if eco_ is true (if eco is not disable auto when off)
+          set_eco_internal(eco_, false, eco_);
+        }
         if (mode_ == Mode::FAN) night_ = false;
         if (mode_ == Mode::AUTO) {
-          publish_discovery_climate();
+          publish_discovery_climate_deref();
         }
         if (previous_mode == Mode::AUTO) {
           target_temp_c_ = previous_target_temp_c_;
           target_temp_f_ = previous_target_temp_f_;
-          publish_discovery_climate();
+          publish_discovery_climate_deref();
         }
       } else {
         power_on_ = false;
+        reset_options_when_off();
       }
     }
 
@@ -139,7 +151,7 @@ namespace esphome {
         if (temp > 31) temp = 31;
         target_temp_f_ = static_cast<uint8_t>(celsius_to_fahrenheit(temp));
         target_temp_c_ = static_cast<uint8_t>(temp);
-        if (!eco_ && mode_ != Mode::AUTO) {
+        if ((!eco_ && mode_ != Mode::AUTO || !power_on_)) {
           send_command();
         } else {
           set_timeout("publishStateDelay", 100, [this, oldC, oldF]() {
@@ -160,7 +172,7 @@ namespace esphome {
         if (temp > 88) temp = 88;
         target_temp_f_ = static_cast<uint8_t>(temp);
         target_temp_c_ = static_cast<uint8_t>(fahrenheit_to_celsius(temp));
-        if (!eco_ && mode_ != Mode::AUTO) {
+        if ((!eco_ && mode_ != Mode::AUTO || !power_on_)) {
           send_command();
         } else {
           set_timeout("publishStateDelay", 100, [this, oldC, oldF]() {
@@ -216,8 +228,8 @@ namespace esphome {
       }
     }
 
-    void ACW02::set_eco_internal(bool on, bool sendCmd) {
-      if (eco_ != on) {
+    void ACW02::set_eco_internal(bool on, bool sendCmd, bool force) {
+      if (eco_ != on || force) {
         eco_ = on;
         if (on) {
           night_ = false;
@@ -756,11 +768,11 @@ namespace esphome {
       publish_async(topic_night, payload_night, 1, true);
 
       const std::string topic_fan_speed = app_name_ + "/fan_speed_availability";
-      std::string payload_fan_speed = (eco_ == false) ? "available" : "unavailable";
+      std::string payload_fan_speed = (eco_ == false || !power_on_) ? "available" : "unavailable";
       publish_async(topic_fan_speed, payload_fan_speed, 1, true);
 
       const std::string topic_target_temp = app_name_ + "/target_temp_availability";
-      std::string payload_target_temp = (mode_ != Mode::AUTO && eco_ == false) ? "available" : "unavailable";
+      std::string payload_target_temp = ((mode_ != Mode::AUTO && eco_ == false) || !power_on_) ? "available" : "unavailable";
       publish_async(topic_target_temp, payload_target_temp, 1, true);
 
       const std::string topic_purifier = app_name_ + "/purifier_availability";
@@ -783,6 +795,12 @@ namespace esphome {
       })";
     }
 
+    void ACW02::publish_discovery_climate_deref() {
+      set_timeout("publish_discovery_climate_deref", 100, [this]() {
+        publish_discovery_climate();
+      });
+    }
+
     void ACW02::publish_discovery_climate(bool recreate) {
       if (!mqtt_) return;
 
@@ -794,11 +812,11 @@ namespace esphome {
       std::string mintemp = use_fahrenheit_ ? "61" : "16";
       std::string maxtemp = use_fahrenheit_ ? "88" : "31";
 
-      if (mode_ == Mode::AUTO) {
+      if (power_on_ && mode_ == Mode::AUTO) {
         auto_temp_defined_heat_cool_calculator();
       }
 
-      if (eco_ || mode_ == Mode::AUTO) {
+      if (power_on_ && (eco_ || mode_ == Mode::AUTO)) {
         mintemp = use_fahrenheit_ ? std::to_string(target_temp_f_) : std::to_string(target_temp_c_);
         maxtemp = mintemp;
       }
@@ -1788,9 +1806,23 @@ namespace esphome {
       }
 
 
-      if (f.size() < 34 || f[0] != 0x7A || f[1] != 0x7A)
-      return;
+      if (f.size() != 62 || f[0] != 0x7A || f[1] != 0x7A) {
+        if (f.size() > 62) {
+          if (retry_rx_ < 3) {
+            ESP_LOGW(TAG, "Not understrand RX trame retry (%d/3)", retry_rx_);
+            set_timeout("retryRX", 100, [this]() {
+              send_command_basic(get_status_frame_);
+            });
+            retry_rx_ = retry_rx_ + 1;
+          } else {
+            ESP_LOGW(TAG, "Not understrand RX trame max rety 3/3");
+          }
+        }
+        return;
+      }
+      retry_rx_ = 0;
 
+      bool previous_power_on = power_on_;
       bool previous_fahrenheit = use_fahrenheit_;
       bool previous_eco = eco_;
       Mode previous_mode = mode_;
@@ -1878,44 +1910,74 @@ namespace esphome {
         publish_state();
       }
 
-      if (!eco_ && mode_ != Mode::AUTO) {
+      if (previous_power_on != power_on_) {
+        reset_options_when_off();
+      }
+
+      if ((!eco_ && mode_ != Mode::AUTO) || !power_on_) {
           previous_target_temp_c_ = target_temp_c_;
           previous_temp_c_pref_.save(&previous_target_temp_c_);
           previous_target_temp_f_ = target_temp_f_;
           previous_temp_f_pref_.save(&previous_target_temp_f_);
       }
-      if (mode_ == Mode::AUTO && from_remote_) {
-          const uint8_t temptarget_temp_c_ = target_temp_c_;
-          const uint8_t tempCalc = auto_temp_defined_heat_cool_calculator();
-          if (tempCalc != temptarget_temp_c_) {
-            const bool prevMute = mute_;
-            mute_ = true;
-            send_command();
-            mute_ = prevMute;
-          }
-      }
+      
       
       if (previous_eco != eco_) {
         recalculate_climate_depending_by_option();
       } else if (previous_mode != mode_ && (previous_mode == Mode::AUTO || mode_ == Mode::AUTO)) {
-        publish_discovery_climate();
+        publish_discovery_climate_deref();
       } else if (previous_fahrenheit != use_fahrenheit_) {
         publish_discovery_climate(true);
       }
 
-      force_cool_mode_if_disabled();
+
+      if (force_cool_mode_if_disabled()) {
+        if (mode_ == Mode::AUTO && from_remote_) {
+            const uint8_t temptarget_temp_c_ = target_temp_c_;
+            const uint8_t tempCalc = auto_temp_defined_heat_cool_calculator();
+            if (tempCalc != temptarget_temp_c_) {
+              const bool prevMute = mute_;
+              mute_ = true;
+              send_command();
+              mute_ = prevMute;
+            } else {
+              send_command();
+            }
+        } else {
+          send_command();
+        }
+      } else {
+        if (mode_ == Mode::AUTO && from_remote_) {
+            const uint8_t temptarget_temp_c_ = target_temp_c_;
+            const uint8_t tempCalc = auto_temp_defined_heat_cool_calculator();
+            if (tempCalc != temptarget_temp_c_) {
+              const bool prevMute = mute_;
+              mute_ = true;
+              send_command();
+              mute_ = prevMute;
+            }
+        }
+      }
     }
 
-    void ACW02::force_cool_mode_if_disabled() {
+    bool ACW02::force_cool_mode_if_disabled() {
       Mode tmp = mode_;
       if (mode_ == Mode::AUTO && is_disable_mode_auto()) tmp = Mode::COOL;
       if (mode_ == Mode::HEAT && is_disable_mode_heat()) tmp = Mode::COOL;
       if (mode_ == Mode::FAN && is_disable_mode_fan())   tmp = Mode::COOL;
       if (mode_ == Mode::DRY && is_disable_mode_dry())   tmp = Mode::COOL;
       if (tmp != mode_) {
-        set_mode(mode_to_string_climate(tmp));
-        send_command();
+        if (mode_ == Mode::AUTO) {
+          mode_ = tmp;
+          target_temp_c_ = previous_target_temp_c_;
+          target_temp_f_ = previous_target_temp_f_;
+          publish_discovery_climate_deref();
+        } else {
+          mode_ = tmp;
+        }
+        return true;
       }
+      return false;
     }
 
     void ACW02::publish_async(const std::string &topic, const std::string &payload, int qos, bool retain) {
@@ -2117,6 +2179,19 @@ namespace esphome {
       return "[\"" + join(options, R"(",")") + "\"]";
     }
 
+
+    void ACW02::reset_options_when_off() {
+        //todo disable by default when off or not ??
+        //disable mode eco
+        // set_eco_internal(false, false);
+        //disable mode purifier
+        // purifier_ = false;
+
+        //disable mode night
+        night_ = false;
+        publish_discovery_climate_deref();
+    }
+
     uint8_t ACW02::auto_temp_defined_heat_cool_calculator() {
       if (ambient_temp_c_ < 20) {
         target_temp_c_ = 20.0f;
@@ -2133,7 +2208,7 @@ namespace esphome {
       if (option_recalculate_climate_) {
         publish_discovery_climate(true);
       } else {
-        publish_discovery_climate();
+        publish_discovery_climate_deref();
       }
       
     }

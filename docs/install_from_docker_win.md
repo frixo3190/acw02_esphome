@@ -117,12 +117,12 @@ usbipd unbind --busid 3-3
 - `build-compile-only-fr.bat` : build only (FR), no flash  
 - `build-compile-only-en.bat` : build only (EN), no flash  
 - `open-container.bat` : enter Docker container (params ota | usb)
-- `start-docker.bat` : only start docker
-- `stop-docker.bat` : only stop docker
+- `start-docker.bat` : only start docker (ota only)
+- `stop-docker.bat` : only stop docker (ota + usb)
 - `attach-usb.bat` : script for attach usb to docker
 - `detach-usb.bat` : script for detach usb to docker
-- `start-docker-with-attach-USB.bat` : run attach USB to docker and start docker
-- `stop-docker-with-attach-USB.bat` : run stop docker and detach USB to docker
+- `start-docker-with-attach-USB.bat` : run attach USB to docker and start docker (ota + usb)
+- `stop-docker-with-attach-USB.bat` : run stop docker and detach USB to docker (ota + usb)
 
 ---
 
