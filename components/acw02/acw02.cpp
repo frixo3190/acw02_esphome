@@ -77,7 +77,7 @@ namespace esphome {
         last_rx_byte_time_ = millis();
       }
 
-      if (!rx_buffer_.empty() && millis() - last_rx_byte_time_ > 50) {
+      if (!rx_buffer_.empty() && millis() - last_rx_byte_time_ > 10) {
         ESP_LOGI(TAG, "RX: [%s]", format_hex_pretty(rx_buffer_).c_str());
         decode_state(rx_buffer_);
         rx_buffer_.clear();
@@ -1867,8 +1867,8 @@ namespace esphome {
       }
 
 
-      if (f.size() != 62 || f[0] != 0x7A || f[1] != 0x7A) {
-        if (f.size() > 62) {
+      if (f.size() != 34 || f[0] != 0x7A || f[1] != 0x7A) {
+        if (f.size() > 34) {
           if (retry_rx_ < 3) {
             ESP_LOGW(TAG, "Not understrand RX trame retry (%d/3)", retry_rx_);
             set_timeout("retryRX", 100, [this]() {
