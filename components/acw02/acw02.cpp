@@ -77,10 +77,50 @@ namespace esphome {
         last_rx_byte_time_ = millis();
       }
 
+      // if (!rx_buffer_.empty() && millis() - last_rx_byte_time_ > 10) {
+      //   ESP_LOGI(TAG, "RX: [%s]", format_hex_pretty(rx_buffer_).c_str());
+      //   decode_state(rx_buffer_);
+      //   rx_buffer_.clear();
+      // }
+
+      // Wait at least 10ms of silence before processing buffer
       if (!rx_buffer_.empty() && millis() - last_rx_byte_time_ > 10) {
-        ESP_LOGI(TAG, "RX: [%s]", format_hex_pretty(rx_buffer_).c_str());
-        decode_state(rx_buffer_);
-        rx_buffer_.clear();
+        static const std::array<size_t, 4> VALID_SIZES = {13, 18, 28, 34};
+
+        size_t offset = 0;
+        while (rx_buffer_.size() - offset >= 13) {  // Minimum frame size
+          bool found = false;
+
+          for (size_t size : VALID_SIZES) {
+            if (offset + size > rx_buffer_.size())
+              continue;
+
+            if (rx_buffer_[offset] != 0x7A || rx_buffer_[offset + 1] != 0x7A)
+              continue;
+
+            const uint8_t *start = rx_buffer_.data() + offset;
+            uint16_t expected_crc = (start[size - 2] << 8) | start[size - 1];
+            uint16_t computed_crc = crc16(start, size - 2);
+
+            if (computed_crc == expected_crc) {
+              std::vector<uint8_t> frame(start, start + size);
+              ESP_LOGI(TAG, "RX: [%s]", format_hex_pretty(frame).c_str());
+              decode_state(frame);
+              offset += size;
+              found = true;
+              break;
+            }
+          }
+
+          if (!found) {
+            // Skip invalid start byte and retry
+            offset++;
+          }
+        }
+
+        // Remove processed bytes from rx_buffer_
+        if (offset > 0)
+          rx_buffer_.erase(rx_buffer_.begin(), rx_buffer_.begin() + offset);
       }
 
       static uint32_t last_keepalive = 0;
