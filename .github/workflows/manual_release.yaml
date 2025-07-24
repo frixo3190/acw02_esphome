@@ -33,10 +33,10 @@ jobs:
           echo "tag_name=$TAG" >> $GITHUB_OUTPUT
           echo "Using tag: $TAG"
 
-      - name: Read ESPHome version from .env
+      - name: Read ESPHome version from docker/.env
         id: esphome
         run: |
-          VERSION=$(grep '^ESPHOME_VERSION=' .env | cut -d= -f2)
+          VERSION=$(grep '^ESPHOME_VERSION=' docker/.env | sed 's/ESPHOME_VERSION[[:space:]]*=[[:space:]]*//')
           echo "esphome_version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Generate changelog since last tag
