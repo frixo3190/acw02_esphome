@@ -37,14 +37,9 @@ jobs:
           git tag ${{ steps.date.outputs.date_tag }}
           git push origin ${{ steps.date.outputs.date_tag }}
 
-      - name: Prepare ZIP archive
+      - name: Create full ZIP archive of the repo
         run: |
-          mkdir release
-          cp acw02.yaml release/
-          cp README.md release/ || true
-          cp -r custom_components release/
-          cd release
-          zip -r ../acw02_esphome_${{ steps.date.outputs.date_tag }}.zip .
+          zip -r acw02_esphome_${{ steps.date.outputs.date_tag }}.zip .
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
