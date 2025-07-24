@@ -1,4 +1,4 @@
-name: Manual Release with Auto Date Tag
+name: Manual Release with Auto Tag and Changelog
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ jobs:
   manual-release:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write  # nécessaire pour créer tag et release
 
     steps:
       - name: Checkout repository
@@ -33,6 +33,28 @@ jobs:
           echo "tag_name=$TAG" >> $GITHUB_OUTPUT
           echo "Using tag: $TAG"
 
+      - name: Read ESPHome version from .env
+        id: esphome
+        run: |
+          VERSION=$(grep '^ESPHOME_VERSION=' .env | cut -d= -f2)
+          echo "esphome_version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Generate changelog since last tag
+        id: changelog
+        run: |
+          git fetch --tags
+          LAST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          {
+            echo "### ESPHome version: ${{ steps.esphome.outputs.esphome_version }}"
+            echo ""
+            if [ -n "$LAST_TAG" ]; then
+              echo "Changes since $LAST_TAG:"
+              git log "$LAST_TAG"..HEAD --pretty=format:"- %s (%h)"
+            else
+              echo "Initial release"
+            fi
+          } > changelog.txt
+
       - name: Create git tag
         run: |
           git config user.name "github-actions"
@@ -46,5 +68,6 @@ jobs:
           tag_name: ${{ steps.tag.outputs.tag_name }}
           name: Release ${{ steps.tag.outputs.tag_name }}
           files: acw02_esphome_${{ steps.tag.outputs.tag_name }}.zip
+          body_path: changelog.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
