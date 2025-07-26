@@ -13,7 +13,7 @@ using LocaleMap = std::map<std::string, CatDict>;
 
 static const std::map<std::string, std::map<std::string, std::string>> LOCALIZED_NAMES = {
         {"fr", {
-            {"climate", "AC"},
+            {"climate", "Climatiseur"},
             {"mode", "Mode"},
             {"fan", "Ventilation"},
             {"swing", "Oscillation vertical"},
