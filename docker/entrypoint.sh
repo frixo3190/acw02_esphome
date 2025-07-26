@@ -23,7 +23,17 @@ cd "$BUILD_DIR" || exit 1
 # Lance la commande esphome
 esphome "$CMD" "$YAML_PATH" "${@:3}"
 
-# Export les bin si compilation (ou run) réussie
-OUTPUT_DIR="/output/${YAML_FILENAME%.*}"
+# Récupère dev_name dans les substitutions du fichier YAML
+DEV_NAME=$(grep -A5 '^substitutions:' "$YAML_PATH" | grep 'dev_name:' | awk -F': ' '{print $2}' | tr -d '\r')
+
+# Fallback si pas trouvé
+if [ -z "$DEV_NAME" ]; then
+  DEV_NAME="default"
+fi
+
+# Crée le répertoire de sortie avec dev_name
+OUTPUT_DIR="/output/${YAML_FILENAME%.*}/$DEV_NAME"
 mkdir -p "$OUTPUT_DIR"
+
+# Copie tous les fichiers .bin compilés vers le bon dossier
 find "$BUILD_DIR/.esphome/build" -type f -name "*.bin" -exec cp {} "$OUTPUT_DIR/" \;
