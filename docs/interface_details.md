@@ -23,13 +23,17 @@
 
 ## 📡 Sensors
 
-![sensor](images/sensor.PNG)
+![sensor](images/sensor2.PNG)
 
 | #  | Description |
 |---:|-------------|
-| 1  | Filter status — Indicates whether cleaning is needed (`OK` if everything is fine) |
-| 2  | Source of last command — Whether the last command came from the ESP or the remote |
-| 3  | Ambient temperature — The current temperature reported by the AC |
+| 1  | Source of last command — Whether the last command came from the ESP or the remote |
+| 2  | AC error detected |
+| 3  | AC error info |
+| 4  | Filter status — Indicates whether cleaning is needed (`OK` if everything is fine) |
+| 5  | Ambient temperature — The current temperature reported by the AC |
+| 6  | AC warn detected |
+| 7  | AC warn info |
 
 ---
 
