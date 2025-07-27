@@ -3,6 +3,7 @@ text:
     name: "MQTT: Broker"
     id: mqtt_broker_address_input
     entity_category: config
+    update_interval: never
     mode: text
     lambda: |-
       return id(ac_ctrl).get_mqtt_broker();
@@ -10,11 +11,13 @@ text:
       then:
         - lambda: |-
             id(ac_ctrl).set_mqtt_broker(x);
+            id(mqtt_broker_address_input).update();
 
   - platform: template
     name: "MQTT: Login"
     id: mqtt_login_input
     entity_category: config
+    update_interval: never
     mode: text
     lambda: |-
       return id(ac_ctrl).get_mqtt_username();
@@ -22,11 +25,13 @@ text:
       then:
         - lambda: |-
             id(ac_ctrl).set_mqtt_username(x);
+            id(mqtt_login_input).update();
 
   - platform: template
     name: "MQTT: Password"
     id: mqtt_password_input
     entity_category: config
+    update_interval: never
     mode: password
     lambda: |-
       return id(ac_ctrl).get_mqtt_password();
@@ -34,10 +39,12 @@ text:
       then:
         - lambda: |-
             id(ac_ctrl).set_mqtt_password(x);
+            id(mqtt_password_input).update();
 
   - platform: template
     name: "MQTT: Port"
     id: mqtt_port_input
+    update_interval: never
     mode: text
     entity_category: config
     lambda: |-
@@ -46,6 +53,7 @@ text:
       then:
         - lambda: |-
             id(ac_ctrl).set_mqtt_port_from_string(x);
+            id(mqtt_port_input).update();
 
 switch:
   - platform: template
