@@ -232,6 +232,16 @@ text_sensor:
       name: "WiFi: MAC"
   - platform: version
     name: "ESP: Version"
+  - platform: template
+    name: "Warn Info"
+    icon: mdi:alert-circle-outline
+    id: ac_warn_text
+    internal: true
+  - platform: template
+    name: "Error Info"
+    icon: mdi:alert-octagon-outline
+    id: ac_error_text
+    internal: true
 
 sensor:
   - platform: wifi_signal
@@ -262,6 +272,16 @@ binary_sensor:
     name: "Filter to clean"
     device_class: problem
     internal: true
+  - platform: template
+    id: warn_sensor
+    name: "Warn"
+    internal: true
+    device_class: problem
+  - platform: template
+    id: error_sensor
+    name: "Error"
+    device_class: problem
+    internal: true
 
 globals:
   - id: stop_mqtt_updates
@@ -275,6 +295,10 @@ interval:
       lambda: |-
         id(ac_ctrl).set_mqtt_connected_sensor(id(mqtt_conn_status));
         id(ac_ctrl).set_filter_dirty_sensor(id(filter_dirty));
+        id(ac_ctrl).set_warn_sensor(id(warn_sensor));
+        id(ac_ctrl).set_error_sensor(id(error_sensor));
+        id(ac_ctrl).set_warn_text_sensor(id(ac_warn_text));
+        id(ac_ctrl).set_error_text_sensor(id(ac_error_text));
   - interval: 2s
     then:
       - lambda: |-

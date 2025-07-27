@@ -478,11 +478,27 @@ namespace esphome {
     }
 
     void ACW02::set_mqtt_connected_sensor(esphome::binary_sensor::BinarySensor *sensor) {
-      this->mqtt_connected_sensor_ = sensor;
+      mqtt_connected_sensor_ = sensor;
     }
 
     void ACW02::set_filter_dirty_sensor(binary_sensor::BinarySensor *sensor) {
-      this->filter_dirty_sensor_ = sensor;
+      filter_dirty_sensor_ = sensor;
+    }
+
+    void ACW02::set_warn_sensor(binary_sensor::BinarySensor *sensor) {
+      warn_sensor_ = sensor;
+    }
+
+    void ACW02::set_error_sensor(binary_sensor::BinarySensor *sensor) {
+      error_sensor_ = sensor;
+    }
+
+    void ACW02::set_warn_text_sensor(esphome::text_sensor::TextSensor *sensor) {
+      warn_text_sensor_ = sensor;
+    }
+
+    void ACW02::set_error_text_sensor(esphome::text_sensor::TextSensor *sensor) {
+      error_text_sensor_ = sensor;
     }
 
     void ACW02::reload_ac_info() {
@@ -685,7 +701,7 @@ namespace esphome {
           ESP_LOGI(TAG, "MQTT connected → publishing discovery and state");
           if (mqtt_connected_sensor_) mqtt_connected_sensor_->publish_state(true);
           set_timeout("mqtt_discovery_delay", 100, [this]() {
-            this->set_interval("mqtt_publish_flush", 50, [this]() {
+            set_interval("mqtt_publish_flush", 50, [this]() {
               if (!mqtt_publish_queue_.empty()) {
                 const auto &entry = mqtt_publish_queue_.front();
                 mqtt_->publish(entry.topic, entry.payload, entry.qos, entry.retain);
@@ -713,6 +729,10 @@ namespace esphome {
             publish_discovery_temperature_sensor();
             publish_discovery_last_cmd_origin_sensor();
             publish_discovery_filter_dirty_sensor();
+            publish_discovery_warn_sensor();
+            publish_discovery_error_sensor();
+            publish_discovery_warn_text_sensor();
+            publish_discovery_error_text_sensor();
             send_command_basic(get_status_frame_);
           });
           mqtt_->subscribe(app_name_ + "/cmd/#", [this](const std::string &topic, const std::string &payload) {
@@ -807,6 +827,10 @@ namespace esphome {
       payload += "\"unit\":\"" + std::string(use_fahrenheit_ ? "°F" : "°C") + "\",";
       payload += "\"last_cmd_origin\":\"" + std::string(from_remote_ ? "Remote" : "ESP") + "\",";
       payload += "\"filter_dirty\":\"" + std::string(filter_dirty_ ? "true" : "false") + "\",";
+      payload += "\"warn\":\"" + std::string(warn_ ? "true" : "false") + "\",";
+      payload += "\"error\":\"" + std::string(error_ ? "true" : "false") + "\",";
+      payload += "\"warn_text\":\"" + warn_text_ + "\",";
+      payload += "\"error_text\":\"" + error_text_ + "\",";
       payload += "\"g1_mute\":\"" + std::string(mute_ ? "on" : "off") + "\",";
       payload += "\"g1_reset_eco_purifier\":\"" + std::string(auto_off_options_when_ac_off_ ? "on" : "off") + "\",";
       payload += "\"g1_option_recalculate_climate\":\"" + std::string(option_recalculate_climate_ ? "on" : "off") + "\"";
@@ -1733,6 +1757,137 @@ namespace esphome {
       }
     }
 
+    void ACW02::publish_discovery_warn_sensor(bool recreate) {
+      if (!mqtt_)
+        return;
+
+      const std::string topic_base = app_name_;
+      const std::string unique_id = app_sanitize_name_ + "_mqtt_sensor_warn";
+      std::string config_topic = "homeassistant/binary_sensor/" + topic_base + "-warn/config";
+
+      std::string payload = R"({
+        "name": ")" + get_localized_name(app_lang_, "warn") + R"(",
+        "object_id": ")" + unique_id + R"(",
+        "unique_id": ")" + unique_id + R"(",
+        "stat_t": ")" + topic_base + R"(/state",
+        "icon": "mdi:alert-circle-outline",
+        "val_tpl": "{{ value_json.warn }}",
+        "device_class": "problem",
+        "avty_t": ")" + topic_base + R"(/status",
+        "pl_on": "true",
+        "pl_off": "false",
+        "pl_avail": "online",
+        "pl_not_avail": "offline")" +
+        build_common_config_suffix() + R"(
+      })";
+
+      if (recreate) {
+        publish_async(config_topic, std::string(""), 1, true);
+        set_timeout("publish_discovery_warn_sensor", mqtt_delay_rebuild_, [this, config_topic, payload]() {
+          publish_async(config_topic, payload, 1, true);
+        });
+      } else {
+        publish_async(config_topic, payload, 1, true);
+      }
+    }
+
+    void ACW02::publish_discovery_error_sensor(bool recreate) {
+      if (!mqtt_)
+        return;
+
+      const std::string topic_base = app_name_;
+      const std::string unique_id = app_sanitize_name_ + "_mqtt_sensor_error";
+      std::string config_topic = "homeassistant/binary_sensor/" + topic_base + "-error/config";
+
+      std::string payload = R"({
+        "name": ")" + get_localized_name(app_lang_, "error") + R"(",
+        "object_id": ")" + unique_id + R"(",
+        "unique_id": ")" + unique_id + R"(",
+        "stat_t": ")" + topic_base + R"(/state",
+        "icon": "mdi:alert-octagon-outline",
+        "val_tpl": "{{ value_json.error }}",
+        "device_class": "problem",
+        "avty_t": ")" + topic_base + R"(/status",
+        "pl_on": "true",
+        "pl_off": "false",
+        "pl_avail": "online",
+        "pl_not_avail": "offline")" +
+        build_common_config_suffix() + R"(
+      })";
+
+      if (recreate) {
+        publish_async(config_topic, std::string(""), 1, true);
+        set_timeout("publish_discovery_error_sensor", mqtt_delay_rebuild_, [this, config_topic, payload]() {
+          publish_async(config_topic, payload, 1, true);
+        });
+      } else {
+        publish_async(config_topic, payload, 1, true);
+      }
+    }
+
+    void ACW02::publish_discovery_warn_text_sensor(bool recreate) {
+      if (!mqtt_)
+        return;
+
+      const std::string topic_base = app_name_;
+      const std::string unique_id = app_sanitize_name_ + "_mqtt_warn_text";
+      std::string config_topic = "homeassistant/sensor/" + topic_base + "-warn-text/config";
+
+      std::string payload = R"({
+        "name": ")" + get_localized_name(app_lang_, "warnText") + R"(",
+        "object_id": ")" + unique_id + R"(",
+        "unique_id": ")" + unique_id + R"(",
+        "stat_t": ")" + topic_base + R"(/state",
+        "val_tpl": "{{ value_json.warn_text }}",
+        "icon": "mdi:alert-circle-outline",
+        "avty_t": ")" + topic_base + R"(/status",
+        "pl_avail": "online",
+        "pl_not_avail": "offline")" +
+        build_common_config_suffix() + R"(
+      })";
+
+      if (recreate) {
+        publish_async(config_topic, std::string(""), 1, true);
+        set_timeout("publish_discovery_warn_text_sensor", mqtt_delay_rebuild_, [this, config_topic, payload]() {
+          publish_async(config_topic, payload, 1, true);
+        });
+      } else {
+        publish_async(config_topic, payload, 1, true);
+      }
+    }
+
+    void ACW02::publish_discovery_error_text_sensor(bool recreate) {
+      if (!mqtt_)
+        return;
+
+      const std::string topic_base = app_name_;
+      const std::string unique_id = app_sanitize_name_ + "_mqtt_error_text";
+      std::string config_topic = "homeassistant/sensor/" + topic_base + "-error-text/config";
+
+      std::string payload = R"({
+        "name": ")" + get_localized_name(app_lang_, "errorText") + R"(",
+        "object_id": ")" + unique_id + R"(",
+        "unique_id": ")" + unique_id + R"(",
+        "stat_t": ")" + topic_base + R"(/state",
+        "val_tpl": "{{ value_json.error_text }}",
+        "icon": "mdi:alert-octagon-outline",
+        "avty_t": ")" + topic_base + R"(/status",
+        "pl_avail": "online",
+        "pl_not_avail": "offline")" +
+        build_common_config_suffix() + R"(
+      })";
+
+      if (recreate) {
+        publish_async(config_topic, std::string(""), 1, true);
+        set_timeout("publish_discovery_error_text_sensor", mqtt_delay_rebuild_, [this, config_topic, payload]() {
+          publish_async(config_topic, payload, 1, true);
+        });
+      } else {
+        publish_async(config_topic, payload, 1, true);
+      }
+    }
+        
+
     void ACW02::rebuild_mqtt_entity() {
       publish_discovery_climate(true);
       publish_discovery_mode_select(true);
@@ -1755,6 +1910,10 @@ namespace esphome {
       publish_discovery_temperature_sensor(true);
       publish_discovery_last_cmd_origin_sensor(true);
       publish_discovery_filter_dirty_sensor(true);
+      publish_discovery_warn_sensor(true);
+      publish_discovery_error_sensor(true);
+      publish_discovery_warn_text_sensor(true);
+      publish_discovery_error_text_sensor(true);
     }
 
     void ACW02::apply_disable_settings() {
@@ -1870,37 +2029,76 @@ namespace esphome {
 
       if (f.size() == 28 && f[0] == 0x7A && f[1] == 0x7A && f[2] == 0xD5 && f[3] == 0x21) {
         bool old_filter_dirty_ = filter_dirty_;
+        bool old_warn_ = warn_;
+        bool old_error_ = error_;
         uint8_t warn = f[10];
         uint8_t fault = f[12];
         if (fault != 0x00) {
           std::string fault_msg;
           switch (fault) {
-            case 0x04: fault_msg = "unsupported_mode"; break;
-            case 0x01: fault_msg = "sensor_error"; break;
-            default: fault_msg = "unknown_fault"; break;
+            case 0x04: fault_msg = "PC: Conflict mode"; break;
+            default: fault_msg = "??: Unknown fault"; break;
+          }
+          
+          ESP_LOGE(TAG, "AC error : fault_code=0x%02X (%s)", fault, fault_msg.c_str());
+          error_ = true;
+          if (error_sensor_) {
+            error_sensor_->publish_state(true);
+          }
+          if (error_text_sensor_) {
+            char buf[32];
+            snprintf(buf, sizeof(buf), "0x%02X (%s)", fault, fault_msg.c_str());
+            error_text_sensor_->publish_state(buf);
+            error_text_ = std::string(buf);
           }
 
-          ESP_LOGE(TAG, "AC error : fault_code=0x%02X (%s)", fault, fault_msg.c_str());
         } else if (warn != 0x00) {
           std::string warn_msg;
           switch (warn) {
             case 0x80: 
-              warn_msg = "filter_clean";
+              warn_msg = "CL: Filter to clean";
               filter_dirty_ = true;
               if (filter_dirty_sensor_) {
                 filter_dirty_sensor_->publish_state(true);
               }
               break;
-            default: warn_msg = "unknown_warn"; break;
+            default: warn_msg = "??: Unknown warn"; break;
           }
           ESP_LOGW(TAG, "AC warn : warn_code=0x%02X (%s)", warn, warn_msg.c_str());
+          warn_ = true;
+          if (warn_sensor_) {
+            warn_sensor_->publish_state(true);
+          }
+          if (warn_text_sensor_) {
+            char buf[32];
+            snprintf(buf, sizeof(buf), "0x%02X (%s)", warn, warn_msg.c_str());
+            warn_text_sensor_->publish_state(buf);
+            warn_text_ = std::string(buf);
+          }
         } else {
           filter_dirty_ = false;
           if (filter_dirty_sensor_) {
             filter_dirty_sensor_->publish_state(false);
           }
+          warn_ = false;
+          error_ = false;
+          if (warn_sensor_) {
+            warn_sensor_->publish_state(false);
+          }
+          if (error_sensor_) {
+            error_sensor_->publish_state(false);
+          }
+          if (warn_text_sensor_) {
+            warn_text_sensor_->publish_state("No Warn");
+            warn_text_ = "No Warn";
+          }
+          if (error_text_sensor_) {
+            error_text_sensor_->publish_state("No Error");
+            error_text_ = "No Error";
+          }
         }
-        if (mqtt_ && old_filter_dirty_ != filter_dirty_) {
+
+        if (mqtt_ && (old_filter_dirty_ != filter_dirty_ || old_warn_ != warn_ || old_error_ != error_)) {
           publish_state();
         }
         return;

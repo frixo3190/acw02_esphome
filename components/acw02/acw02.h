@@ -102,6 +102,11 @@ class ACW02 : public Component, public uart::UARTDevice {
 
   // Setters sensor fault/warn
   void set_filter_dirty_sensor(binary_sensor::BinarySensor *sensor);
+  void set_warn_sensor(binary_sensor::BinarySensor *sensor);
+  void set_error_sensor(binary_sensor::BinarySensor *sensor);
+  void set_warn_text_sensor(esphome::text_sensor::TextSensor *sensor);
+  void set_error_text_sensor(esphome::text_sensor::TextSensor *sensor);
+
 
 
   // Send command UART
@@ -181,6 +186,10 @@ class ACW02 : public Component, public uart::UARTDevice {
   void publish_discovery_temperature_sensor(bool recreate = false);
   void publish_discovery_last_cmd_origin_sensor(bool recreate = false);
   void publish_discovery_filter_dirty_sensor(bool recreate = false);
+  void publish_discovery_warn_sensor(bool recreate = false);
+  void publish_discovery_error_sensor(bool recreate = false);
+  void publish_discovery_warn_text_sensor(bool recreate = false);
+  void publish_discovery_error_text_sensor(bool recreate = false);
 
   // MQTT publics function for rebuild all mqtt entities
   void rebuild_mqtt_entity();
@@ -234,11 +243,19 @@ class ACW02 : public Component, public uart::UARTDevice {
   bool option_g1_mqtt_ {false};
   bool from_remote_ {false};
   bool filter_dirty_ {false};
+  bool warn_ {false};
+  bool error_ {false};
+  std::string warn_text_ {"No Warn"};
+  std::string error_text_ {"No Error"};
   Swing  swing_position_{Swing::P1};
   SwingHorizontal  swing_horizontal_{SwingHorizontal::STOP};
 
   // variables AC fault/warn
   binary_sensor::BinarySensor *filter_dirty_sensor_{nullptr};
+  binary_sensor::BinarySensor *warn_sensor_{nullptr};
+  binary_sensor::BinarySensor *error_sensor_{nullptr};
+  esphome::text_sensor::TextSensor *warn_text_sensor_{nullptr};
+  esphome::text_sensor::TextSensor *error_text_sensor_{nullptr};
 
   // variables persisted AC settings
   ESPPreferenceObject mute_pref_;
