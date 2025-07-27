@@ -10,7 +10,6 @@ text:
       then:
         - lambda: |-
             id(ac_ctrl).set_mqtt_broker(x);
-    update_interval: 1s
 
   - platform: template
     name: "MQTT: Login"
@@ -23,7 +22,6 @@ text:
       then:
         - lambda: |-
             id(ac_ctrl).set_mqtt_username(x);
-    update_interval: 1s
 
   - platform: template
     name: "MQTT: Password"
@@ -36,7 +34,6 @@ text:
       then:
         - lambda: |-
             id(ac_ctrl).set_mqtt_password(x);
-    update_interval: 1s
 
   - platform: template
     name: "MQTT: Port"
@@ -49,7 +46,6 @@ text:
       then:
         - lambda: |-
             id(ac_ctrl).set_mqtt_port_from_string(x);
-    update_interval: 1s
 
 switch:
   - platform: template
@@ -214,14 +210,16 @@ text_sensor:
     entity_category: "diagnostic"
     lambda: |-
       return { id(ac_ctrl).get_address() };
-    update_interval: 5s
   - platform: wifi_info
     ip_address:
       name: "WiFi: IP"
+      id: wifi__ip
     ssid:
       name: "WiFi: Connected Access Point"
+      id: wifi__ssid
     bssid:
       name: "WiFi: BSSID"
+      id: wifi__bssid
     mac_address:
       name: "WiFi: MAC"
   - platform: version
@@ -230,16 +228,19 @@ text_sensor:
 sensor:
   - platform: wifi_signal
     name: "WiFi: Signal"
-    update_interval: 10s
+    id: wifi__signal
+    update_interval: 20s
   - platform: internal_temperature
     name: "ESP: CPU Temperature"
-    update_interval: 10s
+    id: esp__temp
+    update_interval: 20s
   - platform: template
     name: "ESP: Free Memory"
+    id: esp__memory
     lambda: |-
       return heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024.0;
     unit_of_measurement: "kB"
-    update_interval: 10s
+    update_interval: 20s
     entity_category: "diagnostic"
 
 binary_sensor:
@@ -254,9 +255,35 @@ binary_sensor:
     device_class: problem
     internal: true
 
+globals:
+  - id: stop_mqtt_updates
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+
 interval:
   - interval: 1s
     then:
       lambda: |-
         id(ac_ctrl).set_mqtt_connected_sensor(id(mqtt_conn_status));
         id(ac_ctrl).set_filter_dirty_sensor(id(filter_dirty));
+  - interval: 2s
+    then:
+      - lambda: |-
+          if (id(stop_mqtt_updates)) return;
+          id(mqtt_broker_address_input).update();
+          id(mqtt_login_input).update();
+          id(mqtt_password_input).update();
+          id(mqtt_port_input).update();
+          id(address_sensor).update();
+          id(wifi__ip).update();
+          id(wifi__ssid).update();
+          id(wifi__bssid).update();
+          id(wifi__signal).update();
+          id(esp__temp).update();
+          id(esp__memory).update();
+
+  - interval: 30s
+    then:
+      - lambda: |-
+          id(stop_mqtt_updates) = true;
