@@ -17,7 +17,7 @@ pip install --upgrade pip
 ## 🧱 Install ESPHome
 
 ```powershell
-pip install esphome==2025.7.3
+pip install esphome==2025.7.4
 ```
 
 ---
