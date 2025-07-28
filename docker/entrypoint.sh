@@ -31,8 +31,11 @@ if [ -z "$DEV_NAME" ]; then
   DEV_NAME="default"
 fi
 
+# Récupère la version actuelle d'ESPHome
+ESPHOME_VERSION=$(esphome version | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+')
+
 # Crée le répertoire de sortie avec dev_name
-OUTPUT_DIR="/output/${YAML_FILENAME%.*}/$DEV_NAME"
+OUTPUT_DIR="/output/${YAML_FILENAME%.*}/${ESPHOME_VERSION}/${DEV_NAME}"
 mkdir -p "$OUTPUT_DIR"
 
 # Copie tous les fichiers .bin compilés vers le bon dossier
