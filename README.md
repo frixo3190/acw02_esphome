@@ -152,6 +152,12 @@ wifi_password3: "testesp32"
 
 ![airflow6](3Dfiles/images/airflow6.jpg)
 
+#### BONUS: for airton support
+You don't seem to have a mounting bracket for the module, so I'll provide one for you to stick on your air conditioner. :) (fix with double-sided tape)
+
+- [support airton (.stl)](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/Version%202/acw02%20case%20bot%20with%20air%20flow.stl)
+
+
 #### Common
 - [button.stl](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/button.stl)
 - [solder board holder](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/solder%20board%2016%20hold.stl)
@@ -171,7 +177,7 @@ wifi_password3: "testesp32"
   ![thermo in place](3Dfiles/images/alternative%20cable%20with%20thermo.jpg)
 
 - Countersunk head screw M2x6mm (x4)  
-- Screw M3x4mm (x2)
+- Screw M3x4mm (x2) (+1 for airton support)
 
 ---
 
@@ -183,6 +189,19 @@ wifi_password3: "testesp32"
 4. ![case + PCB + button](3Dfiles/images/case%20with%20pcb%20+%20button.jpg)  
 5. ![top case](3Dfiles/images/top%20case%20screw.png)  
 6. ![closed](3Dfiles/images/case%20close.jpg)
+
+
+#### BONUS : support airton
+
+1. ![support1](3Dfiles/images/support_airton.png)
+
+2. ![support2](3Dfiles/images/support_airton_reco_place.png)
+
+3. ![support3](3Dfiles/images/support1.jpg)
+
+4. ![support4](3Dfiles/images/support2.jpg)
+
+5. ![support5](3Dfiles/images/support3.jpg)
 
 ---
 
