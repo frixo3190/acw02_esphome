@@ -2049,7 +2049,7 @@ namespace esphome {
     }
 
      void ACW02::send_static_command_basic(const std::vector<uint8_t> &data) {
-      Frame_with_Fingerprint data_frame = {0, "", {}};
+      Frame_with_Fingerprint data_frame = {0, "", {}, 0};
       data_frame.frame = data;
       tx_queue_.push_back(data_frame);
     }
@@ -2241,16 +2241,20 @@ namespace esphome {
         ESP_LOGI(TAG, "RX ambient temp: %.1f°C / %.1f°F (raw=0x%02X 0x%02X)",
         ambient_temp_c_, ambient_temp_f_, temp_int, temp_dec);
       }
-      
-      if (!from_remote_ && cmd_send_fingerprint_.fingerprint != 0) {
-        Frame_with_Fingerprint cmd_recieve_fingerprint = fingerprint();
-        log_fingerprint("decode_frame", cmd_recieve_fingerprint);
-        if (!compare_fingerprints(cmd_send_fingerprint_.fingerprint, cmd_recieve_fingerprint.fingerprint)) {
-        log_fingerprint("Mismatch cmd ignore", cmd_send_fingerprint_, cmd_recieve_fingerprint, true);
+      uint32_t now = millis();
+      if (now - cmd_send_fingerprint_.timestamp_ms >= 50) {
+        if (!from_remote_ && cmd_send_fingerprint_.fingerprint != 0) {
+          Frame_with_Fingerprint cmd_recieve_fingerprint = fingerprint();
+          log_fingerprint("decode_frame", cmd_recieve_fingerprint);
+          if (!compare_fingerprints(cmd_send_fingerprint_.fingerprint, cmd_recieve_fingerprint.fingerprint)) {
+          log_fingerprint("Mismatch cmd ignore", cmd_send_fingerprint_, cmd_recieve_fingerprint, true);
+          }
         }
+        
+        cmd_send_fingerprint_ = {0, "", {}, 0};
+      } else {
+        ESP_LOGW(TAG, "Fingerprint ignored because time < 50ms");
       }
-      
-      cmd_send_fingerprint_ = {0, "", {}};
 
       if (mqtt_) {
         publish_availability();
@@ -2564,7 +2568,8 @@ namespace esphome {
       return {
         ac_to_fingerprint(),
         fingerprint_to_string(),
-        {}
+        {},
+        millis()
       };
     }
 

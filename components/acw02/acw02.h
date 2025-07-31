@@ -36,6 +36,7 @@ using namespace acw02_localization;
     uint32_t fingerprint;
     std::string description;
     std::vector<uint8_t> frame;
+    uint32_t timestamp_ms;
   };
 
   // globals Statics base trame (keep alive?)
@@ -369,12 +370,12 @@ class ACW02 : public Component, public uart::UARTDevice {
   void recalculate_climate_depending_by_option();
 
   //fingerprint
-  mutable Frame_with_Fingerprint cmd_send_fingerprint_ = {0, "", {}};
+  mutable Frame_with_Fingerprint cmd_send_fingerprint_ = {0, "", {}, 0};
   
   Frame_with_Fingerprint fingerprint() const;
   uint32_t ac_to_fingerprint() const;
   std::string fingerprint_to_string() const;
-  void log_fingerprint(std::string from, Frame_with_Fingerprint fp, Frame_with_Fingerprint tfp = {0, "", {}}, bool sensored = false) const;
+  void log_fingerprint(std::string from, Frame_with_Fingerprint fp, Frame_with_Fingerprint tfp = {0, "", {}, 0}, bool sensored = false) const;
   bool compare_fingerprints(uint32_t a, uint32_t b);
 };
 
