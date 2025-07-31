@@ -155,7 +155,7 @@ wifi_password3: "testesp32"
 #### BONUS: for airton support
 You don't seem to have a mounting bracket for the module, so I'll provide one for you to stick on your air conditioner. :) (fix with double-sided tape)
 
-- [support airton (.stl)](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/Version%202/acw02%20case%20bot%20with%20air%20flow.stl)
+- [support airton (.stl)](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/support%20for%20airton/support%20airton.stl)
 
 
 #### Common
