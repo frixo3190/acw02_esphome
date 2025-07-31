@@ -750,10 +750,10 @@ namespace esphome {
       std::string cmd = topic.substr(topic.find_last_of('/') + 1);
       ESP_LOGI(TAG, "mqtt_callback_ payload %s %s %s", cmd.c_str(), topic.c_str(), payload.c_str());
       if (cmd == "power_climate") {
-        set_mode_climate(payload == "off" ? "off" : get_mode_string_climate());
+        set_mode_climate(payload == "OFF" ? "off" : mode_to_string_climate(mode_));
         send_command();
       } else if (cmd == "power") {
-        set_mode(payload == key_to_txt(app_lang_, "mode", "OFF") ? key_to_txt(app_lang_, "mode", "OFF") : get_mode_string());
+        set_mode(payload == key_to_txt(app_lang_, "mode", "OFF") ? key_to_txt(app_lang_, "mode", "OFF") : mode_to_string(app_lang_, mode_));
         send_command();
       } else if (cmd == "mode_climate") {
         set_mode_climate(payload);
