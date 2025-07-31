@@ -107,7 +107,6 @@ wifi_password3: "testesp32"
 ### 🧵 PCB Soldering & Wiring
 
 ![pcb front](PCB/images/components/pcb%20front.PNG)  
-![pcb back](PCB/images/components/pcb%20back.PNG)
 
 - RED = 12V  
 - BLACK = RX  
