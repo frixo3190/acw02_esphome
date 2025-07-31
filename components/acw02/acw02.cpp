@@ -21,7 +21,7 @@ namespace esphome {
       app_sanitize_name_ = sanitize_name(app_name_);
       app_mac_ = get_mac_address();
 
-      send_command_basic(keepalive_frame_);
+      send_static_command_basic(keepalive_frame_);
 
       mute_pref_ = global_preferences->make_preference<bool>(1U, "ac_mute");
       mute_pref_.load(&mute_);
@@ -64,7 +64,7 @@ namespace esphome {
         ESP_LOGD(TAG, "mode json %s ", build_options_json(app_lang_, "mode").c_str());
         ESP_LOGD(TAG, "fan json %s ", build_options_json(app_lang_, "fan").c_str());
         ESP_LOGD(TAG, "swing json %s ", build_options_json(app_lang_, "swing").c_str());
-        // send_command_basic(get_status_frame_);
+        // send_static_command_basic(get_status_frame_);
       });
     }
 
@@ -127,7 +127,7 @@ namespace esphome {
       if (millis() - last_keepalive > 60000 && tx_queue_.empty()) {
         if (millis() - last_rx_byte_time_ > 200) {
           last_keepalive = millis();
-          send_command_basic(keepalive_frame_);
+          send_static_command_basic(keepalive_frame_);
         }
       }
     }
@@ -501,8 +501,17 @@ namespace esphome {
       error_text_sensor_ = sensor;
     }
 
+    void ACW02::set_cmd_ignore_sensor(esphome::text_sensor::TextSensor *sensor) {
+      if (cmd_ignore_sensor_ == nullptr) {
+        cmd_ignore_sensor_ = sensor;
+        cmd_ignore_sensor_->publish_state("");
+      } else {
+        cmd_ignore_sensor_ = sensor;
+      }
+    }
+
     void ACW02::reload_ac_info() {
-      send_command_basic(get_status_frame_);
+      send_static_command_basic(get_status_frame_);
     }
 
     std::string ACW02::get_mac_address() {
@@ -733,7 +742,7 @@ namespace esphome {
             publish_discovery_error_sensor();
             publish_discovery_warn_text_sensor();
             publish_discovery_error_text_sensor();
-            send_command_basic(get_status_frame_);
+            send_static_command_basic(get_status_frame_);
           });
           mqtt_->subscribe(app_name_ + "/cmd/#", [this](const std::string &topic, const std::string &payload) {
             mqtt_callback(topic, payload);
@@ -1926,6 +1935,10 @@ namespace esphome {
       }
     }
 
+    void ACW02::clear_cmd_ignore() {
+      cmd_ignore_sensor_->publish_state("");
+    }
+
     std::string ACW02::sanitize_name(const std::string &input) const  {
       std::string output = input;
       std::replace(output.begin(), output.end(), '-', '_');
@@ -1945,7 +1958,7 @@ namespace esphome {
       return;
 
       // security for concurr RX/TX
-      if (!rx_buffer_.empty() || (millis() - last_rx_byte_time_ < 100)) {
+      if (!rx_buffer_.empty() || (millis() - last_rx_byte_time_ < 150)) {
         return;
       }
 
@@ -1953,13 +1966,19 @@ namespace esphome {
       return;
 
       const auto &pkt = tx_queue_.front();
-      ESP_LOGI(TAG, "TX: [%s]", format_hex_pretty(pkt).c_str());
-      write_array(pkt);
+      ESP_LOGI(TAG, "TX: [%s]", format_hex_pretty(pkt.frame).c_str());
+      cmd_send_fingerprint_ = pkt;
+      if (pkt.fingerprint != 0) {
+        log_fingerprint("write_frame", cmd_send_fingerprint_);
+      }
+      write_array(pkt.frame);
       last_tx_ = millis();
       tx_queue_.pop_front();
     }
 
-    std::vector<uint8_t> ACW02::build_frame(bool bypassMute) const {
+    Frame_with_Fingerprint ACW02::build_frame(bool bypassMute) const {
+      
+      Frame_with_Fingerprint cmd_send = fingerprint();
       std::vector<uint8_t> frame(24, 0x00);
       frame[0] = frame[1] = 0x7A;
       frame[2] = 0x21;
@@ -2001,10 +2020,17 @@ namespace esphome {
       uint16_t crc = crc16(frame.data(), 22);
       frame[22] = (crc >> 8) & 0xFF;
       frame[23] = crc & 0xFF;
-      return frame;
+      cmd_send.frame = frame;
+      return cmd_send;
     }
 
-    void ACW02::send_command_basic(const std::vector<uint8_t> &data) {
+     void ACW02::send_static_command_basic(const std::vector<uint8_t> &data) {
+      Frame_with_Fingerprint data_frame = {0, "", {}};
+      data_frame.frame = data;
+      tx_queue_.push_back(data_frame);
+    }
+
+    void ACW02::send_command_basic(const Frame_with_Fingerprint &data) {
       tx_queue_.push_back(data);
     }
 
@@ -2191,6 +2217,16 @@ namespace esphome {
         ESP_LOGI(TAG, "RX ambient temp: %.1f°C / %.1f°F (raw=0x%02X 0x%02X)",
         ambient_temp_c_, ambient_temp_f_, temp_int, temp_dec);
       }
+      
+      if (!from_remote_ && cmd_send_fingerprint_.fingerprint != 0) {
+        Frame_with_Fingerprint cmd_recieve_fingerprint = fingerprint();
+        log_fingerprint("decode_frame", cmd_recieve_fingerprint);
+        if (!compare_fingerprints(cmd_send_fingerprint_.fingerprint, cmd_recieve_fingerprint.fingerprint)) {
+        log_fingerprint("Mismatch cmd ignore", cmd_send_fingerprint_, true);
+        }
+      }
+      
+      cmd_send_fingerprint_ = {0, "", {}};
 
       if (mqtt_) {
         publish_availability();
@@ -2498,6 +2534,67 @@ namespace esphome {
         publish_discovery_climate_deref();
       }
       
+    }
+
+    Frame_with_Fingerprint ACW02::fingerprint() const {
+      return {
+        ac_to_fingerprint(),
+        fingerprint_to_string()
+      };
+    }
+
+    uint32_t ACW02::ac_to_fingerprint() const {
+      uint32_t hash = 2166136261u;
+      auto hash_combine = [&hash](uint8_t value) {
+        hash ^= value;
+        hash *= 16777619u;
+      };
+
+      hash_combine(static_cast<uint8_t>(mode_));
+      hash_combine(static_cast<uint8_t>(fan_));
+      hash_combine(power_on_ ? 1 : 0);
+      hash_combine(encode_temperature_byte());
+      hash_combine(static_cast<uint8_t>(swing_horizontal_));
+      hash_combine(static_cast<uint8_t>(swing_position_));
+      hash_combine(eco_ ? 1 : 0);
+      hash_combine(night_ ? 1 : 0);
+      hash_combine(clean_ ? 1 : 0);
+      hash_combine(purifier_ ? 1 : 0);
+      hash_combine(display_ ? 1 : 0);
+
+      return hash;
+    }
+
+    std::string ACW02::fingerprint_to_string() const {
+      char buf[256];
+      snprintf(buf, sizeof(buf),
+        "Mode=%s Fan=%s Power=%s Temp=%d SwingH=%s SwingPos=%s Eco=%s Night=%s Clean=%s Purifier=%s Display=%s",
+        mode_to_string(app_lang_, mode_).c_str(),
+        fan_to_string(app_lang_, fan_).c_str(),
+        power_on_ ? "On" : "Off",
+        target_temp_c_,
+        swing_horizontal_to_string(app_lang_, swing_horizontal_).c_str(),
+        swing_to_string(app_lang_, swing_position_).c_str(),
+        eco_ ? "On" : "Off",
+        night_ ? "On" : "Off",
+        clean_ ? "On" : "Off",
+        purifier_ ? "On" : "Off",
+        display_ ? "On" : "Off"
+      );
+      return std::string(buf);
+    }
+
+    void ACW02::log_fingerprint(std::string from, Frame_with_Fingerprint fp, bool sensored) const {
+      char buf[256];
+      snprintf(buf, sizeof(buf), "%s : Fingerprint = 0x%08X -> %s", from.c_str(), fp.fingerprint, fp.description.c_str());
+      ESP_LOGW(TAG, "%s", buf);
+      if (sensored && cmd_ignore_sensor_ != nullptr) {
+        cmd_ignore_sensor_->publish_state(buf);
+      }
+    }
+
+    bool ACW02::compare_fingerprints(uint32_t a, uint32_t b) {
+      return a == b;
     }
 
   }

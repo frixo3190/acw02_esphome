@@ -210,6 +210,14 @@ button:
     on_press:
       - lambda: |-
           id(ac_ctrl).apply_disable_settings();
+  - platform: template
+    name: "Clear cmd ignore"
+    id: clear_cmd_ignore
+    icon: mdi:send
+    entity_category: "config"
+    on_press:
+      - lambda: |-
+          id(ac_ctrl).clear_cmd_ignore();
 
 text_sensor:
   - platform: template
@@ -242,6 +250,10 @@ text_sensor:
     icon: mdi:alert-octagon-outline
     id: ac_error_text
     internal: true
+  - platform: template
+    name: "CMD ignore"
+    icon: mdi:alert-octagon-outline
+    id: cmd_ignore
 
 sensor:
   - platform: wifi_signal
@@ -299,6 +311,7 @@ interval:
         id(ac_ctrl).set_error_sensor(id(error_sensor));
         id(ac_ctrl).set_warn_text_sensor(id(ac_warn_text));
         id(ac_ctrl).set_error_text_sensor(id(ac_error_text));
+        id(ac_ctrl).set_cmd_ignore_sensor(id(cmd_ignore));
   - interval: 2s
     then:
       - lambda: |-
