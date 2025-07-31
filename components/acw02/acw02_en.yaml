@@ -251,9 +251,13 @@ text_sensor:
     id: ac_error_text
     internal: true
   - platform: template
-    name: "CMD ignore"
+    name: "CMD ignore TX"
     icon: mdi:alert-octagon-outline
-    id: cmd_ignore
+    id: cmd_ignore_tx
+  - platform: template
+    name: "CMD ignore RX"
+    icon: mdi:alert-octagon-outline
+    id: cmd_ignore_rx
 
 sensor:
   - platform: wifi_signal
@@ -311,7 +315,8 @@ interval:
         id(ac_ctrl).set_error_sensor(id(error_sensor));
         id(ac_ctrl).set_warn_text_sensor(id(ac_warn_text));
         id(ac_ctrl).set_error_text_sensor(id(ac_error_text));
-        id(ac_ctrl).set_cmd_ignore_sensor(id(cmd_ignore));
+        id(ac_ctrl).set_cmd_ignore_tx_sensor(id(cmd_ignore_tx));
+        id(ac_ctrl).set_cmd_ignore_rx_sensor(id(cmd_ignore_rx));
   - interval: 2s
     then:
       - lambda: |-

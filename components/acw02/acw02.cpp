@@ -184,7 +184,7 @@ namespace esphome {
       }
     }
 
-    void ACW02::set_temperature_c(float temp) {
+    bool ACW02::set_temperature_c(float temp) {
       if (!use_fahrenheit_) {
         const uint8_t oldC = target_temp_c_;
         const uint8_t oldF = target_temp_f_;
@@ -194,7 +194,7 @@ namespace esphome {
         target_temp_f_ = static_cast<uint8_t>(celsius_to_fahrenheit(temp));
         target_temp_c_ = static_cast<uint8_t>(temp);
         if ((!eco_ && mode_ != Mode::AUTO || !power_on_)) {
-          send_command();
+          return true;
         } else {
           set_timeout("publishStateDelay", 100, [this, oldC, oldF]() {
             target_temp_f_ = oldF;
@@ -203,9 +203,10 @@ namespace esphome {
           });
         }
       }
+      return false;
     }
 
-    void ACW02::set_temperature_f(float temp) {
+    bool ACW02::set_temperature_f(float temp) {
       if (use_fahrenheit_) {
         const uint8_t oldC = target_temp_c_;
         const uint8_t oldF = target_temp_f_;
@@ -215,7 +216,7 @@ namespace esphome {
         target_temp_f_ = static_cast<uint8_t>(temp);
         target_temp_c_ = static_cast<uint8_t>(fahrenheit_to_celsius(temp));
         if ((!eco_ && mode_ != Mode::AUTO || !power_on_)) {
-          send_command();
+          return true;
         } else {
           set_timeout("publishStateDelay", 100, [this, oldC, oldF]() {
             target_temp_f_ = oldF;
@@ -224,12 +225,13 @@ namespace esphome {
           });
         }
       }
+      return false;
     }
 
-    void ACW02::set_fan(const std::string &speed) {
+    bool ACW02::set_fan(const std::string &speed) {
       if (!eco_) {
         fan_ = str_to_fan(app_lang_, speed);
-        send_command();
+        return true;
       } else {
         ESP_LOGI(TAG, "Ignore command : mode ECO enabled");
         fan_ = str_to_fan(app_lang_, speed);
@@ -238,6 +240,7 @@ namespace esphome {
           publish_state();
         });
       }
+      return false;
     }
 
     void ACW02::set_swing(const std::string &pos) {
@@ -248,19 +251,20 @@ namespace esphome {
       swing_horizontal_ = str_to_swing_horizontal(app_lang_, pos);
     }
 
-    void ACW02::set_display(bool on) {
+    bool ACW02::set_display(bool on) {
       ESP_LOGI(TAG, "set display current : %s target : %s", display_ ? "on" : "off", on ? "on" : "off");
       if (display_ != on) {
         display_ = on;
-        send_command();
+        return true;
       }
+      return false;
     }
 
-    void ACW02::set_eco(bool on) {
+    bool ACW02::set_eco(bool on) {
       if (eco_ != on) {
         if (power_on_) {
           if (mode_ == Mode::COOL) {
-            set_eco_internal(on, true);
+            return set_eco_internal(on, false);
           } else {
             eco_ = false;
           }
@@ -268,9 +272,10 @@ namespace esphome {
           eco_ = false;
         }
       }
+      return false;
     }
 
-    void ACW02::set_eco_internal(bool on, bool sendCmd, bool force) {
+    bool ACW02::set_eco_internal(bool on, bool sendCmd, bool force) {
       if (eco_ != on || force) {
         eco_ = on;
         if (on) {
@@ -287,10 +292,12 @@ namespace esphome {
         if (sendCmd) {
           send_command();
         }
+        return true;
       }
+      return false;
     }
 
-    void ACW02::set_night(bool on) {
+    bool ACW02::set_night(bool on) {
       if (power_on_) {
         if (mode_ == Mode::COOL || mode_ == Mode::DRY || mode_ == Mode::HEAT) {
           if (night_ != on) {
@@ -301,7 +308,7 @@ namespace esphome {
                 set_eco_internal(false, false);
               }
             }
-            send_command();
+            return true;
           }
         } else {
           night_ = false;
@@ -309,6 +316,7 @@ namespace esphome {
       } else {
         night_ = false;
       }
+      return false;
     }
 
     void ACW02::set_purifier(bool on) {
@@ -501,12 +509,21 @@ namespace esphome {
       error_text_sensor_ = sensor;
     }
 
-    void ACW02::set_cmd_ignore_sensor(esphome::text_sensor::TextSensor *sensor) {
-      if (cmd_ignore_sensor_ == nullptr) {
-        cmd_ignore_sensor_ = sensor;
-        cmd_ignore_sensor_->publish_state("");
+    void ACW02::set_cmd_ignore_tx_sensor(esphome::text_sensor::TextSensor *sensor) {
+      if (cmd_ignore_tx_sensor_ == nullptr) {
+        cmd_ignore_tx_sensor_ = sensor;
+        cmd_ignore_tx_sensor_->publish_state("");
       } else {
-        cmd_ignore_sensor_ = sensor;
+        cmd_ignore_tx_sensor_ = sensor;
+      }
+    }
+
+    void ACW02::set_cmd_ignore_rx_sensor(esphome::text_sensor::TextSensor *sensor) {
+      if (cmd_ignore_rx_sensor_ == nullptr) {
+        cmd_ignore_rx_sensor_ = sensor;
+        cmd_ignore_rx_sensor_->publish_state("");
+      } else {
+        cmd_ignore_rx_sensor_ = sensor;
       }
     }
 
@@ -757,45 +774,47 @@ namespace esphome {
 
     void ACW02::mqtt_callback(const std::string &topic, const std::string &payload) {
       std::string cmd = topic.substr(topic.find_last_of('/') + 1);
+      bool tmp_send_cmd = false;
+      uint32_t start_f = ac_to_fingerprint();
       ESP_LOGI(TAG, "mqtt_callback_ payload %s %s %s", cmd.c_str(), topic.c_str(), payload.c_str());
       if (cmd == "power_climate") {
         set_mode_climate(payload == "OFF" ? "off" : mode_to_string_climate(mode_));
-        send_command();
+        tmp_send_cmd = true;
       } else if (cmd == "power") {
         set_mode(payload == key_to_txt(app_lang_, "mode", "OFF") ? key_to_txt(app_lang_, "mode", "OFF") : mode_to_string(app_lang_, mode_));
-        send_command();
+        tmp_send_cmd = true;
       } else if (cmd == "mode_climate") {
         set_mode_climate(payload);
-        send_command();
+        tmp_send_cmd = true;
       } else if (cmd == "mode") {
         set_mode(payload);
-        send_command();
+        tmp_send_cmd = true;
       } else if (cmd == "fan") {
-        set_fan(payload);
+        tmp_send_cmd = set_fan(payload);
       } else if (cmd == "temp_c") {
-        set_temperature_c(std::stof(payload));
+        tmp_send_cmd = set_temperature_c(std::stof(payload));
       } else if (cmd == "temp_f") {
-        set_temperature_f(std::stof(payload));
+        tmp_send_cmd = set_temperature_f(std::stof(payload));
       } else if (cmd == "eco") {
-        set_eco(payload == "on");
+        tmp_send_cmd = set_eco(payload == "on");
       } else if (cmd == "night") {
-        set_night(payload == "on");
+        tmp_send_cmd = set_night(payload == "on");
       } else if (cmd == "purifier") {
         set_purifier(payload == "on");
-        send_command();
+        tmp_send_cmd = true;
       } else if (cmd == "display") {
-        set_display(payload == "on");
+        tmp_send_cmd = set_display(payload == "on");
       } else if (cmd == "swing") {
         set_swing(payload);
-        send_command();
+        tmp_send_cmd = true;
       }  else if (cmd == "swing_horizontal") {
         set_swing_horizontal(payload);
-        send_command();
+        tmp_send_cmd = true;
       } else if (cmd == "clean") {
         set_clean(payload == "on");
       } else if (cmd == "unit") {
         set_unit(payload);
-        send_command();
+        tmp_send_cmd = true;
       } else if (cmd == "g1_mute") {
         set_mute(payload == "on" ? true : false);
       } else if (cmd == "g1_reset_eco_purifier") {
@@ -808,6 +827,10 @@ namespace esphome {
         rebuild_mqtt_entity();
       } else if (cmd == "g1_get_status") {
         reload_ac_info();
+      }
+      uint32_t end_f = ac_to_fingerprint();
+      if (tmp_send_cmd && !compare_fingerprints(start_f, end_f)) {
+        send_command();
       }
       publish_state();
     }
@@ -1936,7 +1959,8 @@ namespace esphome {
     }
 
     void ACW02::clear_cmd_ignore() {
-      cmd_ignore_sensor_->publish_state("");
+      cmd_ignore_tx_sensor_->publish_state("");
+      cmd_ignore_rx_sensor_->publish_state("");
     }
 
     std::string ACW02::sanitize_name(const std::string &input) const  {
@@ -1958,7 +1982,7 @@ namespace esphome {
       return;
 
       // security for concurr RX/TX
-      if (!rx_buffer_.empty() || (millis() - last_rx_byte_time_ < 150)) {
+      if (!rx_buffer_.empty() || (millis() - last_rx_byte_time_ < 100)) {
         return;
       }
 
@@ -2222,7 +2246,7 @@ namespace esphome {
         Frame_with_Fingerprint cmd_recieve_fingerprint = fingerprint();
         log_fingerprint("decode_frame", cmd_recieve_fingerprint);
         if (!compare_fingerprints(cmd_send_fingerprint_.fingerprint, cmd_recieve_fingerprint.fingerprint)) {
-        log_fingerprint("Mismatch cmd ignore", cmd_send_fingerprint_, true);
+        log_fingerprint("Mismatch cmd ignore", cmd_send_fingerprint_, cmd_recieve_fingerprint, true);
         }
       }
       
@@ -2539,7 +2563,8 @@ namespace esphome {
     Frame_with_Fingerprint ACW02::fingerprint() const {
       return {
         ac_to_fingerprint(),
-        fingerprint_to_string()
+        fingerprint_to_string(),
+        {}
       };
     }
 
@@ -2584,13 +2609,33 @@ namespace esphome {
       return std::string(buf);
     }
 
-    void ACW02::log_fingerprint(std::string from, Frame_with_Fingerprint fp, bool sensored) const {
-      char buf[256];
-      snprintf(buf, sizeof(buf), "%s : Fingerprint = 0x%08X -> %s", from.c_str(), fp.fingerprint, fp.description.c_str());
-      ESP_LOGW(TAG, "%s", buf);
-      if (sensored && cmd_ignore_sensor_ != nullptr) {
-        cmd_ignore_sensor_->publish_state(buf);
+    void ACW02::log_fingerprint(std::string from, Frame_with_Fingerprint fp, Frame_with_Fingerprint tfp, bool sensored) const {
+      if (tfp.fingerprint != 0)
+      {
+        char buftx[255];
+        snprintf(buftx, sizeof(buftx), "Fingerprint TX = 0x%08X -> %s", fp.fingerprint, fp.description.c_str(), tfp.fingerprint, tfp.description.c_str());
+        ESP_LOGW(TAG, "%s", buftx);
+        char bufrx[255];
+        snprintf(bufrx, sizeof(bufrx), "Fingerprint RX = 0x%08X -> %s", fp.fingerprint, fp.description.c_str(), tfp.fingerprint, tfp.description.c_str());
+        ESP_LOGW(TAG, "%s", buftx);
+        if (sensored) {
+          if (cmd_ignore_tx_sensor_ != nullptr) {
+            cmd_ignore_tx_sensor_->publish_state(buftx);
+          }
+          if (cmd_ignore_rx_sensor_ != nullptr) {
+            cmd_ignore_rx_sensor_->publish_state(bufrx);
+          }
+        }
+        
+      } else {
+        char buf[255];
+        snprintf(buf, sizeof(buf), "%s : Fingerprint = 0x%08X -> %s", from.c_str(), fp.fingerprint, fp.description.c_str());
+        ESP_LOGW(TAG, "%s", buf);
+        if (sensored && cmd_ignore_tx_sensor_ != nullptr) {
+          cmd_ignore_tx_sensor_->publish_state(buf);
+        }
       }
+      
     }
 
     bool ACW02::compare_fingerprints(uint32_t a, uint32_t b) {

@@ -68,15 +68,15 @@ class ACW02 : public Component, public uart::UARTDevice {
   // Setters publics AC
   void set_mode_climate(const std::string &mode);      
   void set_mode(const std::string &mode);
-  void set_temperature_c(float temp); 
-  void set_temperature_f(float temp);              
-  void set_fan(const std::string &speed);         
+  bool set_temperature_c(float temp); 
+  bool set_temperature_f(float temp);              
+  bool set_fan(const std::string &speed);         
   void set_swing(const std::string &pos);   
   void set_swing_horizontal(const std::string &pos);       
-  void set_display(bool on);
-  void set_eco(bool on);
-  void set_eco_internal(bool on, bool sendCmd, bool force = false);
-  void set_night(bool on);
+  bool set_display(bool on);
+  bool set_eco(bool on);
+  bool set_eco_internal(bool on, bool sendCmd, bool force = false);
+  bool set_night(bool on);
   void set_purifier(bool on);
   void set_mute(bool on);
   void set_unit(const std::string &unit); 
@@ -112,7 +112,8 @@ class ACW02 : public Component, public uart::UARTDevice {
   void set_error_sensor(binary_sensor::BinarySensor *sensor);
   void set_warn_text_sensor(esphome::text_sensor::TextSensor *sensor);
   void set_error_text_sensor(esphome::text_sensor::TextSensor *sensor);
-  void set_cmd_ignore_sensor(esphome::text_sensor::TextSensor *sensor);
+  void set_cmd_ignore_tx_sensor(esphome::text_sensor::TextSensor *sensor);
+  void set_cmd_ignore_rx_sensor(esphome::text_sensor::TextSensor *sensor);
 
 
 
@@ -266,7 +267,8 @@ class ACW02 : public Component, public uart::UARTDevice {
   binary_sensor::BinarySensor *error_sensor_{nullptr};
   esphome::text_sensor::TextSensor *warn_text_sensor_{nullptr};
   esphome::text_sensor::TextSensor *error_text_sensor_{nullptr};
-  esphome::text_sensor::TextSensor *cmd_ignore_sensor_{nullptr};
+  esphome::text_sensor::TextSensor *cmd_ignore_tx_sensor_{nullptr};
+  esphome::text_sensor::TextSensor *cmd_ignore_rx_sensor_{nullptr};
 
   // variables persisted AC settings
   ESPPreferenceObject mute_pref_;
@@ -372,7 +374,7 @@ class ACW02 : public Component, public uart::UARTDevice {
   Frame_with_Fingerprint fingerprint() const;
   uint32_t ac_to_fingerprint() const;
   std::string fingerprint_to_string() const;
-  void log_fingerprint(std::string from, Frame_with_Fingerprint fp, bool sensored = false) const;
+  void log_fingerprint(std::string from, Frame_with_Fingerprint fp, Frame_with_Fingerprint tfp = {0, "", {}}, bool sensored = false) const;
   bool compare_fingerprints(uint32_t a, uint32_t b);
 };
 
