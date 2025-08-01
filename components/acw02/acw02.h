@@ -370,6 +370,13 @@ class ACW02 : public Component, public uart::UARTDevice {
   // Protected functions for rebuild climate if mode auto or option eco enable
   void recalculate_climate_depending_by_option();
 
+
+  //mqtt queue
+  std::queue<std::pair<std::string, std::string>> mqtt_cmd_queue_;
+uint32_t last_mqtt_cmd_time_{0};
+static constexpr uint32_t MQTT_CMD_INTERVAL_MS = 50;  // ajustable
+void process_mqtt_command_queue_();
+
   //fingerprint
   mutable Frame_with_Fingerprint cmd_send_fingerprint_ = {0, "", {}, 0};
   

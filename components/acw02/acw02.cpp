@@ -130,6 +130,8 @@ namespace esphome {
           send_static_command_basic(keepalive_frame_);
         }
       }
+
+      process_mqtt_command_queue_();
     }
 
     void ACW02::set_mode_climate(const std::string &mode) {
@@ -761,12 +763,42 @@ namespace esphome {
             publish_discovery_error_text_sensor();
             send_static_command_basic(get_status_frame_);
           });
-          mqtt_->subscribe(app_name_ + "/cmd/#", [this](const std::string &topic, const std::string &payload) {
-            mqtt_callback(topic, payload);
-          });
+          const std::vector<std::string> cmd_topics = {
+            "/cmd/power_climate",
+            "/cmd/power",
+            "/cmd/mode_climate",
+            "/cmd/mode",
+            "/cmd/fan",
+            "/cmd/temp_c",
+            "/cmd/temp_f",
+            "/cmd/eco",
+            "/cmd/night",
+            "/cmd/purifier",
+            "/cmd/display",
+            "/cmd/swing",
+            "/cmd/swing_horizontal",
+            "/cmd/clean",
+            "/cmd/unit",
+            "/cmd/g1_mute",
+            "/cmd/g1_reset_eco_purifier",
+            "/cmd/g1_option_recalculate_climate",
+            "/cmd/g1_restart_module_ac",
+            "/cmd/g1_rebuild_mqtt_entities",
+            "/cmd/g1_get_status"
+          };
+
+          for (const auto& suffix : cmd_topics) {
+            mqtt_->subscribe(app_name_ + suffix, [this](const std::string &topic, const std::string &payload) {
+              mqtt_cmd_queue_.emplace(topic, payload);
+            });
+          }
+
+          // mqtt_->subscribe(app_name_ + "/cmd/#", [this](const std::string &topic, const std::string &payload) {
+          //   mqtt_callback(topic, payload);
+          // });
         });
         mqtt_->set_on_disconnect([this](mqtt::MQTTClientDisconnectReason reason) {
-          ESP_LOGI(TAG, "MQTT disconnected (reason=%d)", static_cast<int>(reason));
+          ESP_LOGE(TAG, "MQTT disconnected (reason=%d)", static_cast<int>(reason));
           if (mqtt_connected_sensor_) mqtt_connected_sensor_->publish_state(false);
         });
       }
@@ -776,7 +808,7 @@ namespace esphome {
       std::string cmd = topic.substr(topic.find_last_of('/') + 1);
       bool tmp_send_cmd = false;
       uint32_t start_f = ac_to_fingerprint();
-      ESP_LOGI(TAG, "mqtt_callback_ payload %s %s %s", cmd.c_str(), topic.c_str(), payload.c_str());
+      ESP_LOGE(TAG, "mqtt_callback_ payload %s %s %s", cmd.c_str(), topic.c_str(), payload.c_str());
       if (cmd == "power_climate") {
         set_mode_climate(payload == "OFF" ? "off" : mode_to_string_climate(mode_));
         tmp_send_cmd = true;
@@ -2649,6 +2681,15 @@ namespace esphome {
 
     bool ACW02::compare_fingerprints(uint32_t a, uint32_t b) {
       return a == b;
+    }
+
+    void ACW02::process_mqtt_command_queue_() {
+      if (!mqtt_cmd_queue_.empty() && millis() - last_mqtt_cmd_time_ > MQTT_CMD_INTERVAL_MS) {
+        auto [topic, payload] = mqtt_cmd_queue_.front();
+        mqtt_cmd_queue_.pop();
+        last_mqtt_cmd_time_ = millis();
+        mqtt_callback(topic, payload);
+      }
     }
 
   }
