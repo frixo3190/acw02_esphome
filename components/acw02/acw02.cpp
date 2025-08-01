@@ -831,6 +831,10 @@ namespace esphome {
       uint32_t end_f = ac_to_fingerprint();
       if (tmp_send_cmd && !compare_fingerprints(start_f, end_f)) {
         send_command();
+         mute_mqtt_tmp_ = true;
+        this->set_timeout("mute_tmp", 500, [this]() {
+           mute_mqtt_tmp_ = false;
+        });
       }
       publish_state();
     }
@@ -2036,7 +2040,7 @@ namespace esphome {
       if (display_)  b15 |= 0x80;
 
       frame[15] = b15;
-      if (is_mute_on()) {
+      if (is_mute_on() || mute_mqtt_tmp_) {
         if (bypassMute == false) {
           frame[16] = 0x01;
         }

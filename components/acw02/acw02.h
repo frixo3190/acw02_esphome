@@ -248,6 +248,7 @@ class ACW02 : public Component, public uart::UARTDevice {
   bool purifier_ {false};
   bool display_ {false};
   bool mute_ {false};
+  bool mute_mqtt_tmp_ {false};
   bool clean_ {false};
   bool force_clean_ {false};
   bool use_fahrenheit_ {false};
