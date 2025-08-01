@@ -795,7 +795,10 @@ namespace esphome {
 
           mqtt_->subscribe(app_name_ + "/ping/request", [this](const std::string &topic, const std::string &payload) {
             ESP_LOGE(TAG, "Ping request received: %s", payload.c_str());
-            publish_async(app_name_ + "/ping/response", "pong", 1, false);
+            this->set_timeout("delayed_ping_response", 200, [this, payload]() {
+              publish_async(app_name_ + "/ping/response", payload, 1, false);
+            });
+            
           });
 
           // mqtt_->subscribe(app_name_ + "/cmd/#", [this](const std::string &topic, const std::string &payload) {
@@ -1034,6 +1037,7 @@ namespace esphome {
         "min_temp": )" + (mintemp) + R"(,
         "max_temp": )" + (maxtemp) + R"(,
         "temp_step": 1,
+        "qos": 1,
         "avty_t":")" + topic_base + R"(/status")" +
         build_common_config_suffix() + R"(
       })";
