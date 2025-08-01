@@ -793,6 +793,11 @@ namespace esphome {
             });
           }
 
+          mqtt_->subscribe(app_name_ + "/ping/request", [this](const std::string &topic, const std::string &payload) {
+            ESP_LOGE(TAG, "Ping request received: %s", payload.c_str());
+            publish_async(app_name_ + "/ping/response", "pong", 1, false);
+          });
+
           // mqtt_->subscribe(app_name_ + "/cmd/#", [this](const std::string &topic, const std::string &payload) {
           //   mqtt_callback(topic, payload);
           // });
