@@ -56,9 +56,10 @@ text:
             id(mqtt_port_input).update();
 
   - platform: template
-    name: "Z-AC-Mute: Delay mute between cmd"
+    name: "G1: [Z-Mute] Delay mute between cmd"
     id: mute_next_cmd_delay
     update_interval: never
+    icon: mdi:volume-off
     mode: text
     entity_category: config
     lambda: |-
@@ -190,7 +191,7 @@ switch:
       - lambda: id(ac_ctrl).set_auto_off_options_when_ac_off(false);
 
   - platform: template
-    name: "Z-AC-Mute: Mute next cmd after AC on"
+    name: "G1: [Z-Mute] Mute next cmd after AC on"
     id: mute_next_cmd_after_on
     icon: mdi:volume-off
     entity_category: "config"
@@ -333,6 +334,7 @@ interval:
           id(mqtt_login_input).update();
           id(mqtt_password_input).update();
           id(mqtt_port_input).update();
+          id(mute_next_cmd_delay).update();
           id(address_sensor).update();
           id(wifi__ip).update();
           id(wifi__ssid).update();
@@ -340,10 +342,6 @@ interval:
           id(wifi__signal).update();
           id(esp__temp).update();
           id(esp__memory).update();
-  - interval: 10s
-    then:
-    - lambda: |-
-        id(mute_next_cmd_delay).update();
   - interval: 30s
     then:
       - lambda: |-

@@ -62,19 +62,21 @@ class ACW02 : public Component, public uart::UARTDevice {
   // Setters publics AC
   void set_mode_climate(const std::string &mode);      
   void set_mode(const std::string &mode);
-  bool set_temperature_c(float temp); 
-  bool set_temperature_f(float temp);              
-  bool set_fan(const std::string &speed);         
   void set_swing(const std::string &pos);   
   void set_swing_horizontal(const std::string &pos);       
-  bool set_display(bool on);
-  bool set_eco(bool on);
-  bool set_eco_internal(bool on, bool force = false);
-  bool set_night(bool on);
   void set_purifier(bool on);
   void set_mute(bool on);
   void set_unit(const std::string &unit); 
   void set_clean(bool on);
+
+  // Setters publics AC with bool for detect if send cmd is necessary
+  bool set_temperature_c(float temp); 
+  bool set_temperature_f(float temp);              
+  bool set_fan(const std::string &speed);         
+  bool set_display(bool on);
+  bool set_eco(bool on);
+  bool set_eco_internal(bool on, bool force = false);
+  bool set_night(bool on);
 
   // Setters reset option when AC off
   void set_auto_off_options_when_ac_off(bool on);

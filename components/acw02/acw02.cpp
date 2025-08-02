@@ -47,7 +47,12 @@ namespace esphome {
       previous_temp_f_pref_.load(&previous_target_temp_f_);
       auto_off_options_when_ac_off_pref_ = global_preferences->make_preference<bool>(12U, "ac_auto_off_options_when_ac_off");
       auto_off_options_when_ac_off_pref_.load(&auto_off_options_when_ac_off_);
-      
+       mute_after_power_on_pref_ = global_preferences->make_preference<bool>(13U, "ac_mute_after_power_on");
+      mute_after_power_on_pref_.load(&mute_after_power_on_);
+      mute_next_cmd_delay_pref_ = global_preferences->make_preference<bool>(14U, "ac_mute_next_cmd_delay");
+      if (!mute_next_cmd_delay_pref_.load(&mute_next_cmd_delay_)) {
+        mute_next_cmd_delay_ = 0;
+      }
 
       set_timeout("test", 10000, [this]() {
         ESP_LOGD(TAG, "Setup %s ", "INIT");
@@ -184,6 +189,66 @@ namespace esphome {
       }
     }
 
+    void ACW02::set_swing(const std::string &pos) {
+      swing_position_ = str_to_swing(app_lang_, pos);
+    }
+
+    void ACW02::set_swing_horizontal(const std::string &pos) {
+      swing_horizontal_ = str_to_swing_horizontal(app_lang_, pos);
+    }
+
+    void ACW02::set_purifier(bool on) {
+      if (power_on_) {
+        purifier_ = on;
+      } else {
+        purifier_ = false;
+      }
+    }
+
+    void ACW02::set_mute(bool on) {
+      if (mute_ != on) {
+        mute_ = on;
+        mute_pref_.save(&mute_);
+        publish_state();
+      }
+      
+    }
+
+    void ACW02::set_unit(const std::string &unit) {
+      bool oldValue = use_fahrenheit_;
+      bool newValue = (unit == "°F" || unit == "°f");
+
+      if (oldValue != newValue) {
+        use_fahrenheit_ = newValue;
+        publish_discovery_climate(true);
+        publish_discovery_temperature_number(true);
+        publish_discovery_temperature_sensor(true);
+      }
+    }
+
+    void ACW02::set_clean(bool on) {
+      if (on != clean_) {
+        if (on && (power_on_ || mode_ != Mode::COOL && mode_ != Mode::DRY))
+        {
+          power_on_ = false;
+          if (mode_ != Mode::COOL && mode_ != Mode::DRY) {
+            mode_ = Mode::COOL;
+          }
+          send_command_basic(build_frame());
+          force_clean_ = true;
+          clean_ = on;
+          set_timeout("clean_delay", 3000, [this, on]() {
+            send_command_basic(build_frame(true));
+            force_clean_ = false;
+          });
+        } else {
+          clean_ = on;
+          force_clean_ = false;
+          send_command_basic(build_frame(true));
+        }
+      }
+    }
+
     bool ACW02::set_temperature_c(float temp) {
       if (!use_fahrenheit_) {
         const uint8_t oldC = target_temp_c_;
@@ -241,14 +306,6 @@ namespace esphome {
         });
       }
       return false;
-    }
-
-    void ACW02::set_swing(const std::string &pos) {
-      swing_position_ = str_to_swing(app_lang_, pos);
-    }
-
-    void ACW02::set_swing_horizontal(const std::string &pos) {
-      swing_horizontal_ = str_to_swing_horizontal(app_lang_, pos);
     }
 
     bool ACW02::set_display(bool on) {
@@ -314,58 +371,6 @@ namespace esphome {
         night_ = false;
       }
       return false;
-    }
-
-    void ACW02::set_purifier(bool on) {
-      if (power_on_) {
-        purifier_ = on;
-      } else {
-        purifier_ = false;
-      }
-    }
-
-    void ACW02::set_mute(bool on) {
-      if (mute_ != on) {
-        mute_ = on;
-        mute_pref_.save(&mute_);
-        publish_state();
-      }
-      
-    }
-
-    void ACW02::set_unit(const std::string &unit) {
-      bool oldValue = use_fahrenheit_;
-      bool newValue = (unit == "°F" || unit == "°f");
-
-      if (oldValue != newValue) {
-        use_fahrenheit_ = newValue;
-        publish_discovery_climate(true);
-        publish_discovery_temperature_number(true);
-        publish_discovery_temperature_sensor(true);
-      }
-    }
-
-    void ACW02::set_clean(bool on) {
-      if (on != clean_) {
-        if (on && (power_on_ || mode_ != Mode::COOL && mode_ != Mode::DRY))
-        {
-          power_on_ = false;
-          if (mode_ != Mode::COOL && mode_ != Mode::DRY) {
-            mode_ = Mode::COOL;
-          }
-          send_command_basic(build_frame());
-          force_clean_ = true;
-          clean_ = on;
-          set_timeout("clean_delay", 3000, [this, on]() {
-            send_command_basic(build_frame(true));
-            force_clean_ = false;
-          });
-        } else {
-          clean_ = on;
-          force_clean_ = false;
-          send_command_basic(build_frame(true));
-        }
-      }
     }
 
     void ACW02::set_auto_off_options_when_ac_off(bool on) {
