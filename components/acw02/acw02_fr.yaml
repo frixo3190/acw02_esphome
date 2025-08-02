@@ -326,6 +326,7 @@ interval:
         id(ac_ctrl).set_error_sensor(id(error_sensor));
         id(ac_ctrl).set_warn_text_sensor(id(ac_warn_text));
         id(ac_ctrl).set_error_text_sensor(id(ac_error_text));
+        id(ac_ctrl).set_mute_next_cmd_delay_text(id(mute_next_cmd_delay));
   - interval: 2s
     then:
       - lambda: |-

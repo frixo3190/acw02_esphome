@@ -37,7 +37,9 @@ static const std::map<std::string, std::map<std::string, std::string>> LOCALIZED
             {"warn", "Warn"},
             {"error", "Error"},
             {"warnText", "Warn Info"},
-            {"errorText", "Error Info"}
+            {"errorText", "Error Info"},
+            {"ZMuteDelay", "G1: [Z-Mute] Delai Commande silencieuse"},
+            {"ZMuteAfterOn", "G1: [Z-Mute] Commande silencieuse après un allumage"}
         }},
         {"en", {
             {"climate", "AC"},
@@ -64,7 +66,9 @@ static const std::map<std::string, std::map<std::string, std::string>> LOCALIZED
             {"warn", "Warn"},
             {"error", "Error"},
             {"warnText", "Warn Info"},
-            {"errorText", "Error Info"}
+            {"errorText", "Error Info"},
+            {"ZMuteDelay", "G1: [Z-Mute] Delay mute between cmd"},
+            {"ZMuteAfterOn", "G1: [Z-Mute] Mute next cmd after AC on"}
         }}
     };
 

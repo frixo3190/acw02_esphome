@@ -13,6 +13,7 @@
 #include <algorithm>
 #include "esphome/components/wifi/wifi_component.h"
 #include "esphome/components/binary_sensor/binary_sensor.h"
+#include "esphome/components/text/text.h"
 #include "localization.h"
 
 namespace esphome {
@@ -114,6 +115,8 @@ class ACW02 : public Component, public uart::UARTDevice {
   void set_warn_text_sensor(esphome::text_sensor::TextSensor *sensor);
   void set_error_text_sensor(esphome::text_sensor::TextSensor *sensor);
 
+  // Setters sensor for mute with delay and condition
+  void set_mute_next_cmd_delay_text(esphome::text::Text *text);
 
 
   // Send command UART
@@ -190,6 +193,8 @@ class ACW02 : public Component, public uart::UARTDevice {
   void publish_discovery_g1_mute_switch(bool recreate = false);
   void publish_discovery_g1_reset_eco_purifier_ac_off_switch(bool recreate = false);
   void publish_discovery_g1_option_recalculate_climate_switch(bool recreate = false);
+  void publish_discovery_g1_mute_after_power_on_switch(bool recreate = false);
+  void publish_discovery_g1_mute_next_cmd_delay_text(bool recreate = false);
   void publish_discovery_temperature_number(bool recreate = false);
   void publish_discovery_g1_reload_button(bool recreate = false);
   void publish_discovery_g1_rebuild_mqtt_entities_button(bool recreate = false);
@@ -248,7 +253,8 @@ class ACW02 : public Component, public uart::UARTDevice {
   bool display_ {false};
   bool mute_ {false};
   bool mute_after_power_on_ {false};
-  bool mute_mqtt_tmp_ {false};
+  bool mute_tmp_mqtt_ {false};
+  bool mute_tmp_other_ {false};
   int mute_next_cmd_delay_ = 0;
   bool clean_ {false};
   bool force_clean_ {false};
@@ -270,6 +276,9 @@ class ACW02 : public Component, public uart::UARTDevice {
   binary_sensor::BinarySensor *error_sensor_{nullptr};
   esphome::text_sensor::TextSensor *warn_text_sensor_{nullptr};
   esphome::text_sensor::TextSensor *error_text_sensor_{nullptr};
+
+  // sensor for mute with delay and condition
+  esphome::text::Text *mute_next_cmd_delay_text_{nullptr};
 
   // variables persisted AC settings
   ESPPreferenceObject mute_pref_;
