@@ -56,7 +56,7 @@ text:
             id(mqtt_port_input).update();
 
   - platform: template
-    name: "G1: [Z-Mute] Delai Commande silencieuse"
+    name: "G1: Z-Mute Delai Commande silencieuse"
     id: mute_next_cmd_delay
     update_interval: never
     icon: mdi:volume-off
@@ -191,7 +191,7 @@ switch:
       - lambda: id(ac_ctrl).set_auto_off_options_when_ac_off(false);
 
   - platform: template
-    name: "G1: [Z-Mute] Commande silencieuse après un allumage"
+    name: "G1: Z-Mute Commande silencieuse après un allumage"
     id: mute_next_cmd_after_on
     icon: mdi:volume-off
     entity_category: "config"
