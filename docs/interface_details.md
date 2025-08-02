@@ -64,7 +64,7 @@
 | 17 | Disable vertical swing (auto-saved; validate button will recreate MQTT entities) |
 | 18 | Manually recreate MQTT entities (to apply disable settings) |
 | A  | option for reset or not eco/purifier when ac is turn off |
-| B  | mute delay (in ms) between 2 commands, possible value [0-600000], 0 to disable this feature |
+| B  | mute delay (in ms) between 2 commands, possible value [0-60000] (max 60s), 0 to disable this feature |
 | C  | This option uses the previous delay (B), if the delay is different from 0, then only the commands following a power on of the AC will be muted, for x ms... |
 
 ---
