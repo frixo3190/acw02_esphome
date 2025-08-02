@@ -46,7 +46,7 @@
 |---:|-------------|
 | 1  | Destroy and recreate the Climate entity to reflect options like eco |
 | 2  | Enable MQTT version of G1 command (useful if not using ESPHome integration in Home Assistant) |
-| 3  | Mute all commands sent from ESP to the AC |
+| 3  | Mute all commands sent from ESP to the AC (except for clean action) |
 | 4  | Destroy and recreate all MQTT entities |
 | 5  | Request status update from AC |
 | 6  | Restart the ESP |

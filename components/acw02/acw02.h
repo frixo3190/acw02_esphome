@@ -343,7 +343,7 @@ class ACW02 : public Component, public uart::UARTDevice {
   // Protected functions for command UART
   std::vector<uint8_t> build_frame(bool bypassMute = false) const;
   void send_command_basic(const std::vector<uint8_t> &data);
-  void send_command();
+  void send_command(bool skipResetClean = false);
   static uint16_t crc16(const uint8_t *data, size_t len);
   void decode_state(const std::vector<uint8_t> &frame);
 

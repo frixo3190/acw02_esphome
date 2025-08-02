@@ -815,6 +815,7 @@ namespace esphome {
       bool tmp_send_cmd = false;
       uint32_t start_f = ac_to_fingerprint();
       bool prev_power_status = is_power_on();
+      bool isDisplayCmd = false;
 
       ESP_LOGI(TAG, "mqtt_callback_ payload %s %s %s", cmd.c_str(), topic.c_str(), payload.c_str());
       if (cmd == "power_climate") {
@@ -844,6 +845,7 @@ namespace esphome {
         tmp_send_cmd = true;
       } else if (cmd == "display") {
         tmp_send_cmd = set_display(payload == "on");
+        isDisplayCmd = true;
       } else if (cmd == "swing") {
         set_swing(payload);
         tmp_send_cmd = true;
@@ -876,7 +878,7 @@ namespace esphome {
       bool after_power_status = is_power_on();
       uint32_t end_f = ac_to_fingerprint();
       if (tmp_send_cmd && !compare_fingerprints(start_f, end_f)) {
-        send_command();
+        send_command(isDisplayCmd);
         if (mute_after_power_on_ && mute_next_cmd_delay_ > 0 && !prev_power_status && after_power_status) {
           mute_tmp_mqtt_ = true;
           this->set_timeout("mute_tmp", mute_next_cmd_delay_, [this]() {
@@ -2184,9 +2186,11 @@ namespace esphome {
       tx_queue_.push_back(data);
     }
 
-    void ACW02::send_command() {
-      clean_ = false;
-      force_clean_ = false;
+    void ACW02::send_command(bool skipResetClean) {
+      if (!skipResetClean) {
+        clean_ = false;
+        force_clean_ = false;
+      }
       ESP_LOGI(TAG, "send command");
       send_command_basic(build_frame());
     }
