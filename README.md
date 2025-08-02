@@ -56,6 +56,11 @@ wifi_password3: "testesp32"
 - [Build on Windows (native)](docs/install_from_windows_directly.md)  
 - [Build on Windows with Docker](docs/install_from_docker_win.md)
 
+### 📦 Update
+
+> **🔁 After updating:**  
+> I recommend pressing the **"G1: Rebuild MQTT Entities"** button to ensure all MQTT discovery topics are refreshed properly.
+
 ---
 
 ## 🔍 Interface Details

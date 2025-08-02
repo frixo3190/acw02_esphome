@@ -45,9 +45,14 @@ namespace esphome {
       previous_temp_c_pref_.load(&previous_target_temp_c_);
       previous_temp_f_pref_ = global_preferences->make_preference<bool>(11U, "ac_previous_temp_f");
       previous_temp_f_pref_.load(&previous_target_temp_f_);
-      auto_off_options_when_ac_off_pref_ = global_preferences->make_preference<bool>(12U, "ac_ auto_off_options_when_ac_off");
+      auto_off_options_when_ac_off_pref_ = global_preferences->make_preference<bool>(12U, "ac_auto_off_options_when_ac_off");
       auto_off_options_when_ac_off_pref_.load(&auto_off_options_when_ac_off_);
-      
+      mute_after_power_on_pref_ = global_preferences->make_preference<bool>(13U, "ac_mute_after_power_on");
+      mute_after_power_on_pref_.load(&mute_after_power_on_);
+      mute_next_cmd_delay_pref_ = global_preferences->make_preference<bool>(14U, "ac_mute_next_cmd_delay");
+      if (!mute_next_cmd_delay_pref_.load(&mute_next_cmd_delay_)) {
+        mute_next_cmd_delay_ = 0;
+      }
 
       set_timeout("test", 10000, [this]() {
         ESP_LOGD(TAG, "Setup %s ", "INIT");
@@ -138,10 +143,10 @@ namespace esphome {
         power_on_ = true;
         mode_ = str_to_mode_climate(mode);
         if (mode_ != Mode::COOL) {
-          set_eco_internal(false, false);
+          set_eco_internal(false);
         } else {
           // force set if eco_ is true (if eco is not disable auto when off)
-          set_eco_internal(eco_, false, eco_);
+          set_eco_internal(eco_, eco_);
         }
         if (mode_ == Mode::FAN) night_ = false;
         if (mode_ == Mode::AUTO) {
@@ -164,10 +169,10 @@ namespace esphome {
         power_on_ = true;
         mode_ = str_to_mode(app_lang_, mode);
         if (mode_ != Mode::COOL) {
-          set_eco_internal(false, false);
+          set_eco_internal(false);
         } else {
           // force set if eco_ is true (if eco is not disable auto when off)
-          set_eco_internal(eco_, false, eco_);
+          set_eco_internal(eco_, eco_);
         }
         if (mode_ == Mode::FAN) night_ = false;
         if (mode_ == Mode::AUTO) {
@@ -184,131 +189,12 @@ namespace esphome {
       }
     }
 
-    void ACW02::set_temperature_c(float temp) {
-      if (!use_fahrenheit_) {
-        const uint8_t oldC = target_temp_c_;
-        const uint8_t oldF = target_temp_f_;
-
-        if (temp < 16) temp = 16;
-        if (temp > 31) temp = 31;
-        target_temp_f_ = static_cast<uint8_t>(celsius_to_fahrenheit(temp));
-        target_temp_c_ = static_cast<uint8_t>(temp);
-        if ((!eco_ && mode_ != Mode::AUTO || !power_on_)) {
-          send_command();
-        } else {
-          set_timeout("publishStateDelay", 100, [this, oldC, oldF]() {
-            target_temp_f_ = oldF;
-            target_temp_c_ = oldC;
-            publish_state();
-          });
-        }
-      }
-    }
-
-    void ACW02::set_temperature_f(float temp) {
-      if (use_fahrenheit_) {
-        const uint8_t oldC = target_temp_c_;
-        const uint8_t oldF = target_temp_f_;
-
-        if (temp < 61) temp = 61;
-        if (temp > 88) temp = 88;
-        target_temp_f_ = static_cast<uint8_t>(temp);
-        target_temp_c_ = static_cast<uint8_t>(fahrenheit_to_celsius(temp));
-        if ((!eco_ && mode_ != Mode::AUTO || !power_on_)) {
-          send_command();
-        } else {
-          set_timeout("publishStateDelay", 100, [this, oldC, oldF]() {
-            target_temp_f_ = oldF;
-            target_temp_c_ = oldC;
-            publish_state();
-          });
-        }
-      }
-    }
-
-    void ACW02::set_fan(const std::string &speed) {
-      if (!eco_) {
-        fan_ = str_to_fan(app_lang_, speed);
-        send_command();
-      } else {
-        ESP_LOGI(TAG, "Ignore command : mode ECO enabled");
-        fan_ = str_to_fan(app_lang_, speed);
-        set_timeout("publishStateDelay", 100, [this]() {
-          fan_ = Fan::AUTO;
-          publish_state();
-        });
-      }
-    }
-
     void ACW02::set_swing(const std::string &pos) {
       swing_position_ = str_to_swing(app_lang_, pos);
     }
 
     void ACW02::set_swing_horizontal(const std::string &pos) {
       swing_horizontal_ = str_to_swing_horizontal(app_lang_, pos);
-    }
-
-    void ACW02::set_display(bool on) {
-      ESP_LOGI(TAG, "set display current : %s target : %s", display_ ? "on" : "off", on ? "on" : "off");
-      if (display_ != on) {
-        display_ = on;
-        send_command();
-      }
-    }
-
-    void ACW02::set_eco(bool on) {
-      if (eco_ != on) {
-        if (power_on_) {
-          if (mode_ == Mode::COOL) {
-            set_eco_internal(on, true);
-          } else {
-            eco_ = false;
-          }
-        } else {
-          eco_ = false;
-        }
-      }
-    }
-
-    void ACW02::set_eco_internal(bool on, bool sendCmd, bool force) {
-      if (eco_ != on || force) {
-        eco_ = on;
-        if (on) {
-          night_ = false;
-          previous_fan_ = fan_;
-          fan_ = Fan::AUTO;
-          recalculate_climate_depending_by_option();
-          ESP_LOGI(TAG, "set_eco %s", "store previous fan and enable auto");
-        } else {
-          fan_ = previous_fan_;
-          recalculate_climate_depending_by_option();
-          ESP_LOGI(TAG, "set_eco %s", "restore previous");
-        }
-        if (sendCmd) {
-          send_command();
-        }
-      }
-    }
-
-    void ACW02::set_night(bool on) {
-      if (power_on_) {
-        if (mode_ == Mode::COOL || mode_ == Mode::DRY || mode_ == Mode::HEAT) {
-          if (night_ != on) {
-            night_ = on;
-            if (night_) {
-              if (eco_)
-              {
-                set_eco_internal(false, false);
-              }
-            }
-            send_command();
-          }
-        } else {
-          night_ = false;
-        }
-      } else {
-        night_ = false;
-      }
     }
 
     void ACW02::set_purifier(bool on) {
@@ -363,6 +249,130 @@ namespace esphome {
       }
     }
 
+    bool ACW02::set_temperature_c(float temp) {
+      if (!use_fahrenheit_) {
+        const uint8_t oldC = target_temp_c_;
+        const uint8_t oldF = target_temp_f_;
+
+        if (temp < 16) temp = 16;
+        if (temp > 31) temp = 31;
+        target_temp_f_ = static_cast<uint8_t>(celsius_to_fahrenheit(temp));
+        target_temp_c_ = static_cast<uint8_t>(temp);
+        if ((!eco_ && mode_ != Mode::AUTO || !power_on_)) {
+          return true;
+        } else {
+          set_timeout("publishStateDelay", 100, [this, oldC, oldF]() {
+            target_temp_f_ = oldF;
+            target_temp_c_ = oldC;
+            publish_state();
+          });
+        }
+      }
+      return false;
+    }
+
+    bool ACW02::set_temperature_f(float temp) {
+      if (use_fahrenheit_) {
+        const uint8_t oldC = target_temp_c_;
+        const uint8_t oldF = target_temp_f_;
+
+        if (temp < 61) temp = 61;
+        if (temp > 88) temp = 88;
+        target_temp_f_ = static_cast<uint8_t>(temp);
+        target_temp_c_ = static_cast<uint8_t>(fahrenheit_to_celsius(temp));
+        if ((!eco_ && mode_ != Mode::AUTO || !power_on_)) {
+          return true;
+        } else {
+          set_timeout("publishStateDelay", 100, [this, oldC, oldF]() {
+            target_temp_f_ = oldF;
+            target_temp_c_ = oldC;
+            publish_state();
+          });
+        }
+      }
+      return false;
+    }
+
+    bool ACW02::set_fan(const std::string &speed) {
+      if (!eco_) {
+        fan_ = str_to_fan(app_lang_, speed);
+        return true;
+      } else {
+        ESP_LOGI(TAG, "Ignore command : mode ECO enabled");
+        fan_ = str_to_fan(app_lang_, speed);
+        set_timeout("publishStateDelay", 100, [this]() {
+          fan_ = Fan::AUTO;
+          publish_state();
+        });
+      }
+      return false;
+    }
+
+    bool ACW02::set_display(bool on) {
+      ESP_LOGI(TAG, "set display current : %s target : %s", display_ ? "on" : "off", on ? "on" : "off");
+      if (display_ != on) {
+        display_ = on;
+        return true;
+      }
+      return false;
+    }
+
+    bool ACW02::set_eco(bool on) {
+      if (eco_ != on) {
+        if (power_on_) {
+          if (mode_ == Mode::COOL) {
+            return set_eco_internal(on);
+          } else {
+            eco_ = false;
+          }
+        } else {
+          eco_ = false;
+        }
+      }
+      return false;
+    }
+
+    bool ACW02::set_eco_internal(bool on, bool force) {
+      if (eco_ != on || force) {
+        eco_ = on;
+        if (on) {
+          night_ = false;
+          previous_fan_ = fan_;
+          fan_ = Fan::AUTO;
+          recalculate_climate_depending_by_option();
+          ESP_LOGI(TAG, "set_eco %s", "store previous fan and enable auto");
+        } else {
+          fan_ = previous_fan_;
+          recalculate_climate_depending_by_option();
+          ESP_LOGI(TAG, "set_eco %s", "restore previous");
+        }
+        return true;
+      }
+      return false;
+    }
+
+    bool ACW02::set_night(bool on) {
+      if (power_on_) {
+        if (mode_ == Mode::COOL || mode_ == Mode::DRY || mode_ == Mode::HEAT) {
+          if (night_ != on) {
+            night_ = on;
+            if (night_) {
+              if (eco_)
+              {
+                set_eco_internal(false);
+              }
+            }
+            return true;
+          }
+        } else {
+          night_ = false;
+        }
+      } else {
+        night_ = false;
+      }
+      return false;
+    }
+
     void ACW02::set_auto_off_options_when_ac_off(bool on) {
       if (auto_off_options_when_ac_off_ != on) {
         auto_off_options_when_ac_off_ = on;
@@ -370,6 +380,37 @@ namespace esphome {
         publish_state();
       }
     }
+
+    void ACW02::set_mute_after_power_on(bool on) {
+      if (mute_after_power_on_ != on) {
+        mute_after_power_on_ = on;
+        mute_after_power_on_pref_.save(&mute_after_power_on_);
+        publish_state();
+      }
+    }
+
+    void ACW02::set_mute_next_cmd_delay_string(const std::string &value) {
+      if (value.empty() || !std::all_of(value.begin(), value.end(), ::isdigit)) {
+        ESP_LOGI(TAG, "Invalid delay (non-numeric) : '%s'", value.c_str());
+        mute_next_cmd_delay_ = 0;
+        return;
+      }
+      int delay = std::stoi(value);
+      if (delay > 600000) {
+        delay = 600000;
+      }
+      int prev = mute_next_cmd_delay_;
+      mute_next_cmd_delay_ = delay;
+      mute_next_cmd_delay_pref_.save(&mute_next_cmd_delay_);
+      publish_state();
+      if (mute_next_cmd_delay_text_ != nullptr && prev != mute_next_cmd_delay_) {
+        mute_next_cmd_delay_text_->publish_state(
+          std::to_string(delay)
+        );
+      }
+      ESP_LOGI(TAG, "Delay saved : %d", delay);
+    }
+
     
     void ACW02::set_g1_mqtt_options(bool on) {
       if (option_g1_mqtt_ != on) {
@@ -377,7 +418,9 @@ namespace esphome {
         option_G1_MQTT_pref_.save(&option_g1_mqtt_);
         publish_discovery_g1_mute_switch(true);
         publish_discovery_g1_option_recalculate_climate_switch(true);
+        publish_discovery_g1_mute_after_power_on_switch(true);
         publish_discovery_g1_reset_eco_purifier_ac_off_switch(true);
+        publish_discovery_g1_mute_next_cmd_delay_text(true);
         publish_discovery_g1_reload_button(true);
         publish_discovery_g1_rebuild_mqtt_entities_button(true);
         publish_discovery_g1_get_status_button(true);
@@ -501,6 +544,10 @@ namespace esphome {
       error_text_sensor_ = sensor;
     }
 
+    void ACW02::set_mute_next_cmd_delay_text(esphome::text::Text *text) {
+      mute_next_cmd_delay_text_ = text;
+    }
+
     void ACW02::reload_ac_info() {
       send_command_basic(get_status_frame_);
     }
@@ -588,6 +635,14 @@ namespace esphome {
 
     bool ACW02::is_auto_off_options_when_ac_off() const {
       return auto_off_options_when_ac_off_;
+    }
+
+    bool ACW02::is_mute_after_power_on() const {
+      return mute_after_power_on_;
+    }
+
+    int ACW02::get_mute_next_cmd_delay() const {
+      return mute_next_cmd_delay_;
     }
 
     bool ACW02::is_g1_mqtt_options() const {
@@ -707,37 +762,45 @@ namespace esphome {
                 mqtt_->publish(entry.topic, entry.payload, entry.qos, entry.retain);
                 mqtt_publish_queue_.pop_front();
               }
+              });
+              publish_discovery_climate();
+              publish_discovery_mode_select();
+              publish_discovery_fan_select();
+              publish_discovery_swing_select();
+              publish_discovery_swing_horizontal_select();
+              publish_discovery_unit_select();
+              publish_discovery_clean_switch();
+              publish_discovery_eco_switch();
+              publish_discovery_display_switch();
+              publish_discovery_night_switch();
+              publish_discovery_purifier_switch();
+              publish_discovery_g1_mute_switch();
+              publish_discovery_g1_option_recalculate_climate_switch();
+              publish_discovery_g1_mute_after_power_on_switch();
+              publish_discovery_g1_reset_eco_purifier_ac_off_switch();
+              publish_discovery_g1_mute_next_cmd_delay_text();
+              publish_discovery_temperature_number();
+              publish_discovery_g1_reload_button();
+              publish_discovery_g1_rebuild_mqtt_entities_button();
+              publish_discovery_g1_get_status_button();
+              publish_discovery_temperature_sensor();
+              publish_discovery_last_cmd_origin_sensor();
+              publish_discovery_filter_dirty_sensor();
+              publish_discovery_warn_sensor();
+              publish_discovery_error_sensor();
+              publish_discovery_warn_text_sensor();
+              publish_discovery_error_text_sensor();
+              send_command_basic(get_status_frame_);
             });
-            publish_discovery_climate();
-            publish_discovery_mode_select();
-            publish_discovery_fan_select();
-            publish_discovery_swing_select();
-            publish_discovery_swing_horizontal_select();
-            publish_discovery_unit_select();
-            publish_discovery_clean_switch();
-            publish_discovery_eco_switch();
-            publish_discovery_display_switch();
-            publish_discovery_night_switch();
-            publish_discovery_purifier_switch();
-            publish_discovery_g1_mute_switch();
-            publish_discovery_g1_option_recalculate_climate_switch();
-            publish_discovery_g1_reset_eco_purifier_ac_off_switch();
-            publish_discovery_temperature_number();
-            publish_discovery_g1_reload_button();
-            publish_discovery_g1_rebuild_mqtt_entities_button();
-            publish_discovery_g1_get_status_button();
-            publish_discovery_temperature_sensor();
-            publish_discovery_last_cmd_origin_sensor();
-            publish_discovery_filter_dirty_sensor();
-            publish_discovery_warn_sensor();
-            publish_discovery_error_sensor();
-            publish_discovery_warn_text_sensor();
-            publish_discovery_error_text_sensor();
-            send_command_basic(get_status_frame_);
-          });
-          mqtt_->subscribe(app_name_ + "/cmd/#", [this](const std::string &topic, const std::string &payload) {
-            mqtt_callback(topic, payload);
-          });
+            mqtt_->subscribe(app_name_ + "/cmd/#", [this](const std::string &topic, const std::string &payload) {
+              mqtt_callback(topic, payload);
+            });
+            mqtt_->subscribe(app_name_ + "/ping/request", [this](const std::string &topic, const std::string &payload) {
+              ESP_LOGW(TAG, "Ping request received: %s", payload.c_str());
+              this->set_timeout("delayed_ping_response", 200, [this, payload]() {
+                publish_async(app_name_ + "/ping/response", payload, 1, false);
+              });
+            });
         });
         mqtt_->set_on_disconnect([this](mqtt::MQTTClientDisconnectReason reason) {
           ESP_LOGI(TAG, "MQTT disconnected (reason=%d)", static_cast<int>(reason));
@@ -748,45 +811,52 @@ namespace esphome {
 
     void ACW02::mqtt_callback(const std::string &topic, const std::string &payload) {
       std::string cmd = topic.substr(topic.find_last_of('/') + 1);
+      //calc start fingerprint
+      bool tmp_send_cmd = false;
+      uint32_t start_f = ac_to_fingerprint();
+      bool prev_power_status = is_power_on();
+      bool isDisplayCmd = false;
+
       ESP_LOGI(TAG, "mqtt_callback_ payload %s %s %s", cmd.c_str(), topic.c_str(), payload.c_str());
       if (cmd == "power_climate") {
         set_mode_climate(payload == "OFF" ? "off" : mode_to_string_climate(mode_));
-        send_command();
+        tmp_send_cmd = true;
       } else if (cmd == "power") {
         set_mode(payload == key_to_txt(app_lang_, "mode", "OFF") ? key_to_txt(app_lang_, "mode", "OFF") : mode_to_string(app_lang_, mode_));
-        send_command();
+        tmp_send_cmd = true;
       } else if (cmd == "mode_climate") {
         set_mode_climate(payload);
-        send_command();
+        tmp_send_cmd = true;
       } else if (cmd == "mode") {
         set_mode(payload);
-        send_command();
+        tmp_send_cmd = true;
       } else if (cmd == "fan") {
-        set_fan(payload);
+        tmp_send_cmd = set_fan(payload);
       } else if (cmd == "temp_c") {
-        set_temperature_c(std::stof(payload));
+        tmp_send_cmd = set_temperature_c(std::stof(payload));
       } else if (cmd == "temp_f") {
-        set_temperature_f(std::stof(payload));
+        tmp_send_cmd = set_temperature_f(std::stof(payload));
       } else if (cmd == "eco") {
-        set_eco(payload == "on");
+        tmp_send_cmd = set_eco(payload == "on");
       } else if (cmd == "night") {
-        set_night(payload == "on");
+        tmp_send_cmd = set_night(payload == "on");
       } else if (cmd == "purifier") {
         set_purifier(payload == "on");
-        send_command();
+        tmp_send_cmd = true;
       } else if (cmd == "display") {
-        set_display(payload == "on");
+        tmp_send_cmd = set_display(payload == "on");
+        isDisplayCmd = true;
       } else if (cmd == "swing") {
         set_swing(payload);
-        send_command();
+        tmp_send_cmd = true;
       }  else if (cmd == "swing_horizontal") {
         set_swing_horizontal(payload);
-        send_command();
+        tmp_send_cmd = true;
       } else if (cmd == "clean") {
         set_clean(payload == "on");
       } else if (cmd == "unit") {
         set_unit(payload);
-        send_command();
+        tmp_send_cmd = true;
       } else if (cmd == "g1_mute") {
         set_mute(payload == "on" ? true : false);
       } else if (cmd == "g1_reset_eco_purifier") {
@@ -799,6 +869,28 @@ namespace esphome {
         rebuild_mqtt_entity();
       } else if (cmd == "g1_get_status") {
         reload_ac_info();
+      } else if (cmd == "g1_mute_after_power_on") {
+        set_mute_after_power_on(payload == "on" ? true : false);
+      } else if (cmd == "g1_mute_next_cmd_delay") {
+        set_mute_next_cmd_delay_string(payload);
+      }
+
+      bool after_power_status = is_power_on();
+      uint32_t end_f = ac_to_fingerprint();
+      if (tmp_send_cmd && !compare_fingerprints(start_f, end_f)) {
+        send_command(isDisplayCmd);
+        if (mute_after_power_on_ && mute_next_cmd_delay_ > 0 && !prev_power_status && after_power_status) {
+          mute_tmp_mqtt_ = true;
+          this->set_timeout("mute_tmp", mute_next_cmd_delay_, [this]() {
+            mute_tmp_mqtt_ = false;
+          });
+        } else if (!mute_after_power_on_ && mute_next_cmd_delay_ > 0) {
+          mute_tmp_mqtt_ = true;
+          this->set_timeout("mute_tmp", mute_next_cmd_delay_, [this]() {
+            mute_tmp_mqtt_ = false;
+          });
+        }
+        
       }
       publish_state();
     }
@@ -832,6 +924,8 @@ namespace esphome {
       payload += "\"warn_text\":\"" + warn_text_ + "\",";
       payload += "\"error_text\":\"" + error_text_ + "\",";
       payload += "\"g1_mute\":\"" + std::string(mute_ ? "on" : "off") + "\",";
+      payload += "\"g1_mute_after_power_on\":\"" + std::string(mute_after_power_on_ ? "on" : "off") + "\",";
+      payload += "\"g1_mute_next_cmd_delay\":\"" + int_to_string(mute_next_cmd_delay_) + "\",";
       payload += "\"g1_reset_eco_purifier\":\"" + std::string(auto_off_options_when_ac_off_ ? "on" : "off") + "\",";
       payload += "\"g1_option_recalculate_climate\":\"" + std::string(option_recalculate_climate_ ? "on" : "off") + "\"";
       payload += "}";
@@ -869,6 +963,7 @@ namespace esphome {
 
     std::string ACW02::build_common_config_suffix() const {
       return R"(
+      ,"qos": 1
       ,"dev": {
         "ids": [")" + app_sanitize_name_ + R"("],
         "name": ")" + app_friendly_name_ + R"(",
@@ -1494,6 +1589,87 @@ namespace esphome {
       }
     }
 
+    void ACW02::publish_discovery_g1_mute_after_power_on_switch(bool recreate) {
+      if (!mqtt_)
+      return;
+
+      const std::string topic_base = app_name_;
+      const std::string unique_id = app_sanitize_name_ + "_mqtt_g1_mute_after_power_on";
+
+      std::string config_topic = "homeassistant/switch/" + topic_base + "-g1-mute-after-power-on/config";
+
+      if (!option_g1_mqtt_) {
+        publish_async(config_topic, std::string(""), 1, true);
+        return;
+      }
+
+      std::string payload = R"({
+        "name": ")" + get_localized_name(app_lang_, "ZMuteAfterOn") + R"(",
+        "object_id": ")" + unique_id + R"(",
+        "unique_id": ")" + unique_id + R"(",
+        "cmd_t": ")" + topic_base + R"(/cmd/g1_mute_after_power_on",
+        "stat_t": ")" + topic_base + R"(/state",
+        "val_tpl": "{{ value_json.g1_mute_after_power_on }}",
+        "pl_on": "on",
+        "pl_off": "off",
+        "entity_category": "config",
+        "icon": "mdi:volume-off",
+        "avty_t": ")" + topic_base + R"(/status",
+        "pl_avail": "online",
+        "pl_not_avail": "offline")" +
+        build_common_config_suffix() + R"(
+      })";
+
+      if (recreate) {
+        publish_async(config_topic, std::string(""), 1, true);
+        set_timeout("mqtt_publish_discovery_g1_mute_after_power_on_switch_publish", mqtt_delay_rebuild_, [this, config_topic, payload]() {
+          publish_async(config_topic, payload, 1, true);
+        });
+      } else {
+        publish_async(config_topic, payload, 1, true);
+      }
+    }
+
+    void ACW02::publish_discovery_g1_mute_next_cmd_delay_text(bool recreate) {
+      if (!mqtt_)
+        return;
+
+      const std::string topic_base = app_name_;
+      const std::string unique_id = app_sanitize_name_ + "_mqtt_g1_mute_next_cmd_delay";
+
+      std::string config_topic = "homeassistant/text/" + topic_base + "-g1-mute-next-cmd-delay/config";
+
+      if (!option_g1_mqtt_) {
+        publish_async(config_topic, std::string(""), 1, true);
+        return;
+      }
+
+      std::string payload = R"({
+        "name": ")" + get_localized_name(app_lang_, "ZMuteDelay") + R"(",
+        "object_id": ")" + unique_id + R"(",
+        "unique_id": ")" + unique_id + R"(",
+        "cmd_t": ")" + topic_base + R"(/cmd/g1_mute_next_cmd_delay",
+        "stat_t": ")" + topic_base + R"(/state",
+        "val_tpl": "{{ value_json.g1_mute_next_cmd_delay }}",
+        "entity_category": "config",
+        "mode": "text",
+        "icon": "mdi:volume-off",
+        "avty_t": ")" + topic_base + R"(/status",
+        "pl_avail": "online",
+        "pl_not_avail": "offline")" +
+        build_common_config_suffix() + R"(
+      })";
+
+      if (recreate) {
+        publish_async(config_topic, std::string(""), 1, true);
+        set_timeout("mqtt_publish_discovery_g1_mute_next_cmd_delay_text_publish", mqtt_delay_rebuild_, [this, config_topic, payload]() {
+          publish_async(config_topic, payload, 1, true);
+        });
+      } else {
+        publish_async(config_topic, payload, 1, true);
+      }
+    }
+
     void ACW02::publish_discovery_temperature_number(bool recreate) {
       if (!mqtt_)
       return;
@@ -1902,7 +2078,9 @@ namespace esphome {
       publish_discovery_purifier_switch(true);
       publish_discovery_g1_mute_switch(true);
       publish_discovery_g1_option_recalculate_climate_switch(true);
+      publish_discovery_g1_mute_after_power_on_switch(true);
       publish_discovery_g1_reset_eco_purifier_ac_off_switch(true);
+      publish_discovery_g1_mute_next_cmd_delay_text(true);
       publish_discovery_temperature_number(true);
       publish_discovery_g1_reload_button(true);
       publish_discovery_g1_rebuild_mqtt_entities_button(true);
@@ -1993,7 +2171,7 @@ namespace esphome {
       if (display_)  b15 |= 0x80;
 
       frame[15] = b15;
-      if (is_mute_on()) {
+      if (is_mute_on() || mute_tmp_mqtt_ || mute_tmp_other_) {
         if (bypassMute == false) {
           frame[16] = 0x01;
         }
@@ -2008,9 +2186,11 @@ namespace esphome {
       tx_queue_.push_back(data);
     }
 
-    void ACW02::send_command() {
-      clean_ = false;
-      force_clean_ = false;
+    void ACW02::send_command(bool skipResetClean) {
+      if (!skipResetClean) {
+        clean_ = false;
+        force_clean_ = false;
+      }
       ESP_LOGI(TAG, "send command");
       send_command_basic(build_frame());
     }
@@ -2223,10 +2403,9 @@ namespace esphome {
             const uint8_t temptarget_temp_c_ = target_temp_c_;
             const uint8_t tempCalc = auto_temp_defined_heat_cool_calculator();
             if (tempCalc != temptarget_temp_c_) {
-              const bool prevMute = mute_;
-              mute_ = true;
+              mute_tmp_other_ = true;
               send_command();
-              mute_ = prevMute;
+              mute_tmp_other_ = false;
             } else {
               send_command();
             }
@@ -2238,10 +2417,9 @@ namespace esphome {
             const uint8_t temptarget_temp_c_ = target_temp_c_;
             const uint8_t tempCalc = auto_temp_defined_heat_cool_calculator();
             if (tempCalc != temptarget_temp_c_) {
-              const bool prevMute = mute_;
-              mute_ = true;
+              mute_tmp_other_ = true;
               send_command();
-              mute_ = prevMute;
+              mute_tmp_other_ = false;
             }
         }
       }
@@ -2470,7 +2648,7 @@ namespace esphome {
     void ACW02::reset_options_when_off() {
         if (auto_off_options_when_ac_off_) {
           //disable mode eco
-          set_eco_internal(false, false);
+          set_eco_internal(false);
           //disable mode purifier
           purifier_ = false;
         }
@@ -2498,6 +2676,32 @@ namespace esphome {
         publish_discovery_climate_deref();
       }
       
+    }
+
+    uint32_t ACW02::ac_to_fingerprint() const {
+      uint32_t hash = 2166136261u;
+      auto hash_combine = [&hash](uint8_t value) {
+        hash ^= value;
+        hash *= 16777619u;
+      };
+
+      hash_combine(static_cast<uint8_t>(mode_));
+      hash_combine(static_cast<uint8_t>(fan_));
+      hash_combine(power_on_ ? 1 : 0);
+      hash_combine(encode_temperature_byte());
+      hash_combine(static_cast<uint8_t>(swing_horizontal_));
+      hash_combine(static_cast<uint8_t>(swing_position_));
+      hash_combine(eco_ ? 1 : 0);
+      hash_combine(night_ ? 1 : 0);
+      hash_combine(clean_ ? 1 : 0);
+      hash_combine(purifier_ ? 1 : 0);
+      hash_combine(display_ ? 1 : 0);
+
+      return hash;
+    }
+
+    bool ACW02::compare_fingerprints(uint32_t a, uint32_t b) {
+      return a == b;
     }
 
   }
