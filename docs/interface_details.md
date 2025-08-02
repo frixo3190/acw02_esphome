@@ -40,7 +40,7 @@
 ## ⚙️ Configuration
 
 ![config](images/config.PNG)
-![config](images/resetECOPurifierACOFF.PNG)
+![config](images/resetECOPurifierACOFF2.PNG)
 ![config](images/z-mute-tmp.PNG)
 
 | #  | Description |
