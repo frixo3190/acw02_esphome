@@ -68,7 +68,6 @@ text:
       then:
         - lambda: |-
             id(ac_ctrl).set_mute_next_cmd_delay_string(x);
-            id(mute_next_cmd_delay).update();
 
 switch:
   - platform: template
