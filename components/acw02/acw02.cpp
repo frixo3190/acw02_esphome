@@ -396,8 +396,8 @@ namespace esphome {
         return;
       }
       int delay = std::stoi(value);
-      if (delay > 600000) {
-        delay = 600000;
+      if (delay > 60000) {
+        delay = 60000;
       }
       int prev = mute_next_cmd_delay_;
       mute_next_cmd_delay_ = delay;
