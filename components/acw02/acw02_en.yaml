@@ -68,6 +68,19 @@ text:
       then:
         - lambda: |-
             id(ac_ctrl).set_mute_next_cmd_delay_string(x);
+  - platform: template
+    name: "G1: Z-Mute Delay mute next cmd after AC on"
+    id: mute_next_cmd_after_on_delay
+    update_interval: never
+    icon: mdi:volume-off
+    mode: text
+    entity_category: config
+    lambda: |-
+      return id(ac_ctrl).int_to_string(id(ac_ctrl).get_mute_next_cmd_delay());
+    set_action:
+      then:
+        - lambda: |-
+            id(ac_ctrl).set_mute_next_cmd_delay_string(x);
 
 switch:
   - platform: template
@@ -188,18 +201,6 @@ switch:
       - lambda: id(ac_ctrl).set_auto_off_options_when_ac_off(true);
     turn_off_action:
       - lambda: id(ac_ctrl).set_auto_off_options_when_ac_off(false);
-
-  - platform: template
-    name: "G1: Z-Mute Mute next cmd after AC on"
-    id: mute_next_cmd_after_on
-    icon: mdi:volume-off
-    entity_category: "config"
-    lambda: |-
-      return id(ac_ctrl).is_mute_after_power_on();
-    turn_on_action:
-      - lambda: id(ac_ctrl).set_mute_after_power_on(true);
-    turn_off_action:
-      - lambda: id(ac_ctrl).set_mute_after_power_on(false);
 
 button:
   - platform: restart
@@ -326,6 +327,7 @@ interval:
         id(ac_ctrl).set_warn_text_sensor(id(ac_warn_text));
         id(ac_ctrl).set_error_text_sensor(id(ac_error_text));
         id(ac_ctrl).set_mute_next_cmd_delay_text(id(mute_next_cmd_delay));
+        id(ac_ctrl).set_mute_next_cmd_after_on_delay_text(id(mute_next_cmd_after_on_delay));
   - interval: 2s
     then:
       - lambda: |-
@@ -335,6 +337,7 @@ interval:
           id(mqtt_password_input).update();
           id(mqtt_port_input).update();
           id(mute_next_cmd_delay).update();
+          id(mute_next_cmd_after_on_delay).update();
           id(address_sensor).update();
           id(wifi__ip).update();
           id(wifi__ssid).update();

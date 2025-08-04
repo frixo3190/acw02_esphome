@@ -47,9 +47,11 @@ namespace esphome {
       previous_temp_f_pref_.load(&previous_target_temp_f_);
       auto_off_options_when_ac_off_pref_ = global_preferences->make_preference<bool>(12U, "ac_auto_off_options_when_ac_off");
       auto_off_options_when_ac_off_pref_.load(&auto_off_options_when_ac_off_);
-      mute_after_power_on_pref_ = global_preferences->make_preference<bool>(13U, "ac_mute_after_power_on");
-      mute_after_power_on_pref_.load(&mute_after_power_on_);
-      mute_next_cmd_delay_pref_ = global_preferences->make_preference<bool>(14U, "ac_mute_next_cmd_delay");
+      mute_next_cmd_after_on_delay_pref_ = global_preferences->make_preference<int>(13U, "ac_mute_after_power_on_delay");
+      if (!mute_next_cmd_after_on_delay_pref_.load(&mute_next_cmd_after_on_delay_)) {
+        mute_next_cmd_after_on_delay_ = 0;
+      }
+      mute_next_cmd_delay_pref_ = global_preferences->make_preference<int>(14U, "ac_mute_next_cmd_delay");
       if (!mute_next_cmd_delay_pref_.load(&mute_next_cmd_delay_)) {
         mute_next_cmd_delay_ = 0;
       }
@@ -381,14 +383,6 @@ namespace esphome {
       }
     }
 
-    void ACW02::set_mute_after_power_on(bool on) {
-      if (mute_after_power_on_ != on) {
-        mute_after_power_on_ = on;
-        mute_after_power_on_pref_.save(&mute_after_power_on_);
-        publish_state();
-      }
-    }
-
     void ACW02::set_mute_next_cmd_delay_string(const std::string &value) {
       if (value.empty() || !std::all_of(value.begin(), value.end(), ::isdigit)) {
         ESP_LOGI(TAG, "Invalid delay (non-numeric) : '%s'", value.c_str());
@@ -411,6 +405,28 @@ namespace esphome {
       ESP_LOGI(TAG, "Delay saved : %d", delay);
     }
 
+    void ACW02::set_mute_next_cmd_after_on_delay_string(const std::string &value) {
+      if (value.empty() || !std::all_of(value.begin(), value.end(), ::isdigit)) {
+        ESP_LOGI(TAG, "Invalid delay (non-numeric) : '%s'", value.c_str());
+        mute_next_cmd_after_on_delay_ = 0;
+        return;
+      }
+      int delay = std::stoi(value);
+      if (delay > 60000) {
+        delay = 60000;
+      }
+      int prev = mute_next_cmd_after_on_delay_;
+      mute_next_cmd_after_on_delay_ = delay;
+      mute_next_cmd_after_on_delay_pref_.save(&mute_next_cmd_after_on_delay_);
+      publish_state();
+      if (mute_next_cmd_after_on_delay_text_ != nullptr && prev != mute_next_cmd_after_on_delay_) {
+        mute_next_cmd_after_on_delay_text_->publish_state(
+          std::to_string(delay)
+        );
+      }
+      ESP_LOGI(TAG, "Delay after on saved : %d", delay);
+    }
+
     
     void ACW02::set_g1_mqtt_options(bool on) {
       if (option_g1_mqtt_ != on) {
@@ -418,9 +434,9 @@ namespace esphome {
         option_G1_MQTT_pref_.save(&option_g1_mqtt_);
         publish_discovery_g1_mute_switch(true);
         publish_discovery_g1_option_recalculate_climate_switch(true);
-        publish_discovery_g1_mute_after_power_on_switch(true);
         publish_discovery_g1_reset_eco_purifier_ac_off_switch(true);
         publish_discovery_g1_mute_next_cmd_delay_text(true);
+        publish_discovery_g1_mute_next_cmd_after_on_delay_text(true);
         publish_discovery_g1_reload_button(true);
         publish_discovery_g1_rebuild_mqtt_entities_button(true);
         publish_discovery_g1_get_status_button(true);
@@ -548,6 +564,10 @@ namespace esphome {
       mute_next_cmd_delay_text_ = text;
     }
 
+     void ACW02::set_mute_next_cmd_after_on_delay_text(esphome::text::Text *text) {
+      mute_next_cmd_after_on_delay_text_ = text;
+    }
+
     void ACW02::reload_ac_info() {
       send_command_basic(get_status_frame_);
     }
@@ -637,12 +657,12 @@ namespace esphome {
       return auto_off_options_when_ac_off_;
     }
 
-    bool ACW02::is_mute_after_power_on() const {
-      return mute_after_power_on_;
-    }
-
     int ACW02::get_mute_next_cmd_delay() const {
       return mute_next_cmd_delay_;
+    }
+
+    int ACW02::get_mute_next_cmd_after_on_delay() const {
+      return mute_next_cmd_after_on_delay_;
     }
 
     bool ACW02::is_g1_mqtt_options() const {
@@ -757,6 +777,9 @@ namespace esphome {
           if (mqtt_connected_sensor_) mqtt_connected_sensor_->publish_state(true);
           set_timeout("mqtt_discovery_delay", 100, [this]() {
             set_interval("mqtt_publish_flush", 50, [this]() {
+              if (!mqtt_ || !mqtt_->is_connected()) {
+                return;
+              }
               if (!mqtt_publish_queue_.empty()) {
                 const auto &entry = mqtt_publish_queue_.front();
                 mqtt_->publish(entry.topic, entry.payload, entry.qos, entry.retain);
@@ -776,9 +799,9 @@ namespace esphome {
               publish_discovery_purifier_switch();
               publish_discovery_g1_mute_switch();
               publish_discovery_g1_option_recalculate_climate_switch();
-              publish_discovery_g1_mute_after_power_on_switch();
               publish_discovery_g1_reset_eco_purifier_ac_off_switch();
               publish_discovery_g1_mute_next_cmd_delay_text();
+              publish_discovery_g1_mute_next_cmd_after_on_delay_text();
               publish_discovery_temperature_number();
               publish_discovery_g1_reload_button();
               publish_discovery_g1_rebuild_mqtt_entities_button();
@@ -869,22 +892,22 @@ namespace esphome {
         rebuild_mqtt_entity();
       } else if (cmd == "g1_get_status") {
         reload_ac_info();
-      } else if (cmd == "g1_mute_after_power_on") {
-        set_mute_after_power_on(payload == "on" ? true : false);
       } else if (cmd == "g1_mute_next_cmd_delay") {
         set_mute_next_cmd_delay_string(payload);
+      }  else if (cmd == "g1_mute_next_cmd_after_on_delay") {
+        set_mute_next_cmd_after_on_delay_string(payload);
       }
 
       bool after_power_status = is_power_on();
       uint32_t end_f = ac_to_fingerprint();
       if (tmp_send_cmd && !compare_fingerprints(start_f, end_f)) {
         send_command(isDisplayCmd);
-        if (mute_after_power_on_ && mute_next_cmd_delay_ > 0 && !prev_power_status && after_power_status) {
+        if (mute_next_cmd_after_on_delay_ > 0 && !prev_power_status && after_power_status) {
           mute_tmp_mqtt_ = true;
-          this->set_timeout("mute_tmp", mute_next_cmd_delay_, [this]() {
+          this->set_timeout("mute_tmp_after_on", mute_next_cmd_after_on_delay_, [this]() {
             mute_tmp_mqtt_ = false;
           });
-        } else if (!mute_after_power_on_ && mute_next_cmd_delay_ > 0) {
+        } else if (mute_next_cmd_delay_ > 0) {
           mute_tmp_mqtt_ = true;
           this->set_timeout("mute_tmp", mute_next_cmd_delay_, [this]() {
             mute_tmp_mqtt_ = false;
@@ -892,12 +915,22 @@ namespace esphome {
         }
         
       }
+      if (delay_publish_stats_after_power_on > 0 && !prev_power_status && after_power_status) {
+        time_publish_stats_after_power_on = millis();
+      }
       publish_state();
     }
 
     void ACW02::publish_state() {
       if (!mqtt_)
         return;
+
+      if (delay_publish_stats_after_power_on > 0 && (time_publish_stats_after_power_on + 350) > millis()) {
+         set_timeout("publish_state_after_on", 100, [this]() {
+          publish_state();
+        });
+        return;
+      }
 
       std::string payload = "{";
       payload += "\"power_climate\":\"" + std::string(power_on_ ? "on" : "off") + "\",";
@@ -924,8 +957,8 @@ namespace esphome {
       payload += "\"warn_text\":\"" + warn_text_ + "\",";
       payload += "\"error_text\":\"" + error_text_ + "\",";
       payload += "\"g1_mute\":\"" + std::string(mute_ ? "on" : "off") + "\",";
-      payload += "\"g1_mute_after_power_on\":\"" + std::string(mute_after_power_on_ ? "on" : "off") + "\",";
-      payload += "\"g1_mute_next_cmd_delay\":\"" + int_to_string(mute_next_cmd_delay_) + "\",";
+      payload += "\"g1_mute_next_cmd_delay\":" + int_to_string(mute_next_cmd_delay_) + ",";
+      payload += "\"g1_mute_next_cmd_after_on_delay\":" + int_to_string(mute_next_cmd_after_on_delay_) + ",";
       payload += "\"g1_reset_eco_purifier\":\"" + std::string(auto_off_options_when_ac_off_ ? "on" : "off") + "\",";
       payload += "\"g1_option_recalculate_climate\":\"" + std::string(option_recalculate_climate_ ? "on" : "off") + "\"";
       payload += "}";
@@ -1589,47 +1622,6 @@ namespace esphome {
       }
     }
 
-    void ACW02::publish_discovery_g1_mute_after_power_on_switch(bool recreate) {
-      if (!mqtt_)
-      return;
-
-      const std::string topic_base = app_name_;
-      const std::string unique_id = app_sanitize_name_ + "_mqtt_g1_mute_after_power_on";
-
-      std::string config_topic = "homeassistant/switch/" + topic_base + "-g1-mute-after-power-on/config";
-
-      if (!option_g1_mqtt_) {
-        publish_async(config_topic, std::string(""), 1, true);
-        return;
-      }
-
-      std::string payload = R"({
-        "name": ")" + get_localized_name(app_lang_, "ZMuteAfterOn") + R"(",
-        "object_id": ")" + unique_id + R"(",
-        "unique_id": ")" + unique_id + R"(",
-        "cmd_t": ")" + topic_base + R"(/cmd/g1_mute_after_power_on",
-        "stat_t": ")" + topic_base + R"(/state",
-        "val_tpl": "{{ value_json.g1_mute_after_power_on }}",
-        "pl_on": "on",
-        "pl_off": "off",
-        "entity_category": "config",
-        "icon": "mdi:volume-off",
-        "avty_t": ")" + topic_base + R"(/status",
-        "pl_avail": "online",
-        "pl_not_avail": "offline")" +
-        build_common_config_suffix() + R"(
-      })";
-
-      if (recreate) {
-        publish_async(config_topic, std::string(""), 1, true);
-        set_timeout("mqtt_publish_discovery_g1_mute_after_power_on_switch_publish", mqtt_delay_rebuild_, [this, config_topic, payload]() {
-          publish_async(config_topic, payload, 1, true);
-        });
-      } else {
-        publish_async(config_topic, payload, 1, true);
-      }
-    }
-
     void ACW02::publish_discovery_g1_mute_next_cmd_delay_text(bool recreate) {
       if (!mqtt_)
         return;
@@ -1663,6 +1655,46 @@ namespace esphome {
       if (recreate) {
         publish_async(config_topic, std::string(""), 1, true);
         set_timeout("mqtt_publish_discovery_g1_mute_next_cmd_delay_text_publish", mqtt_delay_rebuild_, [this, config_topic, payload]() {
+          publish_async(config_topic, payload, 1, true);
+        });
+      } else {
+        publish_async(config_topic, payload, 1, true);
+      }
+    }
+
+    void ACW02::publish_discovery_g1_mute_next_cmd_after_on_delay_text(bool recreate) {
+      if (!mqtt_)
+        return;
+
+      const std::string topic_base = app_name_;
+      const std::string unique_id = app_sanitize_name_ + "_mqtt_g1_mute_next_cmd_after_on_delay";
+
+      std::string config_topic = "homeassistant/text/" + topic_base + "-g1-mute-next-cmd-after-on-delay/config";
+
+      if (!option_g1_mqtt_) {
+        publish_async(config_topic, std::string(""), 1, true);
+        return;
+      }
+
+      std::string payload = R"({
+        "name": ")" + get_localized_name(app_lang_, "ZMuteAfterOnDelay") + R"(",
+        "object_id": ")" + unique_id + R"(",
+        "unique_id": ")" + unique_id + R"(",
+        "cmd_t": ")" + topic_base + R"(/cmd/g1_mute_next_cmd_after_on_delay",
+        "stat_t": ")" + topic_base + R"(/state",
+        "val_tpl": "{{ value_json.g1_mute_next_cmd_after_on_delay }}",
+        "entity_category": "config",
+        "mode": "text",
+        "icon": "mdi:volume-off",
+        "avty_t": ")" + topic_base + R"(/status",
+        "pl_avail": "online",
+        "pl_not_avail": "offline")" +
+        build_common_config_suffix() + R"(
+      })";
+
+      if (recreate) {
+        publish_async(config_topic, std::string(""), 1, true);
+        set_timeout("mqtt_publish_discovery_g1_mute_next_cmd_after_on_delay_text_publish", mqtt_delay_rebuild_, [this, config_topic, payload]() {
           publish_async(config_topic, payload, 1, true);
         });
       } else {
@@ -2078,9 +2110,9 @@ namespace esphome {
       publish_discovery_purifier_switch(true);
       publish_discovery_g1_mute_switch(true);
       publish_discovery_g1_option_recalculate_climate_switch(true);
-      publish_discovery_g1_mute_after_power_on_switch(true);
       publish_discovery_g1_reset_eco_purifier_ac_off_switch(true);
       publish_discovery_g1_mute_next_cmd_delay_text(true);
+      publish_discovery_g1_mute_next_cmd_after_on_delay_text(true);
       publish_discovery_temperature_number(true);
       publish_discovery_g1_reload_button(true);
       publish_discovery_g1_rebuild_mqtt_entities_button(true);
@@ -2446,6 +2478,9 @@ namespace esphome {
     }
 
     void ACW02::publish_async(const std::string &topic, const std::string &payload, int qos, bool retain) {
+      if (mqtt_publish_queue_.size() >= 64) {
+        mqtt_publish_queue_.pop_front();
+      }
       mqtt_publish_queue_.push_back(MqttPublishEntry{topic, payload, qos, retain});
     }
 
