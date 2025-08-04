@@ -2455,9 +2455,9 @@ namespace esphome {
           clean_ = false;
         }
       }
-      from_remote_ = flags & 0x04;
       purifier_ = flags & 0x40;
       display_  = flags & 0x80;
+      from_remote_ = flags & 0x04 || (display_ && flags & 0x08);
 
       ESP_LOGI(TAG,
       "RX decode: PWR=%s | Mode=%s | Mode climate=%s | Fan=%s | Temp=%.1f°C / %.1f°F [%s] | "
