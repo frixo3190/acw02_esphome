@@ -38,8 +38,8 @@ static const std::map<std::string, std::map<std::string, std::string>> LOCALIZED
             {"error", "Error"},
             {"warnText", "Warn Info"},
             {"errorText", "Error Info"},
-            {"ZCMDMuteDelay", "G1: Z-CMD Delai Commande silencieuse"},
-            {"ZCMDMuteAfterOnDelay", "G1: Z-CMD Delai commande silencieuse après un allumage"},
+            {"ZCMDMuteDelay", "G1: Z-CMD Delai cmd silencieuse"},
+            {"ZCMDMuteAfterOnDelay", "G1: Z-CMD Delai cmd silencieuse après un allumage"},
             {"ZCMDPublishAfterOnDelay", "G1: Z-CMD Delai de publication de status apres un allumage"}
         }},
         {"en", {

@@ -951,10 +951,9 @@ namespace esphome {
             mute_tmp_mqtt_ = false;
           });
         }
-        
       }
       if (publish_stats_after_power_on_delay_ > 0 && !prev_power_status && after_power_status) {
-        time_publish_stats_after_power_on_ = millis();
+        time_publish_stats_after_power_on_ = millis() + publish_stats_after_power_on_delay_;
       }
       publish_state();
     }
@@ -963,7 +962,7 @@ namespace esphome {
       if (!mqtt_)
         return;
 
-      if (publish_stats_after_power_on_delay_ > 0 && (time_publish_stats_after_power_on_ + 350) > millis()) {
+      if (publish_stats_after_power_on_delay_ > 0 && time_publish_stats_after_power_on_ > millis()) {
          set_timeout("publish_state_after_on", 100, [this]() {
           publish_state();
         });
