@@ -85,6 +85,7 @@ class ACW02 : public Component, public uart::UARTDevice {
   // Setters set mute after ac power on with delay
   void set_mute_next_cmd_delay_string(const std::string &value);
   void set_mute_next_cmd_after_on_delay_string(const std::string &value);
+  void set_publish_stats_after_power_on_delay_string(const std::string &value);
 
   
   // Setters G1 : MQTT
@@ -118,6 +119,7 @@ class ACW02 : public Component, public uart::UARTDevice {
   // Setters sensor for mute with delay and condition
   void set_mute_next_cmd_delay_text(esphome::text::Text *text);
   void set_mute_next_cmd_after_on_delay_text(esphome::text::Text *text);
+  void set_publish_stats_after_power_on_delay_text(esphome::text::Text *text);
 
 
   // Send command UART
@@ -152,6 +154,7 @@ class ACW02 : public Component, public uart::UARTDevice {
   // mute with delay and condition
   int get_mute_next_cmd_delay() const;
   int get_mute_next_cmd_after_on_delay() const;
+  int get_publish_stats_after_power_on_delay() const;
   
   // G1: MQTT
    bool is_g1_mqtt_options() const;
@@ -196,6 +199,7 @@ class ACW02 : public Component, public uart::UARTDevice {
   void publish_discovery_g1_option_recalculate_climate_switch(bool recreate = false);
   void publish_discovery_g1_mute_next_cmd_delay_text(bool recreate = false);
   void publish_discovery_g1_mute_next_cmd_after_on_delay_text(bool recreate = false);
+  void publish_discovery_g1_publish_stats_after_power_on_delay_text(bool recreate = false);
   void publish_discovery_temperature_number(bool recreate = false);
   void publish_discovery_g1_reload_button(bool recreate = false);
   void publish_discovery_g1_rebuild_mqtt_entities_button(bool recreate = false);
@@ -257,8 +261,8 @@ class ACW02 : public Component, public uart::UARTDevice {
   bool mute_tmp_other_ {false};
   int mute_next_cmd_delay_ = 0;
   int mute_next_cmd_after_on_delay_ = 0;
-  int delay_publish_stats_after_power_on = 350;
-  uint32_t time_publish_stats_after_power_on {0};
+  int publish_stats_after_power_on_delay_ = 0;
+  uint32_t time_publish_stats_after_power_on_ {0};
   bool clean_ {false};
   bool force_clean_ {false};
   bool use_fahrenheit_ {false};
@@ -283,6 +287,7 @@ class ACW02 : public Component, public uart::UARTDevice {
   // sensor for mute with delay and condition
   esphome::text::Text *mute_next_cmd_delay_text_{nullptr};
   esphome::text::Text *mute_next_cmd_after_on_delay_text_{nullptr};
+  esphome::text::Text *publish_stats_after_power_on_delay_text_{nullptr};
 
   // variables persisted AC settings
   ESPPreferenceObject mute_pref_;
@@ -309,6 +314,7 @@ class ACW02 : public Component, public uart::UARTDevice {
   // variables for mute with delay and condition
    ESPPreferenceObject mute_next_cmd_after_on_delay_pref_;
    ESPPreferenceObject mute_next_cmd_delay_pref_;
+   ESPPreferenceObject publish_stats_after_power_on_delay_pref_;
 
 
   // variables MQTT

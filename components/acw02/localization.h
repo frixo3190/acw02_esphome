@@ -38,8 +38,9 @@ static const std::map<std::string, std::map<std::string, std::string>> LOCALIZED
             {"error", "Error"},
             {"warnText", "Warn Info"},
             {"errorText", "Error Info"},
-            {"ZMuteDelay", "G1: Z-Mute Delai Commande silencieuse"},
-            {"ZMuteAfterOnDelay", "G1: Z-Mute Delai commande silencieuse après un allumage"}
+            {"ZCMDMuteDelay", "G1: Z-CMD Delai Commande silencieuse"},
+            {"ZCMDMuteAfterOnDelay", "G1: Z-CMD Delai commande silencieuse après un allumage"},
+            {"ZCMDPublishAfterOnDelay", "G1: Z-CMD Delai de publication de status apres un allumage"}
         }},
         {"en", {
             {"climate", "AC"},
@@ -67,8 +68,9 @@ static const std::map<std::string, std::map<std::string, std::string>> LOCALIZED
             {"error", "Error"},
             {"warnText", "Warn Info"},
             {"errorText", "Error Info"},
-            {"ZMuteDelay", "G1: Z-Mute Delay mute between cmd"},
-            {"ZMuteAfterOnDelay", "G1: Z-Mute Delay mute next cmd after AC on"}
+            {"ZCMDMuteDelay", "G1: Z-CMD Delay mute between cmd"},
+            {"ZCMDMuteAfterOnDelay", "G1: Z-CMD Delay mute next cmd after AC on"},
+            {"ZCMDPublishAfterOnDelay", "G1: Z-CMD Delai publish state after AC on"}
         }}
     };
 
