@@ -962,12 +962,13 @@ namespace esphome {
       if (!mqtt_)
         return;
 
-      if (publish_stats_after_power_on_delay_ > 0 && time_publish_stats_after_power_on_ > millis()) {
+      if (publish_stats_after_power_on_delay_ > 0 && time_publish_stats_after_power_on_ > 0 && time_publish_stats_after_power_on_ > millis()) {
          set_timeout("publish_state_after_on", 100, [this]() {
           publish_state();
         });
         return;
       }
+      time_publish_stats_after_power_on_ = 0;
 
       std::string payload = "{";
       payload += "\"power_climate\":\"" + std::string(power_on_ ? "on" : "off") + "\",";

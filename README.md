@@ -9,6 +9,8 @@
 
 Open `esphome-acw02-en.yaml` or `esphome-acw02-fr.yaml` depending on your preferred language.
 
+If you want to compile using the ESPHome Builder add-on in Home Assistant, use the files from the `HA-esphome-builder` folder instead (`ha-esphome-builder-acw02-en.yaml` or `ha-esphome-builder-acw02-fr.yaml`).
+
 Edit the `substitutions` section — you can modify:
 
 - `dev_name`
@@ -55,6 +57,10 @@ wifi_password3: "testesp32"
 
 - [Build on Windows (native)](docs/install_from_windows_directly.md)  
 - [Build on Windows with Docker](docs/install_from_docker_win.md)
+- Build with ESPHome Builder with Home Assistant add-on:  
+  Use the files in the [`HA-esphome-builder`](HA-esphome-builder) folder with the Home Assistant ESPHome add-on:  
+  - [`ha-esphome-builder-acw02-fr.yaml`](HA-esphome-builder/ha-esphome-builder-acw02-fr.yaml) – version française  
+  - [`ha-esphome-builder-acw02-en.yaml`](HA-esphome-builder/ha-esphome-builder-acw02-en.yaml) – English version  
 
 ### 📦 Update
 
