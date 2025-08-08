@@ -461,54 +461,79 @@ namespace esphome {
         publish_discovery_g1_mute_switch(true);
         publish_discovery_g1_option_recalculate_climate_switch(true);
         publish_discovery_g1_reset_eco_purifier_ac_off_switch(true);
+        publish_discovery_disable_mode_auto_switch(true);
+        publish_discovery_disable_mode_heat_switch(true);
+        publish_discovery_disable_mode_dry_switch(true);
+        publish_discovery_disable_mode_fan_switch(true);
+        publish_discovery_disable_swing_vertical_switch(true);
+        publish_discovery_disable_swing_horizontal_switch(true);
         publish_discovery_g1_mute_next_cmd_delay_text(true);
         publish_discovery_g1_mute_next_cmd_after_on_delay_text(true);
         publish_discovery_g1_publish_stats_after_power_on_delay_text(true);
         publish_discovery_g1_reload_button(true);
         publish_discovery_g1_rebuild_mqtt_entities_button(true);
         publish_discovery_g1_get_status_button(true);
+        publish_discovery_z_config_validate_button(true);
       }
     }
 
-    void ACW02::set_disable_mode_auto(bool on) {
+    void ACW02::set_disable_mode_auto(bool on, bool published) {
       if (disable_mode_auto_ != on) {
         disable_mode_auto_ = on;
         disable_mode_auto_pref_.save(&disable_mode_auto_);
+        if (published) {
+          publish_state();
+        }
       }
     }
 
-    void ACW02::set_disable_mode_heat(bool on) {
+    void ACW02::set_disable_mode_heat(bool on, bool published) {
       if (disable_mode_heat_ != on) {
         disable_mode_heat_ = on;
         disable_mode_heat_pref_.save(&disable_mode_heat_);
+        if (published) {
+          publish_state();
+        }
       }
     }
 
-    void ACW02::set_disable_mode_dry(bool on) {
+    void ACW02::set_disable_mode_dry(bool on, bool published) {
       if (disable_mode_dry_ != on) {
         disable_mode_dry_ = on;
         disable_mode_dry_pref_.save(&disable_mode_dry_);
+        if (published) {
+          publish_state();
+        }
       }
     }
 
-    void ACW02::set_disable_mode_fan(bool on) {
+    void ACW02::set_disable_mode_fan(bool on, bool published) {
       if (disable_mode_fan_ != on) {
         disable_mode_fan_ = on;
         disable_mode_fan_pref_.save(&disable_mode_fan_);
+        if (published) {
+          publish_state();
+        }
       }
     }
 
-    void ACW02::set_disable_swing_vertical(bool on) {
+    void ACW02::set_disable_swing_vertical(bool on, bool published) {
       if (disable_swing_vertical_ != on) {
         disable_swing_vertical_ = on;
         disable_swing_vertical_pref_.save(&disable_swing_vertical_);
+        if (published) {
+          publish_state();
+        }
       }
     }
 
-    void ACW02::set_disable_swing_horizontal(bool on) {
+    void ACW02::set_disable_swing_horizontal(bool on, bool published) {
       if (disable_swing_horizontal_ != on) {
         disable_swing_horizontal_ = on;
         disable_swing_horizontal_pref_.save(&disable_swing_horizontal_);
+        if (published) {
+          publish_state();
+        }
       }
     }
 
@@ -835,6 +860,12 @@ namespace esphome {
               publish_discovery_g1_mute_switch();
               publish_discovery_g1_option_recalculate_climate_switch();
               publish_discovery_g1_reset_eco_purifier_ac_off_switch();
+              publish_discovery_disable_mode_auto_switch();
+              publish_discovery_disable_mode_heat_switch();
+              publish_discovery_disable_mode_dry_switch();
+              publish_discovery_disable_mode_fan_switch();
+              publish_discovery_disable_swing_vertical_switch();
+              publish_discovery_disable_swing_horizontal_switch();
               publish_discovery_g1_mute_next_cmd_delay_text();
               publish_discovery_g1_mute_next_cmd_after_on_delay_text();
               publish_discovery_g1_publish_stats_after_power_on_delay_text();
@@ -842,6 +873,7 @@ namespace esphome {
               publish_discovery_g1_reload_button();
               publish_discovery_g1_rebuild_mqtt_entities_button();
               publish_discovery_g1_get_status_button();
+              publish_discovery_z_config_validate_button();
               publish_discovery_temperature_sensor();
               publish_discovery_last_cmd_origin_sensor();
               publish_discovery_filter_dirty_sensor();
@@ -934,6 +966,20 @@ namespace esphome {
         set_mute_next_cmd_after_on_delay_string(payload);
       } else if (cmd == "g1_publish_stats_after_power_on_delay") {
         set_publish_stats_after_power_on_delay_string(payload);
+      } else if (cmd == "disable_mode_auto") {
+        set_disable_mode_auto(payload == "on" ? true : false, false);
+      } else if (cmd == "disable_mode_heat") {
+        set_disable_mode_heat(payload == "on" ? true : false, false);
+      } else if (cmd == "disable_mode_dry") {
+        set_disable_mode_dry(payload == "on" ? true : false, false);
+      } else if (cmd == "disable_mode_fan") {
+        set_disable_mode_fan(payload == "on" ? true : false, false);
+      } else if (cmd == "disable_swing_vertical") {
+        set_disable_swing_vertical(payload == "on" ? true : false, false);
+      } else if (cmd == "disable_swing_horizontal") {
+        set_disable_swing_horizontal(payload == "on" ? true : false, false);
+      } else if (cmd == "z_config_validate") {
+        apply_disable_settings();
       }
 
       bool after_power_status = is_power_on();
@@ -999,7 +1045,13 @@ namespace esphome {
       payload += "\"g1_mute_next_cmd_after_on_delay\":" + int_to_string(mute_next_cmd_after_on_delay_) + ",";
       payload += "\"g1_publish_stats_after_power_on_delay\":" + int_to_string(publish_stats_after_power_on_delay_) + ",";
       payload += "\"g1_reset_eco_purifier\":\"" + std::string(auto_off_options_when_ac_off_ ? "on" : "off") + "\",";
-      payload += "\"g1_option_recalculate_climate\":\"" + std::string(option_recalculate_climate_ ? "on" : "off") + "\"";
+      payload += "\"g1_option_recalculate_climate\":\"" + std::string(option_recalculate_climate_ ? "on" : "off") + "\",";
+      payload += "\"disable_mode_auto\":\"" + std::string(disable_mode_auto_ ? "on" : "off") + "\",";
+      payload += "\"disable_mode_heat\":\"" + std::string(disable_mode_heat_ ? "on" : "off") + "\",";
+      payload += "\"disable_mode_dry\":\"" + std::string(disable_mode_dry_ ? "on" : "off") + "\",";
+      payload += "\"disable_mode_fan\":\"" + std::string(disable_mode_fan_ ? "on" : "off") + "\",";
+      payload += "\"disable_swing_vertical\":\"" + std::string(disable_swing_vertical_ ? "on" : "off") + "\",";
+      payload += "\"disable_swing_horizontal\":\"" + std::string(disable_swing_horizontal_ ? "on" : "off") + "\"";
       payload += "}";
 
       publish_async(app_name_ + "/state", payload, 1, true);
@@ -1661,6 +1713,252 @@ namespace esphome {
       }
     }
 
+    void ACW02::publish_discovery_disable_mode_auto_switch(bool recreate) {
+      if (!mqtt_)
+      return;
+
+      const std::string topic_base = app_name_;
+      const std::string unique_id = app_sanitize_name_ + "_mqtt_disable_mode_auto";
+
+      std::string config_topic = "homeassistant/switch/" + topic_base + "-disable-mode-auto/config";
+
+      if (!option_g1_mqtt_) {
+        publish_async(config_topic, std::string(""), 1, true);
+        return;
+      }
+
+      std::string payload = R"({
+        "name": ")" + get_localized_name(app_lang_, "disableModeAuto") + R"(",
+        "object_id": ")" + unique_id + R"(",
+        "unique_id": ")" + unique_id + R"(",
+        "cmd_t": ")" + topic_base + R"(/cmd/disable_mode_auto",
+        "stat_t": ")" + topic_base + R"(/state",
+        "val_tpl": "{{ value_json.disable_mode_auto }}",
+        "pl_on": "on",
+        "pl_off": "off",
+        "entity_category": "config",
+        "icon": "mdi:thermostat-cog",
+        "avty_t": ")" + topic_base + R"(/status",
+        "pl_avail": "online",
+        "pl_not_avail": "offline")" +
+        build_common_config_suffix() + R"(
+      })";
+
+      if (recreate) {
+        publish_async(config_topic, std::string(""), 1, true);
+        set_timeout("mqtt_publish_discovery_disable_mode_auto_switch_publish", mqtt_delay_rebuild_, [this, config_topic, payload]() {
+          publish_async(config_topic, payload, 1, true);
+        });
+      } else {
+        publish_async(config_topic, payload, 1, true);
+      }
+    }
+
+    void ACW02::publish_discovery_disable_mode_heat_switch(bool recreate) {
+      if (!mqtt_)
+      return;
+
+      const std::string topic_base = app_name_;
+      const std::string unique_id = app_sanitize_name_ + "_mqtt_disable_mode_heat";
+
+      std::string config_topic = "homeassistant/switch/" + topic_base + "-disable-mode-heat/config";
+
+      if (!option_g1_mqtt_) {
+        publish_async(config_topic, std::string(""), 1, true);
+        return;
+      }
+
+      std::string payload = R"({
+        "name": ")" + get_localized_name(app_lang_, "disableModeHeat") + R"(",
+        "object_id": ")" + unique_id + R"(",
+        "unique_id": ")" + unique_id + R"(",
+        "cmd_t": ")" + topic_base + R"(/cmd/disable_mode_heat",
+        "stat_t": ")" + topic_base + R"(/state",
+        "val_tpl": "{{ value_json.disable_mode_heat }}",
+        "pl_on": "on",
+        "pl_off": "off",
+        "entity_category": "config",
+        "icon": "mdi:thermostat-cog",
+        "avty_t": ")" + topic_base + R"(/status",
+        "pl_avail": "online",
+        "pl_not_avail": "offline")" +
+        build_common_config_suffix() + R"(
+      })";
+
+      if (recreate) {
+        publish_async(config_topic, std::string(""), 1, true);
+        set_timeout("mqtt_publish_discovery_disable_mode_heat_switch_publish", mqtt_delay_rebuild_, [this, config_topic, payload]() {
+          publish_async(config_topic, payload, 1, true);
+        });
+      } else {
+        publish_async(config_topic, payload, 1, true);
+      }
+    }
+
+    void ACW02::publish_discovery_disable_mode_dry_switch(bool recreate) {
+      if (!mqtt_)
+      return;
+
+      const std::string topic_base = app_name_;
+      const std::string unique_id = app_sanitize_name_ + "_mqtt_disable_mode_dry";
+
+      std::string config_topic = "homeassistant/switch/" + topic_base + "-disable-mode-dry/config";
+
+      if (!option_g1_mqtt_) {
+        publish_async(config_topic, std::string(""), 1, true);
+        return;
+      }
+
+      std::string payload = R"({
+        "name": ")" + get_localized_name(app_lang_, "disableModeDry") + R"(",
+        "object_id": ")" + unique_id + R"(",
+        "unique_id": ")" + unique_id + R"(",
+        "cmd_t": ")" + topic_base + R"(/cmd/disable_mode_dry",
+        "stat_t": ")" + topic_base + R"(/state",
+        "val_tpl": "{{ value_json.disable_mode_dry }}",
+        "pl_on": "on",
+        "pl_off": "off",
+        "entity_category": "config",
+        "icon": "mdi:thermostat-cog",
+        "avty_t": ")" + topic_base + R"(/status",
+        "pl_avail": "online",
+        "pl_not_avail": "offline")" +
+        build_common_config_suffix() + R"(
+      })";
+
+      if (recreate) {
+        publish_async(config_topic, std::string(""), 1, true);
+        set_timeout("mqtt_publish_discovery_disable_mode_dry_switch_publish", mqtt_delay_rebuild_, [this, config_topic, payload]() {
+          publish_async(config_topic, payload, 1, true);
+        });
+      } else {
+        publish_async(config_topic, payload, 1, true);
+      }
+    }
+
+    void ACW02::publish_discovery_disable_mode_fan_switch(bool recreate) {
+      if (!mqtt_)
+      return;
+
+      const std::string topic_base = app_name_;
+      const std::string unique_id = app_sanitize_name_ + "_mqtt_disable_mode_fan";
+
+      std::string config_topic = "homeassistant/switch/" + topic_base + "-disable-mode-fan/config";
+
+      if (!option_g1_mqtt_) {
+        publish_async(config_topic, std::string(""), 1, true);
+        return;
+      }
+
+      std::string payload = R"({
+        "name": ")" + get_localized_name(app_lang_, "disableModeFan") + R"(",
+        "object_id": ")" + unique_id + R"(",
+        "unique_id": ")" + unique_id + R"(",
+        "cmd_t": ")" + topic_base + R"(/cmd/disable_mode_fan",
+        "stat_t": ")" + topic_base + R"(/state",
+        "val_tpl": "{{ value_json.disable_mode_fan }}",
+        "pl_on": "on",
+        "pl_off": "off",
+        "entity_category": "config",
+        "icon": "mdi:thermostat-cog",
+        "avty_t": ")" + topic_base + R"(/status",
+        "pl_avail": "online",
+        "pl_not_avail": "offline")" +
+        build_common_config_suffix() + R"(
+      })";
+
+      if (recreate) {
+        publish_async(config_topic, std::string(""), 1, true);
+        set_timeout("mqtt_publish_discovery_disable_mode_fan_switch_publish", mqtt_delay_rebuild_, [this, config_topic, payload]() {
+          publish_async(config_topic, payload, 1, true);
+        });
+      } else {
+        publish_async(config_topic, payload, 1, true);
+      }
+    }
+
+    void ACW02::publish_discovery_disable_swing_vertical_switch(bool recreate) {
+      if (!mqtt_)
+      return;
+
+      const std::string topic_base = app_name_;
+      const std::string unique_id = app_sanitize_name_ + "_mqtt_disable_swing_vertical";
+
+      std::string config_topic = "homeassistant/switch/" + topic_base + "-disable-swing_vertical/config";
+
+      if (!option_g1_mqtt_) {
+        publish_async(config_topic, std::string(""), 1, true);
+        return;
+      }
+
+      std::string payload = R"({
+        "name": ")" + get_localized_name(app_lang_, "disableSwingVertical") + R"(",
+        "object_id": ")" + unique_id + R"(",
+        "unique_id": ")" + unique_id + R"(",
+        "cmd_t": ")" + topic_base + R"(/cmd/disable_swing_vertical",
+        "stat_t": ")" + topic_base + R"(/state",
+        "val_tpl": "{{ value_json.disable_swing_vertical }}",
+        "pl_on": "on",
+        "pl_off": "off",
+        "entity_category": "config",
+        "icon": "mdi:thermostat-cog",
+        "avty_t": ")" + topic_base + R"(/status",
+        "pl_avail": "online",
+        "pl_not_avail": "offline")" +
+        build_common_config_suffix() + R"(
+      })";
+
+      if (recreate) {
+        publish_async(config_topic, std::string(""), 1, true);
+        set_timeout("mqtt_publish_discovery_disable_swing_vertical_switch_publish", mqtt_delay_rebuild_, [this, config_topic, payload]() {
+          publish_async(config_topic, payload, 1, true);
+        });
+      } else {
+        publish_async(config_topic, payload, 1, true);
+      }
+    }
+
+    void ACW02::publish_discovery_disable_swing_horizontal_switch(bool recreate) {
+      if (!mqtt_)
+      return;
+
+      const std::string topic_base = app_name_;
+      const std::string unique_id = app_sanitize_name_ + "_mqtt_disable_swing_horizontal";
+
+      std::string config_topic = "homeassistant/switch/" + topic_base + "-disable-swing_horizontal/config";
+
+      if (!option_g1_mqtt_) {
+        publish_async(config_topic, std::string(""), 1, true);
+        return;
+      }
+
+      std::string payload = R"({
+        "name": ")" + get_localized_name(app_lang_, "disableSwingHorizontal") + R"(",
+        "object_id": ")" + unique_id + R"(",
+        "unique_id": ")" + unique_id + R"(",
+        "cmd_t": ")" + topic_base + R"(/cmd/disable_swing_horizontal",
+        "stat_t": ")" + topic_base + R"(/state",
+        "val_tpl": "{{ value_json.disable_swing_horizontal }}",
+        "pl_on": "on",
+        "pl_off": "off",
+        "entity_category": "config",
+        "icon": "mdi:thermostat-cog",
+        "avty_t": ")" + topic_base + R"(/status",
+        "pl_avail": "online",
+        "pl_not_avail": "offline")" +
+        build_common_config_suffix() + R"(
+      })";
+
+      if (recreate) {
+        publish_async(config_topic, std::string(""), 1, true);
+        set_timeout("mqtt_publish_discovery_disable_swing_horizontal_switch_publish", mqtt_delay_rebuild_, [this, config_topic, payload]() {
+          publish_async(config_topic, payload, 1, true);
+        });
+      } else {
+        publish_async(config_topic, payload, 1, true);
+      }
+    }
+
     void ACW02::publish_discovery_g1_mute_next_cmd_delay_text(bool recreate) {
       if (!mqtt_)
         return;
@@ -1943,6 +2241,42 @@ namespace esphome {
       }
     }
 
+    void ACW02::publish_discovery_z_config_validate_button(bool recreate) {
+      if (!mqtt_)
+        return;
+
+      const std::string topic_base = app_name_;
+      const std::string unique_id = app_sanitize_name_ + "_mqtt_z_config_validate";
+      const std::string config_topic = "homeassistant/button/" + topic_base + "-z-config-validate/config";
+
+      if (!option_g1_mqtt_) {
+        publish_async(config_topic, std::string(""), 1, true);
+        return;
+      }
+
+      std::string payload = R"({
+        "name": ")" + get_localized_name(app_lang_, "disableValidate") + R"(",
+        "object_id": ")" + unique_id + R"(",
+        "unique_id": ")" + unique_id + R"(",
+        "cmd_t": ")" + topic_base + R"(/cmd/z_config_validate",
+        "icon": "mdi:send",
+        "entity_category": "config",
+        "avty_t": ")" + topic_base + R"(/status",
+        "pl_avail": "online",
+        "pl_not_avail": "offline")" +
+        build_common_config_suffix() + R"(
+      })";
+
+      if (recreate) {
+        publish_async(config_topic, std::string(""), 1, true);
+        set_timeout("publish_discovery_z_config_validate_button", mqtt_delay_rebuild_, [this, config_topic, payload]() {
+          publish_async(config_topic, payload, 1, true);
+        });
+      } else {
+        publish_async(config_topic, payload, 1, true);
+      }
+    }
+
     void ACW02::publish_discovery_temperature_sensor(bool recreate) {
       if (!mqtt_) return;
 
@@ -2190,6 +2524,12 @@ namespace esphome {
       publish_discovery_g1_mute_switch(true);
       publish_discovery_g1_option_recalculate_climate_switch(true);
       publish_discovery_g1_reset_eco_purifier_ac_off_switch(true);
+      publish_discovery_disable_mode_auto_switch(true);
+      publish_discovery_disable_mode_heat_switch(true);
+      publish_discovery_disable_mode_dry_switch(true);
+      publish_discovery_disable_mode_fan_switch(true);
+      publish_discovery_disable_swing_vertical_switch(true);
+      publish_discovery_disable_swing_horizontal_switch(true);
       publish_discovery_g1_mute_next_cmd_delay_text(true);
       publish_discovery_g1_mute_next_cmd_after_on_delay_text(true);
       publish_discovery_g1_publish_stats_after_power_on_delay_text(true);
@@ -2197,6 +2537,7 @@ namespace esphome {
       publish_discovery_g1_reload_button(true);
       publish_discovery_g1_rebuild_mqtt_entities_button(true);
       publish_discovery_g1_get_status_button(true);
+      publish_discovery_z_config_validate_button(true);
       publish_discovery_temperature_sensor(true);
       publish_discovery_last_cmd_origin_sensor(true);
       publish_discovery_filter_dirty_sensor(true);

@@ -92,12 +92,12 @@ class ACW02 : public Component, public uart::UARTDevice {
   void set_g1_mqtt_options(bool on);
 
   // Setters publics disable option mode
-  void set_disable_mode_auto(bool on);
-  void set_disable_mode_heat(bool on);
-  void set_disable_mode_dry(bool on);
-  void set_disable_mode_fan(bool on);
-  void set_disable_swing_vertical(bool on);
-  void set_disable_swing_horizontal(bool on);
+  void set_disable_mode_auto(bool on, bool published = true);
+  void set_disable_mode_heat(bool on, bool published = true);
+  void set_disable_mode_dry(bool on, bool published = true);
+  void set_disable_mode_fan(bool on, bool published = true);
+  void set_disable_swing_vertical(bool on, bool published = true);
+  void set_disable_swing_horizontal(bool on, bool published = true);
 
   // Setters publics option for rebuild climate if mode auto or option eco enable
   void set_option_recalculate_climate(bool on);
@@ -197,6 +197,12 @@ class ACW02 : public Component, public uart::UARTDevice {
   void publish_discovery_g1_mute_switch(bool recreate = false);
   void publish_discovery_g1_reset_eco_purifier_ac_off_switch(bool recreate = false);
   void publish_discovery_g1_option_recalculate_climate_switch(bool recreate = false);
+  void publish_discovery_disable_mode_auto_switch(bool recreate = false);
+  void publish_discovery_disable_mode_heat_switch(bool recreate = false);
+  void publish_discovery_disable_mode_dry_switch(bool recreate = false);
+  void publish_discovery_disable_mode_fan_switch(bool recreate = false);
+  void publish_discovery_disable_swing_vertical_switch(bool recreate = false);
+  void publish_discovery_disable_swing_horizontal_switch(bool recreate = false);
   void publish_discovery_g1_mute_next_cmd_delay_text(bool recreate = false);
   void publish_discovery_g1_mute_next_cmd_after_on_delay_text(bool recreate = false);
   void publish_discovery_g1_publish_stats_after_power_on_delay_text(bool recreate = false);
@@ -204,6 +210,7 @@ class ACW02 : public Component, public uart::UARTDevice {
   void publish_discovery_g1_reload_button(bool recreate = false);
   void publish_discovery_g1_rebuild_mqtt_entities_button(bool recreate = false);
   void publish_discovery_g1_get_status_button(bool recreate = false);
+  void publish_discovery_z_config_validate_button(bool recreate = false);
   void publish_discovery_temperature_sensor(bool recreate = false);
   void publish_discovery_last_cmd_origin_sensor(bool recreate = false);
   void publish_discovery_filter_dirty_sensor(bool recreate = false);

@@ -40,7 +40,14 @@ static const std::map<std::string, std::map<std::string, std::string>> LOCALIZED
             {"errorText", "Error Info"},
             {"ZCMDMuteDelay", "G1: Z-CMD Delai cmd silencieuse"},
             {"ZCMDMuteAfterOnDelay", "G1: Z-CMD Delai cmd silencieuse après un allumage"},
-            {"ZCMDPublishAfterOnDelay", "G1: Z-CMD Delai de publication de status apres un allumage"}
+            {"ZCMDPublishAfterOnDelay", "G1: Z-CMD Delai de publication de status apres un allumage"},
+            {"disableModeAuto", "Z-Config: Exclu mode Auto"},
+            {"disableModeHeat", "Z-Config: Exclu mode Chauffage"},
+            {"disableModeDry", "Z-Config: Exclu mode Déshumidification"},
+            {"disableModeFan", "Z-Config: Exclu mode Ventilation"},
+            {"disableSwingVertical", "Z-Config: Exclu oscillation vertical"},
+            {"disableSwingHorizontal", "Z-Config: Exclu oscillation horizontal"},
+            {"disableValidate", "Z-Config: Valider"}
         }},
         {"en", {
             {"climate", "AC"},
@@ -70,7 +77,14 @@ static const std::map<std::string, std::map<std::string, std::string>> LOCALIZED
             {"errorText", "Error Info"},
             {"ZCMDMuteDelay", "G1: Z-CMD Delay mute between cmd"},
             {"ZCMDMuteAfterOnDelay", "G1: Z-CMD Delay mute next cmd after AC on"},
-            {"ZCMDPublishAfterOnDelay", "G1: Z-CMD Delai publish state after AC on"}
+            {"ZCMDPublishAfterOnDelay", "G1: Z-CMD Delai publish state after AC on"},
+            {"disableModeAuto", "Z-Config: Auto mode excluded"},
+            {"disableModeHeat", "Z-Config: Heat mode excluded"},
+            {"disableModeDry", "Z-Config: Dry mode excluded"},
+            {"disableModeFan", "Z-Config: Fan mode excluded"},
+            {"disableSwingVertical", "Z-Config: Swing vertical excluded"},
+            {"disableSwingHorizontal", "Z-Config: Swing horizontal excluded"},
+            {"disableValidate", "Z-Config: Validate"}
         }}
     };
 
