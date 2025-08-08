@@ -52,6 +52,14 @@ using namespace acw02_localization;
     0x3A, 0x2B, 0x3B, 0x2C, 0x3C, 0x2D, 0x3D, 0x2E, 0x2F, 
     0x3F };
 
+  struct PresetSlot {
+    int index;
+    std::string name;
+    std::vector<uint8_t> trame;
+  };
+
+  const std::string PRESETS_LIST_ELEMENT_CONFIG_DEFAULT = "_______________";
+
 class ACW02 : public Component, public uart::UARTDevice {
  public:
   
@@ -98,6 +106,9 @@ class ACW02 : public Component, public uart::UARTDevice {
   void set_disable_mode_fan(bool on, bool published = true);
   void set_disable_swing_vertical(bool on, bool published = true);
   void set_disable_swing_horizontal(bool on, bool published = true);
+
+  // Setters publics presets
+  void set_preset(bool on, bool published = true);
 
   // Setters publics option for rebuild climate if mode auto or option eco enable
   void set_option_recalculate_climate(bool on);
@@ -189,6 +200,8 @@ class ACW02 : public Component, public uart::UARTDevice {
   void publish_discovery_unit_select(bool recreate = false);
   void publish_discovery_swing_select(bool recreate = false);
   void publish_discovery_swing_horizontal_select(bool recreate = false);
+  void publish_discovery_preset_select(bool recreate = false);
+  void publish_discovery_preset_config_select(bool recreate = false);
   void publish_discovery_clean_switch(bool recreate = false);
   void publish_discovery_eco_switch(bool recreate = false);
   void publish_discovery_display_switch(bool recreate = false);
@@ -203,14 +216,18 @@ class ACW02 : public Component, public uart::UARTDevice {
   void publish_discovery_disable_mode_fan_switch(bool recreate = false);
   void publish_discovery_disable_swing_vertical_switch(bool recreate = false);
   void publish_discovery_disable_swing_horizontal_switch(bool recreate = false);
+  void publish_discovery_preset_switch(bool recreate = false);
   void publish_discovery_g1_mute_next_cmd_delay_text(bool recreate = false);
   void publish_discovery_g1_mute_next_cmd_after_on_delay_text(bool recreate = false);
   void publish_discovery_g1_publish_stats_after_power_on_delay_text(bool recreate = false);
+  void publish_discovery_preset_name_config_text(bool recreate = false);
   void publish_discovery_temperature_number(bool recreate = false);
   void publish_discovery_g1_reload_button(bool recreate = false);
   void publish_discovery_g1_rebuild_mqtt_entities_button(bool recreate = false);
   void publish_discovery_g1_get_status_button(bool recreate = false);
   void publish_discovery_z_config_validate_button(bool recreate = false);
+  void publish_discovery_preset_save_button(bool recreate = false);
+  void publish_discovery_preset_delete_button(bool recreate = false);
   void publish_discovery_temperature_sensor(bool recreate = false);
   void publish_discovery_last_cmd_origin_sensor(bool recreate = false);
   void publish_discovery_filter_dirty_sensor(bool recreate = false);
@@ -323,6 +340,9 @@ class ACW02 : public Component, public uart::UARTDevice {
    ESPPreferenceObject mute_next_cmd_delay_pref_;
    ESPPreferenceObject publish_stats_after_power_on_delay_pref_;
 
+   // variables persisted presets
+   ESPPreferenceObject preset_pref_;
+
 
   // variables MQTT
   mqtt::MQTTClientComponent *mqtt_ = nullptr;
@@ -334,13 +354,14 @@ class ACW02 : public Component, public uart::UARTDevice {
   binary_sensor::BinarySensor *mqtt_connected_sensor_{nullptr};
 
 
-  // Protected functions for disable mode
+  // Protected variables for disable mode
   bool disable_mode_auto_ {false};
   bool disable_mode_heat_ {false};
   bool disable_mode_dry_ {false};
   bool disable_mode_fan_ {false};
   bool disable_swing_vertical_ {false};
   bool disable_swing_horizontal_ {false};
+
 
   // reset option when AC off
   bool auto_off_options_when_ac_off_ {false};
@@ -400,6 +421,34 @@ class ACW02 : public Component, public uart::UARTDevice {
   // fingerprint
   uint32_t ac_to_fingerprint() const;
   bool compare_fingerprints(uint32_t a, uint32_t b);
+
+  // presets
+  bool preset_ {false};
+  std::string presets_list_element_ = {""};
+  std::string presets_list_element_config_ = {PRESETS_LIST_ELEMENT_CONFIG_DEFAULT};
+  std::string preset_name_config_ = {""};
+
+  std::array<PresetSlot, 8> presets_list = {{
+    {1, "Preset 1 (empty)", {}},
+    {2, "Preset 2 (empty)", {}},
+    {3, "Preset 3 (empty)", {}},
+    {4, "Preset 4 (empty)", {}},
+    {5, "Preset 5 (empty)", {}},
+    {6, "Preset 6 (empty)", {}},
+    {7, "Preset 7 (empty)", {}},
+    {8, "Preset 8 (empty)", {}}
+  }};
+  std::string get_preset_list(bool only_non_empty, bool forClimate = false);
+  std::string encode_trame_base64(const std::vector<uint8_t> &data);
+  std::vector<uint8_t> decode_trame_base64(const std::string &base64_str);
+
+  void update_selected_preset(const std::string &new_name, const std::vector<uint8_t> &new_trame);
+  void load_presets_from_flash();
+  void save_presets_to_flash();
+  void log_selected_preset_trame();
+  void save_single_preset_to_flash(const PresetSlot &preset);
+  void delete_preset_by_name();
+  PresetSlot get_preset_by_name(const std::string &name);
 };
 
 }  // namespace acw02

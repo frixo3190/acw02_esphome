@@ -47,7 +47,14 @@ static const std::map<std::string, std::map<std::string, std::string>> LOCALIZED
             {"disableModeFan", "Z-Config: Exclu mode Ventilation"},
             {"disableSwingVertical", "Z-Config: Exclu oscillation vertical"},
             {"disableSwingHorizontal", "Z-Config: Exclu oscillation horizontal"},
-            {"disableValidate", "Z-Config: Valider"}
+            {"disableValidate", "Z-Config: Valider"},
+            {"preset", "Z-Preset-1: Presets dans climate"},
+            {"presetList", "Presets"},
+            {"presetListConfig", "Z-Preset-2: liste"},
+            {"presetName", "Z-Preset-3: Nom"},
+            {"presetSave", "Z-Preset-4: Sauvegarder"},
+            {"presetDelete", "Z-Preset-5: Supprimer"},
+            {"presetNone", "Aucun"}
         }},
         {"en", {
             {"climate", "AC"},
@@ -84,7 +91,14 @@ static const std::map<std::string, std::map<std::string, std::string>> LOCALIZED
             {"disableModeFan", "Z-Config: Fan mode excluded"},
             {"disableSwingVertical", "Z-Config: Swing vertical excluded"},
             {"disableSwingHorizontal", "Z-Config: Swing horizontal excluded"},
-            {"disableValidate", "Z-Config: Validate"}
+            {"disableValidate", "Z-Config: Validate"},
+            {"preset", "Z-Preset-1: Presets in climate"},
+            {"presetList", "Presets"},
+            {"presetListConfig", "Z-Preset-2: list"},
+            {"presetName", "Z-Preset-3: Name"},
+            {"presetSave", "Z-Preset-4: Save"},
+            {"presetDelete", "Z-Preset-5: Delete"},
+            {"presetNone", "Off"}
         }}
     };
 
@@ -166,8 +180,12 @@ inline std::string get_localized_name(const std::string& lang, const std::string
   return (it != map.end()) ? it->second : key;
 }
 
-inline std::string build_options_json(const std::string& lang, const std::string& cat) {
+inline std::string build_options_json(const std::string& lang, const std::string& cat, const std::string& exclude_key = "") {
   auto opts = list_txt(lang, cat);
+  if (!exclude_key.empty()) {
+    const auto& excluded_txt = key_to_txt(lang, cat, exclude_key);
+    opts.erase(std::remove(opts.begin(), opts.end(), excluded_txt), opts.end());
+  }
   return "[\"" + join(opts, R"(",")") + "\"]";
 }
 

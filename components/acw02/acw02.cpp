@@ -22,7 +22,8 @@ namespace esphome {
       app_mac_ = get_mac_address();
 
       send_command_basic(keepalive_frame_);
-
+      presets_list_element_config_ = PRESETS_LIST_ELEMENT_CONFIG_DEFAULT;
+      presets_list_element_ = get_localized_name(app_lang_, "presetNone");
       mute_pref_ = global_preferences->make_preference<bool>(1U, "ac_mute");
       mute_pref_.load(&mute_);
       disable_mode_auto_pref_ = global_preferences->make_preference<bool>(2U, "ac_disable_mode_auto");
@@ -59,6 +60,9 @@ namespace esphome {
       if (!publish_stats_after_power_on_delay_pref_.load(&publish_stats_after_power_on_delay_)) {
         publish_stats_after_power_on_delay_ = 0;
       }
+      preset_pref_ = global_preferences->make_preference<bool>(16U, "ac_preset");
+      preset_pref_.load(&preset_);
+      load_presets_from_flash();
 
       set_timeout("test", 10000, [this]() {
         ESP_LOGD(TAG, "Setup %s ", "INIT");
@@ -519,6 +523,9 @@ namespace esphome {
 
     void ACW02::set_disable_swing_vertical(bool on, bool published) {
       if (disable_swing_vertical_ != on) {
+        if (preset_ && !disable_swing_horizontal_ && !on) {
+          set_disable_swing_horizontal(true, false);
+        }
         disable_swing_vertical_ = on;
         disable_swing_vertical_pref_.save(&disable_swing_vertical_);
         if (published) {
@@ -529,8 +536,25 @@ namespace esphome {
 
     void ACW02::set_disable_swing_horizontal(bool on, bool published) {
       if (disable_swing_horizontal_ != on) {
+        if (preset_ && !disable_swing_vertical_ && !on) {
+          set_disable_swing_vertical(true, false);
+        }
         disable_swing_horizontal_ = on;
         disable_swing_horizontal_pref_.save(&disable_swing_horizontal_);
+        if (published) {
+          publish_state();
+        }
+      }
+    }
+
+    void ACW02::set_preset(bool on, bool published) {
+      if (preset_ != on) {
+        if (on && !disable_swing_vertical_ && !disable_swing_horizontal_) {
+          set_disable_swing_horizontal(true, false);
+        }
+        preset_ = on;
+        preset_pref_.save(&preset_);
+        publish_discovery_climate(true);
         if (published) {
           publish_state();
         }
@@ -851,6 +875,8 @@ namespace esphome {
               publish_discovery_fan_select();
               publish_discovery_swing_select();
               publish_discovery_swing_horizontal_select();
+              publish_discovery_preset_select();
+              publish_discovery_preset_config_select();
               publish_discovery_unit_select();
               publish_discovery_clean_switch();
               publish_discovery_eco_switch();
@@ -866,14 +892,18 @@ namespace esphome {
               publish_discovery_disable_mode_fan_switch();
               publish_discovery_disable_swing_vertical_switch();
               publish_discovery_disable_swing_horizontal_switch();
+              publish_discovery_preset_switch();
               publish_discovery_g1_mute_next_cmd_delay_text();
               publish_discovery_g1_mute_next_cmd_after_on_delay_text();
               publish_discovery_g1_publish_stats_after_power_on_delay_text();
+              publish_discovery_preset_name_config_text();
               publish_discovery_temperature_number();
               publish_discovery_g1_reload_button();
               publish_discovery_g1_rebuild_mqtt_entities_button();
               publish_discovery_g1_get_status_button();
               publish_discovery_z_config_validate_button();
+              publish_discovery_preset_save_button();
+              publish_discovery_preset_delete_button();
               publish_discovery_temperature_sensor();
               publish_discovery_last_cmd_origin_sensor();
               publish_discovery_filter_dirty_sensor();
@@ -980,12 +1010,58 @@ namespace esphome {
         set_disable_swing_horizontal(payload == "on" ? true : false, false);
       } else if (cmd == "z_config_validate") {
         apply_disable_settings();
+      } else if (cmd == "preset") {
+        set_preset(payload == "on" ? true : false, false);
+      } else if (cmd == "presets_list_element_config") {
+        presets_list_element_config_ = payload;
+        PresetSlot preset = get_preset_by_name(presets_list_element_config_);
+
+        if (!preset.name.empty()) {
+          ESP_LOGI(TAG, "Preset %d trouvé avec trame de %d octets", preset.index, preset.trame.size());
+          size_t pos = preset.name.find(" (empty)");
+          if (pos != std::string::npos) {
+            preset.name = "Preset";
+          }
+          if (preset.name.length() >= 2 && std::isdigit(preset.name[0]) && preset.name[1] == ' ') {
+            preset.name = preset.name.substr(2);
+          }
+          preset_name_config_ = preset.name;
+        } else {
+          preset_name_config_ = "";
+        }
+      } else if (cmd == "presets_list_element") {
+        presets_list_element_ = payload;
+        if (payload == "none") {
+          presets_list_element_ = get_localized_name(app_lang_, "presetNone");
+        } else {
+          presets_list_element_ = payload;
+        }
+        PresetSlot preset = get_preset_by_name(presets_list_element_);
+        if (preset.name != get_localized_name(app_lang_, "presetNone")) {
+          send_command_basic(preset.trame);
+        }
+      } else if (cmd == "preset_save") {
+        update_selected_preset(preset_name_config_, build_frame());
+        preset_name_config_ = "";
+        presets_list_element_ = get_localized_name(app_lang_, "presetNone");
+        log_selected_preset_trame();
+      } else if (cmd == "preset_delete") {
+        delete_preset_by_name();
+        preset_name_config_ = "";
+        presets_list_element_ = get_localized_name(app_lang_, "presetNone");
+      } else if (cmd == "preset_name_config") {
+        if (payload.size() > 22) {
+            preset_name_config_ = payload.substr(0, 22);
+        } else {
+          preset_name_config_ = payload;
+        }
       }
 
       bool after_power_status = is_power_on();
       uint32_t end_f = ac_to_fingerprint();
       if (tmp_send_cmd && !compare_fingerprints(start_f, end_f)) {
         send_command(isDisplayCmd);
+        presets_list_element_ = get_localized_name(app_lang_, "presetNone");
         if (mute_next_cmd_after_on_delay_ > 0 && !prev_power_status && after_power_status) {
           mute_tmp_mqtt_ = true;
           this->set_timeout("mute_tmp_after_on", mute_next_cmd_after_on_delay_, [this]() {
@@ -1032,7 +1108,12 @@ namespace esphome {
       payload += "\"purifier\":\"" + std::string(purifier_ ? "on" : "off") + "\",";
       payload += "\"display\":\"" + std::string(display_ ? "on" : "off") + "\",";
       payload += "\"swing\":\"" + swing_to_string(app_lang_, swing_position_) + "\",";
-      payload += "\"swing_horizontal\":\"" + swing_horizontal_to_string(app_lang_, swing_horizontal_) + "\",";
+      std::string swingH = swing_horizontal_to_string(app_lang_, swing_horizontal_);
+      payload += "\"swing_horizontal\":\"" + swingH + "\",";
+      if (swingH == key_to_txt(app_lang_, "swingHorizontal", "STOP")) {
+        swingH = "none";
+      }
+      payload += "\"swing_horizontal_climate\":\"" + swingH + "\",";
       payload += "\"unit\":\"" + std::string(use_fahrenheit_ ? "°F" : "°C") + "\",";
       payload += "\"last_cmd_origin\":\"" + std::string(from_remote_ ? "Remote" : "ESP") + "\",";
       payload += "\"filter_dirty\":\"" + std::string(filter_dirty_ ? "true" : "false") + "\",";
@@ -1051,7 +1132,16 @@ namespace esphome {
       payload += "\"disable_mode_dry\":\"" + std::string(disable_mode_dry_ ? "on" : "off") + "\",";
       payload += "\"disable_mode_fan\":\"" + std::string(disable_mode_fan_ ? "on" : "off") + "\",";
       payload += "\"disable_swing_vertical\":\"" + std::string(disable_swing_vertical_ ? "on" : "off") + "\",";
-      payload += "\"disable_swing_horizontal\":\"" + std::string(disable_swing_horizontal_ ? "on" : "off") + "\"";
+      payload += "\"disable_swing_horizontal\":\"" + std::string(disable_swing_horizontal_ ? "on" : "off") + "\",";
+      payload += "\"preset\":\"" + std::string(preset_ ? "on" : "off") + "\",";
+      payload += "\"presets_list_element_config\":\"" + presets_list_element_config_ + "\",";
+      payload += "\"presets_list_element\":\"" + presets_list_element_ + "\",";
+      std::string presets_list_element_climate = presets_list_element_;
+      if (presets_list_element_climate == get_localized_name(app_lang_, "presetNone")) {
+        presets_list_element_climate = "none";
+      }
+      payload += "\"presets_list_element_climate\":\"" + presets_list_element_climate + "\",";
+      payload += "\"preset_name_config\":\"" + preset_name_config_ + "\"";
       payload += "}";
 
       publish_async(app_name_ + "/state", payload, 1, true);
@@ -1134,8 +1224,14 @@ namespace esphome {
           payload += R"(
           "preset_mode_command_topic": ")" + topic_base + R"(/cmd/swing_horizontal",
           "preset_mode_state_topic": ")" + topic_base + R"(/state",
-          "preset_mode_value_template": "{{ value_json.swing_horizontal }}",
-          "preset_modes": )" + build_options_json(app_lang_, "swingHorizontal") + R"(,)";
+          "preset_mode_value_template": "{{ value_json.swing_horizontal_climate }}",
+          "preset_modes": )" + build_options_json(app_lang_, "swingHorizontal", "STOP") + R"(,)";
+        } else if (preset_) {
+          payload += R"(
+          "preset_mode_command_topic": ")" + topic_base + R"(/cmd/presets_list_element",
+          "preset_mode_state_topic": ")" + topic_base + R"(/state",
+          "preset_mode_value_template": "{{ value_json.presets_list_element_climate }}",
+          "preset_modes": )" + get_preset_list(true, true) + R"(,)";
         }
         payload += R"(
         "mode_stat_t": ")" + topic_base + R"(/state",
@@ -1367,6 +1463,75 @@ namespace esphome {
       if (recreate) {
         publish_async(config_topic, std::string(""), 1, true);
         set_timeout("mqtt_publish_discovery_swing_horizontal_select_publish", mqtt_delay_rebuild_, [this, config_topic, payload]() {
+          publish_async(config_topic, payload, 1, true);
+        });
+      } else {
+        publish_async(config_topic, payload, 1, true);
+      }
+    }
+
+    void ACW02::publish_discovery_preset_select(bool recreate) {
+      if (!mqtt_)
+      return;
+
+      const std::string topic_base = app_name_;
+      const std::string unique_id = app_sanitize_name_ + "_mqtt_preset_list";
+
+      std::string config_topic = "homeassistant/select/" + topic_base + "-preset-list/config";
+
+      std::string payload = R"({
+        "name": ")" + get_localized_name(app_lang_, "presetList") + R"(",
+        "object_id": ")" + unique_id + R"(",
+        "unique_id": ")" + unique_id + R"(",
+        "icon": "mdi:content-save",
+        "cmd_t": ")" + topic_base + R"(/cmd/presets_list_element",
+        "stat_t": ")" + topic_base + R"(/state",
+        "val_tpl": "{{ value_json.presets_list_element }}",
+        "options": )" + get_preset_list(true) + R"(,
+        "avty_t": ")" + topic_base + R"(/status",
+        "pl_avail": "online",
+        "pl_not_avail": "offline")" +
+        build_common_config_suffix() + R"(
+      })";
+
+      if (recreate) {
+        publish_async(config_topic, std::string(""), 1, true);
+        set_timeout("publish_discovery_preset_select", mqtt_delay_rebuild_, [this, config_topic, payload]() {
+          publish_async(config_topic, payload, 1, true);
+        });
+      } else {
+        publish_async(config_topic, payload, 1, true);
+      }
+    }
+
+    void ACW02::publish_discovery_preset_config_select(bool recreate) {
+      if (!mqtt_)
+      return;
+
+      const std::string topic_base = app_name_;
+      const std::string unique_id = app_sanitize_name_ + "_mqtt_preset_list_config";
+
+      std::string config_topic = "homeassistant/select/" + topic_base + "-preset-list-config/config";
+
+      std::string payload = R"({
+        "name": ")" + get_localized_name(app_lang_, "presetListConfig") + R"(",
+        "object_id": ")" + unique_id + R"(",
+        "unique_id": ")" + unique_id + R"(",
+        "entity_category": "config",
+        "icon": "mdi:content-save",
+        "cmd_t": ")" + topic_base + R"(/cmd/presets_list_element_config",
+        "stat_t": ")" + topic_base + R"(/state",
+        "val_tpl": "{{ value_json.presets_list_element_config }}",
+        "options": )" + get_preset_list(false) + R"(,
+        "avty_t": ")" + topic_base + R"(/status",
+        "pl_avail": "online",
+        "pl_not_avail": "offline")" +
+        build_common_config_suffix() + R"(
+      })";
+
+      if (recreate) {
+        publish_async(config_topic, std::string(""), 1, true);
+        set_timeout("publish_discovery_preset_config_select", mqtt_delay_rebuild_, [this, config_topic, payload]() {
           publish_async(config_topic, payload, 1, true);
         });
       } else {
@@ -1959,6 +2124,42 @@ namespace esphome {
       }
     }
 
+    void ACW02::publish_discovery_preset_switch(bool recreate) {
+      if (!mqtt_)
+      return;
+
+      const std::string topic_base = app_name_;
+      const std::string unique_id = app_sanitize_name_ + "_mqtt_preset";
+
+      std::string config_topic = "homeassistant/switch/" + topic_base + "-preset/config";
+
+      std::string payload = R"({
+        "name": ")" + get_localized_name(app_lang_, "preset") + R"(",
+        "object_id": ")" + unique_id + R"(",
+        "unique_id": ")" + unique_id + R"(",
+        "cmd_t": ")" + topic_base + R"(/cmd/preset",
+        "stat_t": ")" + topic_base + R"(/state",
+        "val_tpl": "{{ value_json.preset }}",
+        "pl_on": "on",
+        "pl_off": "off",
+        "entity_category": "config",
+        "icon": "mdi:thermostat-cog",
+        "avty_t": ")" + topic_base + R"(/status",
+        "pl_avail": "online",
+        "pl_not_avail": "offline")" +
+        build_common_config_suffix() + R"(
+      })";
+
+      if (recreate) {
+        publish_async(config_topic, std::string(""), 1, true);
+        set_timeout("mqtt_publish_discovery_preset_switch_publish", mqtt_delay_rebuild_, [this, config_topic, payload]() {
+          publish_async(config_topic, payload, 1, true);
+        });
+      } else {
+        publish_async(config_topic, payload, 1, true);
+      }
+    }
+
     void ACW02::publish_discovery_g1_mute_next_cmd_delay_text(bool recreate) {
       if (!mqtt_)
         return;
@@ -2072,6 +2273,41 @@ namespace esphome {
       if (recreate) {
         publish_async(config_topic, std::string(""), 1, true);
         set_timeout("mqtt_publish_discovery_g1_publish_stats_after_power_on_delay_text_publish", mqtt_delay_rebuild_, [this, config_topic, payload]() {
+          publish_async(config_topic, payload, 1, true);
+        });
+      } else {
+        publish_async(config_topic, payload, 1, true);
+      }
+    }
+
+    void ACW02::publish_discovery_preset_name_config_text(bool recreate) {
+      if (!mqtt_)
+        return;
+
+      const std::string topic_base = app_name_;
+      const std::string unique_id = app_sanitize_name_ + "_mqtt_preset_name_config";
+
+      std::string config_topic = "homeassistant/text/" + topic_base + "-preset-name-config/config";
+
+      std::string payload = R"({
+        "name": ")" + get_localized_name(app_lang_, "presetName") + R"(",
+        "object_id": ")" + unique_id + R"(",
+        "unique_id": ")" + unique_id + R"(",
+        "cmd_t": ")" + topic_base + R"(/cmd/preset_name_config",
+        "stat_t": ")" + topic_base + R"(/state",
+        "val_tpl": "{{ value_json.preset_name_config }}",
+        "entity_category": "config",
+        "mode": "text",
+        "icon": "mdi:content-save",
+        "avty_t": ")" + topic_base + R"(/status",
+        "pl_avail": "online",
+        "pl_not_avail": "offline")" +
+        build_common_config_suffix() + R"(
+      })";
+
+      if (recreate) {
+        publish_async(config_topic, std::string(""), 1, true);
+        set_timeout("publish_discovery_preset_name_config_text", mqtt_delay_rebuild_, [this, config_topic, payload]() {
           publish_async(config_topic, payload, 1, true);
         });
       } else {
@@ -2270,6 +2506,68 @@ namespace esphome {
       if (recreate) {
         publish_async(config_topic, std::string(""), 1, true);
         set_timeout("publish_discovery_z_config_validate_button", mqtt_delay_rebuild_, [this, config_topic, payload]() {
+          publish_async(config_topic, payload, 1, true);
+        });
+      } else {
+        publish_async(config_topic, payload, 1, true);
+      }
+    }
+
+    void ACW02::publish_discovery_preset_save_button(bool recreate) {
+      if (!mqtt_)
+        return;
+
+      const std::string topic_base = app_name_;
+      const std::string unique_id = app_sanitize_name_ + "_mqtt_preset_save";
+      const std::string config_topic = "homeassistant/button/" + topic_base + "-preset-save/config";
+
+      std::string payload = R"({
+        "name": ")" + get_localized_name(app_lang_, "presetSave") + R"(",
+        "object_id": ")" + unique_id + R"(",
+        "unique_id": ")" + unique_id + R"(",
+        "cmd_t": ")" + topic_base + R"(/cmd/preset_save",
+        "icon": "mdi:content-save",
+        "entity_category": "config",
+        "avty_t": ")" + topic_base + R"(/status",
+        "pl_avail": "online",
+        "pl_not_avail": "offline")" +
+        build_common_config_suffix() + R"(
+      })";
+
+      if (recreate) {
+        publish_async(config_topic, std::string(""), 1, true);
+        set_timeout("publish_discovery_preset_save_button", mqtt_delay_rebuild_, [this, config_topic, payload]() {
+          publish_async(config_topic, payload, 1, true);
+        });
+      } else {
+        publish_async(config_topic, payload, 1, true);
+      }
+    }
+
+    void ACW02::publish_discovery_preset_delete_button(bool recreate) {
+      if (!mqtt_)
+        return;
+
+      const std::string topic_base = app_name_;
+      const std::string unique_id = app_sanitize_name_ + "_mqtt_preset_delete";
+      const std::string config_topic = "homeassistant/button/" + topic_base + "-preset-delete/config";
+
+      std::string payload = R"({
+        "name": ")" + get_localized_name(app_lang_, "presetDelete") + R"(",
+        "object_id": ")" + unique_id + R"(",
+        "unique_id": ")" + unique_id + R"(",
+        "cmd_t": ")" + topic_base + R"(/cmd/preset_delete",
+        "icon": "mdi:content-save",
+        "entity_category": "config",
+        "avty_t": ")" + topic_base + R"(/status",
+        "pl_avail": "online",
+        "pl_not_avail": "offline")" +
+        build_common_config_suffix() + R"(
+      })";
+
+      if (recreate) {
+        publish_async(config_topic, std::string(""), 1, true);
+        set_timeout("publish_discovery_preset_delete_button", mqtt_delay_rebuild_, [this, config_topic, payload]() {
           publish_async(config_topic, payload, 1, true);
         });
       } else {
@@ -2515,6 +2813,8 @@ namespace esphome {
       publish_discovery_fan_select(true);
       publish_discovery_swing_select(true);
       publish_discovery_swing_horizontal_select(true);
+      publish_discovery_preset_select(true);
+      publish_discovery_preset_config_select(true);
       publish_discovery_unit_select(true);
       publish_discovery_clean_switch(true);
       publish_discovery_eco_switch(true);
@@ -2530,14 +2830,18 @@ namespace esphome {
       publish_discovery_disable_mode_fan_switch(true);
       publish_discovery_disable_swing_vertical_switch(true);
       publish_discovery_disable_swing_horizontal_switch(true);
+      publish_discovery_preset_switch(true);
       publish_discovery_g1_mute_next_cmd_delay_text(true);
       publish_discovery_g1_mute_next_cmd_after_on_delay_text(true);
       publish_discovery_g1_publish_stats_after_power_on_delay_text(true);
+      publish_discovery_preset_name_config_text(true);
       publish_discovery_temperature_number(true);
       publish_discovery_g1_reload_button(true);
       publish_discovery_g1_rebuild_mqtt_entities_button(true);
       publish_discovery_g1_get_status_button(true);
       publish_discovery_z_config_validate_button(true);
+      publish_discovery_preset_save_button(true);
+      publish_discovery_preset_delete_button(true);
       publish_discovery_temperature_sensor(true);
       publish_discovery_last_cmd_origin_sensor(true);
       publish_discovery_filter_dirty_sensor(true);
@@ -2848,6 +3152,8 @@ namespace esphome {
         publish_discovery_climate_deref();
       } else if (previous_fahrenheit != use_fahrenheit_) {
         publish_discovery_climate(true);
+        publish_discovery_temperature_number(true);
+        publish_discovery_temperature_sensor(true);
       }
 
 
@@ -3160,5 +3466,207 @@ namespace esphome {
       return a == b;
     }
 
+    std::string ACW02::get_preset_list(bool only_non_empty, bool forClimate) {
+      std::string json = "[\"" + PRESETS_LIST_ELEMENT_CONFIG_DEFAULT + "\",";
+      if (only_non_empty) {
+        if (forClimate) {
+          json = json = "[";
+        } else {
+          json = json = "[\"" + get_localized_name(app_lang_, "presetNone") + "\"";
+        }
+      }
+      bool first = true;
+      for (const auto &slot : presets_list) {
+        if (only_non_empty && slot.trame.empty())
+          continue;
+        if (first && only_non_empty && !forClimate)
+          json += ",";
+        if (!first)
+          json += ",";
+        first = false;
+        json += "\"" + slot.name + "\"";
+      }
+      json += "]";
+      return json;
+    }
+
+    std::vector<uint8_t> ACW02::decode_trame_base64(const std::string &input) {
+      auto decode_char = [](char c) -> int {
+        if (c >= 'A' && c <= 'Z') return c - 'A';
+        if (c >= 'a' && c <= 'z') return c - 'a' + 26;
+        if (c >= '0' && c <= '9') return c - '0' + 52;
+        if (c == '+') return 62;
+        if (c == '/') return 63;
+        return -1;
+      };
+
+      std::vector<uint8_t> output;
+      int val = 0, valb = -8;
+
+      for (char c : input) {
+        if (c == '=')
+          break;
+        int d = decode_char(c);
+        if (d == -1)
+          continue;
+        val = (val << 6) + d;
+        valb += 6;
+        if (valb >= 0) {
+          output.push_back((val >> valb) & 0xFF);
+          valb -= 8;
+        }
+      }
+
+      return output;
+    }
+
+    std::string ACW02::encode_trame_base64(const std::vector<uint8_t> &input) {
+      static const char *base64_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+      std::string output;
+      int val = 0, valb = -6;
+
+      for (uint8_t c : input) {
+        val = (val << 8) + c;
+        valb += 8;
+        while (valb >= 0) {
+          output.push_back(base64_chars[(val >> valb) & 0x3F]);
+          valb -= 6;
+        }
+      }
+
+      if (valb > -6)
+        output.push_back(base64_chars[((val << 8) >> (valb + 8)) & 0x3F]);
+
+      while (output.size() % 4)
+        output.push_back('=');
+
+      return output;
+    }
+
+    void ACW02::update_selected_preset(const std::string &new_name, const std::vector<uint8_t> &new_trame) {
+      for (auto &preset : presets_list) {
+        if (preset.name == presets_list_element_config_) {
+          preset.trame = new_trame;
+          preset.name = std::to_string(preset.index) + " " + new_name;
+          save_single_preset_to_flash(preset);
+          presets_list_element_config_ = PRESETS_LIST_ELEMENT_CONFIG_DEFAULT;
+          publish_discovery_preset_select(true);
+          publish_discovery_preset_config_select(true);
+          publish_discovery_climate(true);
+          return;
+        }
+      }
+      ESP_LOGW(TAG, "No preset found with name: %s", presets_list_element_config_.c_str());
+    }
+
+    void ACW02::load_presets_from_flash() {
+      for (auto &preset : presets_list) {
+        int i = preset.index;
+
+        // Lecture du nom
+        char name_key[32];
+        snprintf(name_key, sizeof(name_key), "preset_%d_name", i);
+        auto name_pref = global_preferences->make_preference<char[25]>(fnv1_hash(name_key));
+        char name_buf[25];
+        if (name_pref.load(&name_buf)) {
+          preset.name = name_buf;
+        }
+
+        // Lecture de la trame encodée
+        char trame_key[32];
+        snprintf(trame_key, sizeof(trame_key), "preset_%d_trame", i);
+        auto trame_pref = global_preferences->make_preference<char[64]>(fnv1_hash(trame_key));
+        char trame_buf[64];
+        if (trame_pref.load(&trame_buf)) {
+          preset.trame = decode_trame_base64(trame_buf);
+        }
+      }
+    }
+
+    void ACW02::save_presets_to_flash() {
+      for (const auto &preset : presets_list) {
+        save_single_preset_to_flash(preset);
+      }
+    }
+
+    void ACW02::log_selected_preset_trame() {
+      for (const auto &preset : presets_list) {
+        if (preset.name == presets_list_element_config_) {
+          std::string hex_str;
+          for (uint8_t b : preset.trame) {
+            char buf[4];
+            snprintf(buf, sizeof(buf), "%02X ", b);
+            hex_str += buf;
+          }
+          ESP_LOGW(TAG, "Preset \"%s\" trame: %s", preset.name.c_str(), hex_str.c_str());
+          return;
+        }
+      }
+      ESP_LOGW(TAG, "No preset found with name: %s", presets_list_element_config_.c_str());
+    }
+
+    void ACW02::save_single_preset_to_flash(const PresetSlot &preset) {
+      // Sauvegarde du nom
+      char name_key[32];
+      snprintf(name_key, sizeof(name_key), "preset_%d_name", preset.index);
+      auto name_pref = global_preferences->make_preference<char[25]>(fnv1_hash(name_key));
+      char name_buf[25];
+      strncpy(name_buf, preset.name.c_str(), sizeof(name_buf));
+      name_buf[sizeof(name_buf) - 1] = '\0';  // sécurité
+      name_pref.save(&name_buf);
+
+      // Sauvegarde de la trame
+      char trame_key[32];
+      snprintf(trame_key, sizeof(trame_key), "preset_%d_trame", preset.index);
+      auto trame_pref = global_preferences->make_preference<char[64]>(fnv1_hash(trame_key));
+      std::string base64 = encode_trame_base64(preset.trame);
+      char base64_buf[64];
+      strncpy(base64_buf, base64.c_str(), sizeof(base64_buf));
+      base64_buf[sizeof(base64_buf) - 1] = '\0';
+      trame_pref.save(&base64_buf);
+    }
+
+    void ACW02::delete_preset_by_name() {
+      for (auto &preset : presets_list) {
+        if (preset.name == presets_list_element_config_) {
+          ESP_LOGI(TAG, "Deleting preset: %s (index %d)", preset.name.c_str(), preset.index);
+
+          // Supprimer le nom personnalisé en écrasant avec le nom par défaut
+          char name_key[32];
+          snprintf(name_key, sizeof(name_key), "preset_%d_name", preset.index);
+          auto name_pref = global_preferences->make_preference<char[25]>(fnv1_hash(name_key));
+          char default_name[25];
+          snprintf(default_name, sizeof(default_name), "Preset %d (empty)", preset.index);
+          name_pref.save(&default_name);
+
+          // Supprimer la trame en écrasant avec une chaîne vide
+          char trame_key[32];
+          snprintf(trame_key, sizeof(trame_key), "preset_%d_trame", preset.index);
+          auto trame_pref = global_preferences->make_preference<char[64]>(fnv1_hash(trame_key));
+          char empty[64] = {0};
+          trame_pref.save(&empty);
+
+          // Réinitialiser en mémoire
+          preset.name = default_name;
+          preset.trame.clear();
+          presets_list_element_config_ = PRESETS_LIST_ELEMENT_CONFIG_DEFAULT;
+          publish_discovery_preset_select(true);
+          publish_discovery_preset_config_select(true);
+          publish_discovery_climate(true);
+          return;
+        }
+      }
+
+      ESP_LOGW(TAG, "Preset name not found: %s", presets_list_element_config_.c_str());
+    }
+
+    PresetSlot ACW02::get_preset_by_name(const std::string &name) {
+      for (const auto &preset : presets_list) {
+        if (preset.name == name) {
+          return preset;
+        }
+      }
+      return PresetSlot{};
+    }
   }
 }
