@@ -3,6 +3,7 @@
 ## 🎛️ Controls
 
 ![controls](images/controles.PNG)
+![controls](images/presetUsage.PNG)
 
 | #  | Description |
 |---:|-------------|
@@ -18,6 +19,7 @@
 | 10 | Target temperature — unavailable when eco is on or mode is auto |
 | 11 | Temperature unit (°C or °F) (select) |
 | 12 | Vertical swing (select) |
+|  A | Configured presets (see section ⚙️ Configuration) |
 
 ---
 
@@ -42,6 +44,7 @@
 ![config](images/config.PNG)
 ![config](images/resetECOPurifierACOFF2.PNG)
 ![config](images/z-cmd2.PNG)
+![config](images/presetConfig.PNG)
 
 | #  | Description |
 |---:|-------------|
@@ -67,6 +70,11 @@
 | B  | publish state delay (in ms) between 2 commands after power on, possible value [0-1000] (max 1s), 0 to disable this feature |
 | C  | mute delay (in ms) between 2 commands, possible value [0-60000] (max 60s), 0 to disable this feature |
 | D  | mute delay (in ms) between 2 commands after power on, possible value [0-60000] (max 60s), 0 to disable this feature |
+| E  | Option to add presets to the climate entity. However, if Swing H is also enabled in the climate entity, it will be disabled |
+| F  | Choose a preset from the list to configure |
+| G  | Enter a name for the selected preset (limit 22 char) |
+| H  | Store the current AC state in the selected preset (warning: if the mute option is enabled, the preset will be saved as muted without enabling mute) |
+| I  | Delete the selected preset |
 
 ---
 
