@@ -1353,7 +1353,7 @@ namespace esphome {
         "name": ")" + get_localized_name(app_lang_, "swingHorizontal") + R"(",
         "object_id": ")" + unique_id + R"(",
         "unique_id": ")" + unique_id + R"(",
-        "icon": "mdi:swap-vertical",
+        "icon": "mdi:swap-horizontal",
         "cmd_t": ")" + topic_base + R"(/cmd/swing_horizontal",
         "stat_t": ")" + topic_base + R"(/state",
         "val_tpl": "{{ value_json.swing_horizontal }}",
