@@ -1,6 +1,6 @@
 substitutions:
-  dev_name: acw02-salon
-  dev_friendly: ACW02 salon
+  dev_name: acw02-pt_salon
+  dev_friendly: ACW02 petit salon
   lang: "fr"
   api_encrypted_key: "D2oldc0VP++fni6src89tCSC0UwBhNPgyc8vgYN8/mA="
   ota_password: "REPLACE_WITH_YOUR_PASSWORD"
