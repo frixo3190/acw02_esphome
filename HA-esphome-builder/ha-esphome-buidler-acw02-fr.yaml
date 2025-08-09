@@ -4,7 +4,7 @@ substitutions:
   lang: "fr"
   api_encrypted_key: "D2oldc0VP++fni6src89tCSC0UwBhNPgyc8vgYN8/mA="
   ota_password: "REPLACE_WITH_YOUR_PASSWORD"
-  ap_password: "fallbackpassword"
+  ap_password: "fallbackpassword!"
   web_server_username: admin
   web_server_password: admin
   board: esp32dev

@@ -3,7 +3,7 @@ substitutions:
   dev_friendly: ACW02 salon
   lang: "fr"
   api_encrypted_key: "D2oldc0VP++fni6src89tCSC0UwBhNPgyc8vgYN8/mA="
-  ota_password: "REPLACE_WITH_YOUR_PASSWORD"
+  ota_password: "motdepasseclim!"
   ap_password: "fallbackpassword"
   web_server_username: admin
   web_server_password: admin
