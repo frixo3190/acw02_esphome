@@ -915,16 +915,16 @@ namespace esphome {
             });
             mqtt_->subscribe(app_name_ + "/cmd/#", [this](const std::string &topic, const std::string &payload) {
               mqtt_callback(topic, payload);
-            });
+            }, 1);
             mqtt_->subscribe(app_name_ + "/ping/request", [this](const std::string &topic, const std::string &payload) {
               ESP_LOGW(TAG, "Ping request received: %s", payload.c_str());
               this->set_timeout("delayed_ping_response", 200, [this, payload]() {
                 publish_async(app_name_ + "/ping/response", payload, 1, false);
               });
-            });
+            }, 1);
         });
         mqtt_->set_on_disconnect([this](mqtt::MQTTClientDisconnectReason reason) {
-          ESP_LOGI(TAG, "MQTT disconnected (reason=%d)", static_cast<int>(reason));
+          ESP_LOGW(TAG, "MQTT disconnected (reason=%d)", static_cast<int>(reason));
           if (mqtt_connected_sensor_) mqtt_connected_sensor_->publish_state(false);
         });
       }
@@ -938,7 +938,7 @@ namespace esphome {
       bool prev_power_status = is_power_on();
       bool isDisplayCmd = false;
 
-      ESP_LOGI(TAG, "mqtt_callback_ payload %s %s %s", cmd.c_str(), topic.c_str(), payload.c_str());
+      ESP_LOGW(TAG, "mqtt_callback_ payload %s %s %s", cmd.c_str(), topic.c_str(), payload.c_str());
       if (cmd == "power_climate") {
         set_mode_climate(payload == "OFF" ? "off" : mode_to_string_climate(mode_));
         tmp_send_cmd = true;
