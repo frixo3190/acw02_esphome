@@ -943,6 +943,10 @@ namespace esphome {
                 publish_async(app_name_ + "/ping/response", payload, 1, false);
               });
             }, 1);
+            // for generate failed compare fingerprint
+            // set_interval("test", 500, [this]() {
+            //   write_array(get_status_frame_);
+            // });
         });
         mqtt_->set_on_disconnect([this](mqtt::MQTTClientDisconnectReason reason) {
           ESP_LOGW(TAG, "MQTT disconnected (reason=%d)", static_cast<int>(reason));
@@ -3195,7 +3199,7 @@ namespace esphome {
           log_fingerprint("decode_frame", cmd_recieve_fingerprint);
           if (!compare_fingerprints(cmd_send_fingerprint_.fingerprint, cmd_recieve_fingerprint.fingerprint)) {
             log_fingerprint("Mismatch cmd ignore", cmd_send_fingerprint_, cmd_recieve_fingerprint, true);
-            ESP_LOGW(TAG, "cmd resend");
+            ESP_LOGE(TAG, "cmd resend");
             send_static_command_basic(cmd_send_fingerprint_.frame);
           }
         }
