@@ -2945,6 +2945,7 @@ namespace esphome {
       }
       write_array(pkt.frame);
       last_tx_ = millis();
+      cmd_send_fingerprint_.timestamp_ms = last_tx_;
       tx_queue_.pop_front();
     }
 
@@ -2996,7 +2997,7 @@ namespace esphome {
     }
 
      void ACW02::send_static_command_basic(const std::vector<uint8_t> &data) {
-      Frame_with_Fingerprint data_frame = {0, "", {}, 0};
+      Frame_with_Fingerprint data_frame = {0, "", {}, 0, 0};
       data_frame.frame = data;
       tx_queue_.push_back(data_frame);
     }
@@ -3199,12 +3200,18 @@ namespace esphome {
           log_fingerprint("decode_frame", cmd_recieve_fingerprint);
           if (!compare_fingerprints(cmd_send_fingerprint_.fingerprint, cmd_recieve_fingerprint.fingerprint)) {
             log_fingerprint("Mismatch cmd ignore", cmd_send_fingerprint_, cmd_recieve_fingerprint, true);
-            ESP_LOGE(TAG, "cmd resend");
-            send_static_command_basic(cmd_send_fingerprint_.frame);
+            if (cmd_send_fingerprint_.tryCnt < maxRetry) {
+              cmd_send_fingerprint_.tryCnt = cmd_send_fingerprint_.tryCnt + 1;
+              ESP_LOGE(TAG, "Last tx retry %d/%d", cmd_send_fingerprint_.tryCnt, maxRetry);
+              send_command_basic(cmd_send_fingerprint_);
+            } else {
+              ESP_LOGE(TAG, "Last tx cannot retry because max exceded");
+            }
+            
           }
         }
         
-        cmd_send_fingerprint_ = {0, "", {}, 0};
+        cmd_send_fingerprint_ = {0, "", {}, 0, 0};
       } else {
         ESP_LOGW(TAG, "Fingerprint ignored because time < 50ms");
       }
@@ -3521,12 +3528,13 @@ namespace esphome {
       
     }
 
-     Frame_with_Fingerprint ACW02::fingerprint() const {
+    Frame_with_Fingerprint ACW02::fingerprint() const {
       return {
         ac_to_fingerprint(),
         fingerprint_to_string(),
         {},
-        millis()
+        millis(),
+        0
       };
     }
 
@@ -3575,11 +3583,11 @@ namespace esphome {
       if (tfp.fingerprint != 0)
       {
         char buftx[255];
-        snprintf(buftx, sizeof(buftx), "Fingerprint TX = 0x%08X -> %s", fp.fingerprint, fp.description.c_str(), tfp.fingerprint, tfp.description.c_str());
+        snprintf(buftx, sizeof(buftx), "Fingerprint TX = 0x%08X -> %s", fp.fingerprint, fp.description.c_str());
         ESP_LOGW(TAG, "%s", buftx);
         char bufrx[255];
-        snprintf(bufrx, sizeof(bufrx), "Fingerprint RX = 0x%08X -> %s", fp.fingerprint, fp.description.c_str(), tfp.fingerprint, tfp.description.c_str());
-        ESP_LOGW(TAG, "%s", buftx);
+        snprintf(bufrx, sizeof(bufrx), "Fingerprint RX = 0x%08X -> %s", tfp.fingerprint, tfp.description.c_str());
+        ESP_LOGW(TAG, "%s", bufrx);
         if (sensored) {
           if (cmd_ignore_tx_sensor_ != nullptr) {
             cmd_ignore_tx_sensor_->publish_state(buftx);

@@ -38,7 +38,10 @@ using namespace acw02_localization;
     std::string description;
     std::vector<uint8_t> frame;
     uint32_t timestamp_ms;
+    int tryCnt;
   };
+
+  static constexpr int maxRetry = 3;
 
 
   // globals Statics base trame (keep alive?)
@@ -434,11 +437,11 @@ class ACW02 : public Component, public uart::UARTDevice {
   // fingerprint
   esphome::text_sensor::TextSensor *cmd_ignore_tx_sensor_{nullptr};
   esphome::text_sensor::TextSensor *cmd_ignore_rx_sensor_{nullptr};
-  mutable Frame_with_Fingerprint cmd_send_fingerprint_ = {0, "", {}, 0};
+  mutable Frame_with_Fingerprint cmd_send_fingerprint_ = {0, "", {}, 0, 0};
   Frame_with_Fingerprint fingerprint() const;
   uint32_t ac_to_fingerprint() const;
   std::string fingerprint_to_string() const;
-  void log_fingerprint(std::string from, Frame_with_Fingerprint fp, Frame_with_Fingerprint tfp = {0, "", {}, 0}, bool sensored = false) const;
+  void log_fingerprint(std::string from, Frame_with_Fingerprint fp, Frame_with_Fingerprint tfp = {0, "", {}, 0, 0}, bool sensored = false) const;
   bool compare_fingerprints(uint32_t a, uint32_t b);
 
   // presets
