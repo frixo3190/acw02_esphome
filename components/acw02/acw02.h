@@ -33,6 +33,14 @@ using namespace acw02_localization;
   // globals Statics
   static const char *const TAG = "acw02";
 
+  struct Frame_with_Fingerprint {
+    uint32_t fingerprint;
+    std::string description;
+    std::vector<uint8_t> frame;
+    uint32_t timestamp_ms;
+  };
+
+
   // globals Statics base trame (keep alive?)
   static const std::vector<uint8_t> keepalive_frame_ = {
     0x7A, 0x7A, 0x21, 0xD5, 0x0C, 0x00, 0x00, 0xAB,
@@ -126,6 +134,8 @@ class ACW02 : public Component, public uart::UARTDevice {
   void set_error_sensor(binary_sensor::BinarySensor *sensor);
   void set_warn_text_sensor(esphome::text_sensor::TextSensor *sensor);
   void set_error_text_sensor(esphome::text_sensor::TextSensor *sensor);
+  void set_cmd_ignore_tx_sensor(esphome::text_sensor::TextSensor *sensor);
+  void set_cmd_ignore_rx_sensor(esphome::text_sensor::TextSensor *sensor);
 
   // Setters sensor for mute with delay and condition
   void set_mute_next_cmd_delay_text(esphome::text::Text *text);
@@ -241,6 +251,8 @@ class ACW02 : public Component, public uart::UARTDevice {
   // MQTT publics function for apply disable option mode
   void apply_disable_settings();
  
+  void clear_cmd_ignore();
+  
   // Functions publics
   std::string sanitize_name(const std::string &input) const;
   std::string int_to_string(int value);
@@ -258,7 +270,7 @@ class ACW02 : public Component, public uart::UARTDevice {
   // variables command queue
   std::vector<uint8_t> rx_buffer_;
   uint32_t last_rx_byte_time_{0};
-  std::deque<std::vector<uint8_t>> tx_queue_;
+  std::deque<Frame_with_Fingerprint> tx_queue_;
   uint32_t last_tx_{0};
   static constexpr uint32_t TX_INTERVAL_MS = 300;
 
@@ -379,8 +391,9 @@ class ACW02 : public Component, public uart::UARTDevice {
   void process_tx_queue();
 
   // Protected functions for command UART
-  std::vector<uint8_t> build_frame(bool bypassMute = false) const;
-  void send_command_basic(const std::vector<uint8_t> &data);
+  Frame_with_Fingerprint build_frame(bool bypassMute = false) const;
+   void send_static_command_basic(const std::vector<uint8_t> &data);
+  void send_command_basic(const Frame_with_Fingerprint &data);
   void send_command(bool skipResetClean = false);
   static uint16_t crc16(const uint8_t *data, size_t len);
   void decode_state(const std::vector<uint8_t> &frame);
@@ -419,7 +432,13 @@ class ACW02 : public Component, public uart::UARTDevice {
   void recalculate_climate_depending_by_option();
 
   // fingerprint
+  esphome::text_sensor::TextSensor *cmd_ignore_tx_sensor_{nullptr};
+  esphome::text_sensor::TextSensor *cmd_ignore_rx_sensor_{nullptr};
+  mutable Frame_with_Fingerprint cmd_send_fingerprint_ = {0, "", {}, 0};
+  Frame_with_Fingerprint fingerprint() const;
   uint32_t ac_to_fingerprint() const;
+  std::string fingerprint_to_string() const;
+  void log_fingerprint(std::string from, Frame_with_Fingerprint fp, Frame_with_Fingerprint tfp = {0, "", {}, 0}, bool sensored = false) const;
   bool compare_fingerprints(uint32_t a, uint32_t b);
 
   // presets
