@@ -264,7 +264,7 @@ class ACW02 : public Component, public uart::UARTDevice {
 
   // variables AC
   Mode mode_ {Mode::COOL};
-  bool power_on_ {true};
+  bool power_on_ {false};
   Fan  fan_ {Fan::AUTO};
   Fan  previous_fan_ {Fan::AUTO};
   uint8_t target_temp_c_ {26};

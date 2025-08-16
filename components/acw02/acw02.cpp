@@ -119,7 +119,7 @@ namespace esphome {
 
             if (computed_crc == expected_crc) {
               std::vector<uint8_t> frame(start, start + size);
-              ESP_LOGI(TAG, "RX: [%s]", format_hex_pretty(frame).c_str());
+              ESP_LOGW(TAG, "RX: [%s]", format_hex_pretty(frame).c_str());
               decode_state(frame);
               offset += size;
               found = true;
@@ -916,6 +916,9 @@ namespace esphome {
             mqtt_->subscribe(app_name_ + "/cmd/#", [this](const std::string &topic, const std::string &payload) {
               mqtt_callback(topic, payload);
             }, 1);
+            mqtt_->subscribe(app_name_ + "/cmd_ac/#", [this](const std::string &topic, const std::string &payload) {
+              mqtt_callback(topic, payload);
+            }, 1);
             mqtt_->subscribe(app_name_ + "/ping/request", [this](const std::string &topic, const std::string &payload) {
               ESP_LOGW(TAG, "Ping request received: %s", payload.c_str());
               this->set_timeout("delayed_ping_response", 200, [this, payload]() {
@@ -931,14 +934,21 @@ namespace esphome {
     }
 
     void ACW02::mqtt_callback(const std::string &topic, const std::string &payload) {
+      ESP_LOGW(TAG, "mqtt_callback =====>>>> start !");
       std::string cmd = topic.substr(topic.find_last_of('/') + 1);
+      if (topic.find("/cmd_ac/") != std::string::npos) {
+        ESP_LOGW(TAG, "mqtt_callback cmd type cmd_ac !");
+    }
       //calc start fingerprint
       bool tmp_send_cmd = false;
       uint32_t start_f = ac_to_fingerprint();
       bool prev_power_status = is_power_on();
       bool isDisplayCmd = false;
+      bool was_power = power_on_;
+      Mode was_mode = mode_;
 
       ESP_LOGW(TAG, "mqtt_callback_ payload %s %s %s", cmd.c_str(), topic.c_str(), payload.c_str());
+      ESP_LOGW(TAG, "mqtt_callback_ status %s %s", power_on_ ? "on" : "off",  mode_to_string_climate(mode_).c_str());
       if (cmd == "power_climate") {
         set_mode_climate(payload == "OFF" ? "off" : mode_to_string_climate(mode_));
         tmp_send_cmd = true;
@@ -946,6 +956,7 @@ namespace esphome {
         set_mode(payload == key_to_txt(app_lang_, "mode", "OFF") ? key_to_txt(app_lang_, "mode", "OFF") : mode_to_string(app_lang_, mode_));
         tmp_send_cmd = true;
       } else if (cmd == "mode_climate") {
+        ESP_LOGW(TAG, "mqtt_callback_ set_mode_climate");
         set_mode_climate(payload);
         tmp_send_cmd = true;
       } else if (cmd == "mode") {
@@ -1059,7 +1070,17 @@ namespace esphome {
 
       bool after_power_status = is_power_on();
       uint32_t end_f = ac_to_fingerprint();
-      if (tmp_send_cmd && !compare_fingerprints(start_f, end_f)) {
+      bool changed = !compare_fingerprints(start_f, end_f);
+
+      ESP_LOGW(TAG,
+        "DECIDE cmd=%s fp_start=0x%08X fp_end=0x%08X changed=%d | before{pwr=%d,mode=%d,temp_enc=%u} after{pwr=%d,mode=%d,temp_enc=%u}",
+        cmd.c_str(), start_f, end_f, (int)changed,
+        (int)was_power, (int)was_mode, (unsigned)encode_temperature_byte(),
+        (int)power_on_, (int)mode_, (unsigned)encode_temperature_byte());
+
+      ESP_LOGW(TAG, "mqtt_callback_ compare_fingerprints 0x%08X 0x%08X", start_f, end_f);
+      if (tmp_send_cmd && changed) {
+        ESP_LOGW(TAG, "mqtt_callback_ send_command");
         send_command(isDisplayCmd);
         presets_list_element_ = get_localized_name(app_lang_, "presetNone");
         if (mute_next_cmd_after_on_delay_ > 0 && !prev_power_status && after_power_status) {
@@ -1078,6 +1099,7 @@ namespace esphome {
         time_publish_stats_after_power_on_ = millis() + publish_stats_after_power_on_delay_;
       }
       publish_state();
+      ESP_LOGW(TAG, "mqtt_callback =====>>>> end !");
     }
 
     void ACW02::publish_state() {
@@ -1219,16 +1241,16 @@ namespace esphome {
         "object_id": ")" + unique_id + R"(",
         "unique_id": ")" + unique_id + R"(",
         "stat_t": ")" + topic_base + R"(/state",
-        "cmd_t": ")" + topic_base + R"(/cmd/mode_climate",)";
+        "cmd_t": ")" + topic_base + R"(/cmd_ac/mode_climate",)";
         if (!disable_swing_vertical_ && !disable_swing_horizontal_) {
           payload += R"(
-          "preset_mode_command_topic": ")" + topic_base + R"(/cmd/swing_horizontal",
+          "preset_mode_command_topic": ")" + topic_base + R"(/cmd_ac/swing_horizontal",
           "preset_mode_state_topic": ")" + topic_base + R"(/state",
           "preset_mode_value_template": "{{ value_json.swing_horizontal_climate }}",
           "preset_modes": )" + build_options_json(app_lang_, "swingHorizontal", "STOP") + R"(,)";
         } else if (preset_) {
           payload += R"(
-          "preset_mode_command_topic": ")" + topic_base + R"(/cmd/presets_list_element",
+          "preset_mode_command_topic": ")" + topic_base + R"(/cmd_ac/presets_list_element",
           "preset_mode_state_topic": ")" + topic_base + R"(/state",
           "preset_mode_value_template": "{{ value_json.presets_list_element_climate }}",
           "preset_modes": )" + get_preset_list(true, true) + R"(,)";
@@ -1236,41 +1258,41 @@ namespace esphome {
         payload += R"(
         "mode_stat_t": ")" + topic_base + R"(/state",
         "mode_stat_tpl": "{{ value_json.mode_climate }}",
-        "mode_cmd_t": ")" + topic_base + R"(/cmd/mode_climate",
+        "mode_cmd_t": ")" + topic_base + R"(/cmd_ac/mode_climate",
         "modes": )" + build_modes_json_climate() + R"(,
-        "temp_cmd_t": ")" + topic_base + "/cmd/temp" + temp_suffix + R"(",
+        "temp_cmd_t": ")" + topic_base + "/cmd_ac/temp" + temp_suffix + R"(",
         "temp_stat_t": ")" + topic_base + R"(/state",
         "temp_stat_tpl": "{{ value_json.temp)" + temp_suffix + R"( }}",
         "curr_temp_t": ")" + topic_base + R"(/state",
         "curr_temp_tpl": "{{ value_json.ambient)" + temp_suffix + R"( }}",
-        "fan_mode_cmd_t": ")" + topic_base + R"(/cmd/fan",
+        "fan_mode_cmd_t": ")" + topic_base + R"(/cmd_ac/fan",
         "fan_mode_stat_t": ")" + topic_base + R"(/state",
         "fan_mode_stat_tpl": "{{ value_json.fan }}",
         "fan_modes": )" + build_fan_speed_json() + R"(,)";
         
         if (!disable_swing_vertical_ && !disable_swing_horizontal_) {
           payload += R"(
-          "swing_mode_cmd_t": ")" + topic_base + R"(/cmd/swing",
+          "swing_mode_cmd_t": ")" + topic_base + R"(/cmd_ac/swing",
           "swing_mode_stat_t": ")" + topic_base + R"(/state",
           "swing_mode_stat_tpl": "{{ value_json.swing }}",
           "swing_modes": )" + build_options_json(app_lang_, "swing") + R"(,)";
         } else {
           if (disable_swing_vertical_ && !disable_swing_horizontal_) {
              payload += R"(
-            "swing_mode_cmd_t": ")" + topic_base + R"(/cmd/swing_horizontal",
+            "swing_mode_cmd_t": ")" + topic_base + R"(/cmd_ac/swing_horizontal",
             "swing_mode_stat_t": ")" + topic_base + R"(/state",
             "swing_mode_stat_tpl": "{{ value_json.swing_horizontal }}",
             "swing_modes": )" + build_options_json(app_lang_, "swingHorizontal") + R"(,)";
           } else if (disable_swing_horizontal_ && !disable_swing_vertical_) {
              payload += R"(
-            "swing_mode_cmd_t": ")" + topic_base + R"(/cmd/swing",
+            "swing_mode_cmd_t": ")" + topic_base + R"(/cmd_ac/swing",
             "swing_mode_stat_t": ")" + topic_base + R"(/state",
             "swing_mode_stat_tpl": "{{ value_json.swing }}",
             "swing_modes": )" + build_options_json(app_lang_, "swing") + R"(,)";
           }
         }
         payload += R"(
-        "pow_cmd_t": ")" + topic_base + R"(/cmd/power_climate",
+        "pow_cmd_t": ")" + topic_base + R"(/cmd_ac/power_climate",
         "pow_stat_t": ")" + topic_base + R"(/state",
         "pow_stat_tpl": "{{ value_json.power_climate }}",
         "min_temp": )" + (mintemp) + R"(,
@@ -1305,7 +1327,7 @@ namespace esphome {
         "object_id": ")" + unique_id + R"(",
         "unique_id": ")" + unique_id + R"(",
         "icon": "mdi:thermostat",
-        "cmd_t": ")" + topic_base + R"(/cmd/mode",
+        "cmd_t": ")" + topic_base + R"(/cmd_ac/mode",
         "stat_t": ")" + topic_base + R"(/state",
         "val_tpl": "{{ value_json.mode }}",
         "options": )" + build_modes_json() + R"(,
@@ -1339,7 +1361,7 @@ namespace esphome {
         "object_id": ")" + unique_id + R"(",
         "unique_id": ")" + unique_id + R"(",
         "icon": "mdi:fan",
-        "cmd_t": ")" + topic_base + R"(/cmd/fan",
+        "cmd_t": ")" + topic_base + R"(/cmd_ac/fan",
         "stat_t": ")" + topic_base + R"(/state",
         "val_tpl": "{{ value_json.fan }}",
         "options": )" + build_options_json(app_lang_, "fan") + R"(,
@@ -1382,7 +1404,7 @@ namespace esphome {
         "name": ")" + get_localized_name(app_lang_, "unit") + R"(",
         "object_id": ")" + unique_id + R"(",
         "unique_id": ")" + unique_id + R"(",
-        "cmd_t": ")" + topic_base + R"(/cmd/unit",
+        "cmd_t": ")" + topic_base + R"(/cmd_ac/unit",
         "stat_t": ")" + topic_base + R"(/state",
         "val_tpl": "{{ value_json.unit }}",
         "options": ["°C", "°F"],
@@ -1416,7 +1438,7 @@ namespace esphome {
         "object_id": ")" + unique_id + R"(",
         "unique_id": ")" + unique_id + R"(",
         "icon": "mdi:swap-vertical",
-        "cmd_t": ")" + topic_base + R"(/cmd/swing",
+        "cmd_t": ")" + topic_base + R"(/cmd_ac/swing",
         "stat_t": ")" + topic_base + R"(/state",
         "val_tpl": "{{ value_json.swing }}",
         "options": )" + build_options_json(app_lang_, "swing") + R"(,
@@ -1450,7 +1472,7 @@ namespace esphome {
         "object_id": ")" + unique_id + R"(",
         "unique_id": ")" + unique_id + R"(",
         "icon": "mdi:swap-horizontal",
-        "cmd_t": ")" + topic_base + R"(/cmd/swing_horizontal",
+        "cmd_t": ")" + topic_base + R"(/cmd_ac/swing_horizontal",
         "stat_t": ")" + topic_base + R"(/state",
         "val_tpl": "{{ value_json.swing_horizontal }}",
         "options": )" + build_options_json(app_lang_, "swingHorizontal") + R"(,
@@ -1484,7 +1506,7 @@ namespace esphome {
         "object_id": ")" + unique_id + R"(",
         "unique_id": ")" + unique_id + R"(",
         "icon": "mdi:content-save",
-        "cmd_t": ")" + topic_base + R"(/cmd/presets_list_element",
+        "cmd_t": ")" + topic_base + R"(/cmd_ac/presets_list_element",
         "stat_t": ")" + topic_base + R"(/state",
         "val_tpl": "{{ value_json.presets_list_element }}",
         "options": )" + get_preset_list(true) + R"(,
@@ -1552,7 +1574,7 @@ namespace esphome {
         "object_id": ")" + unique_id + R"(",
         "unique_id": ")" + unique_id + R"(",
         "icon": "mdi:spray-bottle",
-        "cmd_t": ")" + topic_base + R"(/cmd/clean",
+        "cmd_t": ")" + topic_base + R"(/cmd_ac/clean",
         "stat_t": ")" + topic_base + R"(/state",
         "val_tpl": "{{ value_json.clean }}",
         "pl_on": "on",
@@ -1597,7 +1619,7 @@ namespace esphome {
         "object_id": ")" + unique_id + R"(",
         "unique_id": ")" + unique_id + R"(",
         "icon": "mdi:currency-usd-off",
-        "cmd_t": ")" + topic_base + R"(/cmd/eco",
+        "cmd_t": ")" + topic_base + R"(/cmd_ac/eco",
         "stat_t": ")" + topic_base + R"(/state",
         "availability_mode": "all",
         "availability_template": "{{ value_json.mode == 'cool' }}",
@@ -1644,7 +1666,7 @@ namespace esphome {
         "object_id": ")" + unique_id + R"(",
         "unique_id": ")" + unique_id + R"(",
         "icon": "mdi:lightbulb",
-        "cmd_t": ")" + topic_base + R"(/cmd/display",
+        "cmd_t": ")" + topic_base + R"(/cmd_ac/display",
         "stat_t": ")" + topic_base + R"(/state",
         "val_tpl": "{{ value_json.display }}",
         "pl_on": "on",
@@ -1678,7 +1700,7 @@ namespace esphome {
         "name": ")" + get_localized_name(app_lang_, "night") + R"(",
         "object_id": ")" + unique_id + R"(",
         "unique_id": ")" + unique_id + R"(",
-        "cmd_t": ")" + topic_base + R"(/cmd/night",
+        "cmd_t": ")" + topic_base + R"(/cmd_ac/night",
         "stat_t": ")" + topic_base + R"(/state",
         "val_tpl": "{{ value_json.night }}",
         "pl_on": "on",
@@ -1723,7 +1745,7 @@ namespace esphome {
         "name": ")" + get_localized_name(app_lang_, "purifier") + R"(",
         "object_id": ")" + unique_id + R"(",
         "unique_id": ")" + unique_id + R"(",
-        "cmd_t": ")" + topic_base + R"(/cmd/purifier",
+        "cmd_t": ")" + topic_base + R"(/cmd_ac/purifier",
         "stat_t": ")" + topic_base + R"(/state",
         "val_tpl": "{{ value_json.purifier }}",
         "pl_on": "on",
@@ -2334,7 +2356,7 @@ namespace esphome {
         "name": ")" + get_localized_name(app_lang_, "temp") + R"(",
         "object_id": ")" + unique_id + R"(",
         "unique_id": ")" + unique_id + R"(",
-        "cmd_t": ")" + topic_base + "/cmd/temp" + temp_suffix + R"(",
+        "cmd_t": ")" + topic_base + "/cmd_ac/temp" + temp_suffix + R"(",
         "stat_t": ")" + topic_base + R"(/state",
         "val_tpl": "{{ value_json.temp)" + temp_suffix + R"( }}",
         "min": )" + to_string(min) + R"(,
@@ -2888,7 +2910,7 @@ namespace esphome {
       return;
 
       const auto &pkt = tx_queue_.front();
-      ESP_LOGI(TAG, "TX: [%s]", format_hex_pretty(pkt).c_str());
+      ESP_LOGW(TAG, "TX: [%s]", format_hex_pretty(pkt).c_str());
       write_array(pkt);
       last_tx_ = millis();
       tx_queue_.pop_front();
@@ -2948,8 +2970,9 @@ namespace esphome {
         clean_ = false;
         force_clean_ = false;
       }
-      ESP_LOGI(TAG, "send command");
-      send_command_basic(build_frame());
+      ESP_LOGW(TAG, "send command");
+      std::vector<uint8_t> frame = build_frame();
+      send_command_basic(frame);
     }
 
     uint16_t ACW02::crc16(const uint8_t *data, size_t len) {
@@ -3045,6 +3068,7 @@ namespace esphome {
       if (f.size() != 34 || f[0] != 0x7A || f[1] != 0x7A) {
         return;
       }
+      ESP_LOGW(TAG, "decode_state =====>>>> AC trame start !");
 
       bool previous_power_on = power_on_;
       bool previous_fahrenheit = use_fahrenheit_;
@@ -3105,7 +3129,7 @@ namespace esphome {
       display_  = flags & 0x80;
       from_remote_ = flags & 0x04 || (display_ && flags & 0x08);
 
-      ESP_LOGI(TAG,
+      ESP_LOGW(TAG,
       "RX decode: PWR=%s | Mode=%s | Mode climate=%s | Fan=%s | Temp=%.1f°C / %.1f°F [%s] | "
       "Eco=%d | Night=%d | Clean=%d | Purifier=%d | Display=%d | Swing=%s | SwingH=%s | Silent=%s | Origin=%s",
       power_on_ ? "ON" : "OFF",
@@ -3125,7 +3149,7 @@ namespace esphome {
         ambient_temp_c_  = temp_int + temp_dec / 10.0f;
         ambient_temp_f_  = celsius_to_fahrenheit(ambient_temp_c_, false);
 
-        ESP_LOGI(TAG, "RX ambient temp: %.1f°C / %.1f°F (raw=0x%02X 0x%02X)",
+        ESP_LOGW(TAG, "RX ambient temp: %.1f°C / %.1f°F (raw=0x%02X 0x%02X)",
         ambient_temp_c_, ambient_temp_f_, temp_int, temp_dec);
       }
 
@@ -3182,6 +3206,7 @@ namespace esphome {
             }
         }
       }
+      ESP_LOGW(TAG, "decode_state =====>>>> AC trame end !");
     }
 
     bool ACW02::force_cool_mode_if_disabled() {
