@@ -276,6 +276,8 @@ class ACW02 : public Component, public uart::UARTDevice {
   std::deque<Frame_with_Fingerprint> tx_queue_;
   uint32_t last_tx_{0};
   static constexpr uint32_t TX_INTERVAL_MS = 300;
+  bool ack_wait_ = false;
+  uint32_t ack_block_until_ = 0;
 
   // variables AC
   Mode mode_ {Mode::COOL};

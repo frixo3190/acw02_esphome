@@ -2938,6 +2938,9 @@ namespace esphome {
       return;
 
       const auto &pkt = tx_queue_.front();
+      if (ack_wait_ && pkt.tryCnt == 0 && millis() < ack_block_until_) {
+        return;
+      }
       ESP_LOGW(TAG, "TX: [%s]", format_hex_pretty(pkt.frame).c_str());
       cmd_send_fingerprint_ = pkt;
       if (pkt.fingerprint != 0) {
@@ -2946,6 +2949,12 @@ namespace esphome {
       write_array(pkt.frame);
       last_tx_ = millis();
       cmd_send_fingerprint_.timestamp_ms = last_tx_;
+      if (pkt.tryCnt == 0 && pkt.fingerprint != 0) {
+        ack_wait_ = true;
+      }
+      if (pkt.fingerprint != 0) {
+        ack_block_until_ = last_tx_ + 120;
+      }
       tx_queue_.pop_front();
     }
 
@@ -3003,7 +3012,12 @@ namespace esphome {
     }
 
     void ACW02::send_command_basic(const Frame_with_Fingerprint &data) {
-      tx_queue_.push_back(data);
+      if (data.tryCnt > 0){
+        tx_queue_.push_front(data);
+      }
+      else { 
+        tx_queue_.push_back(data);
+      }
     }
 
     void ACW02::send_command(bool skipResetClean) {
@@ -3026,7 +3040,7 @@ namespace esphome {
     }
 
     void ACW02::decode_state(const std::vector<uint8_t> &f) {
-
+      Frame_with_Fingerprint cmd_send_fingerprint_tmp = cmd_send_fingerprint_;
       if (f.size() == 28 && f[0] == 0x7A && f[1] == 0x7A && f[2] == 0xD5 && f[3] == 0x21) {
         bool old_filter_dirty_ = filter_dirty_;
         bool old_warn_ = warn_;
@@ -3194,26 +3208,36 @@ namespace esphome {
       }
 
       uint32_t now = millis();
-      if (now - cmd_send_fingerprint_.timestamp_ms >= 50) {
-        if (!from_remote_ && cmd_send_fingerprint_.fingerprint != 0) {
+      if (now - cmd_send_fingerprint_tmp.timestamp_ms >= 50) {
+        if (!from_remote_ && cmd_send_fingerprint_tmp.fingerprint != 0) {
           Frame_with_Fingerprint cmd_recieve_fingerprint = fingerprint();
           log_fingerprint("decode_frame", cmd_recieve_fingerprint);
-          if (!compare_fingerprints(cmd_send_fingerprint_.fingerprint, cmd_recieve_fingerprint.fingerprint)) {
-            log_fingerprint("Mismatch cmd ignore", cmd_send_fingerprint_, cmd_recieve_fingerprint, true);
-            if (cmd_send_fingerprint_.tryCnt < maxRetry) {
-              cmd_send_fingerprint_.tryCnt = cmd_send_fingerprint_.tryCnt + 1;
-              ESP_LOGE(TAG, "Last tx retry %d/%d", cmd_send_fingerprint_.tryCnt, maxRetry);
-              send_command_basic(cmd_send_fingerprint_);
+          if (!compare_fingerprints(cmd_send_fingerprint_tmp.fingerprint, cmd_recieve_fingerprint.fingerprint)) {
+            log_fingerprint("Mismatch cmd ignore", cmd_send_fingerprint_tmp, cmd_recieve_fingerprint, true);
+            if (cmd_send_fingerprint_tmp.tryCnt < maxRetry) {
+              Frame_with_Fingerprint cmd_send_fingerprint_before_send = cmd_send_fingerprint_tmp;
+              cmd_send_fingerprint_before_send.tryCnt = cmd_send_fingerprint_before_send.tryCnt + 1;
+              ESP_LOGE(TAG, "Last tx retry %d/%d", cmd_send_fingerprint_before_send.tryCnt, maxRetry);
+              send_command_basic(cmd_send_fingerprint_before_send);
             } else {
-              ESP_LOGE(TAG, "Last tx cannot retry because max exceded");
+              ESP_LOGE(TAG, "Last tx cannot retry because max exceeded");
+              ack_wait_ = false;
             }
             
+          } else {
+            ack_wait_ = false;
           }
         }
-        
-        cmd_send_fingerprint_ = {0, "", {}, 0, 0};
+        if (cmd_send_fingerprint_tmp.fingerprint == cmd_send_fingerprint_.fingerprint &&
+          cmd_send_fingerprint_tmp.timestamp_ms == cmd_send_fingerprint_.timestamp_ms &&
+          cmd_send_fingerprint_tmp.tryCnt == cmd_send_fingerprint_.tryCnt) {
+          cmd_send_fingerprint_ = {0, "", {}, 0, 0};
+           ESP_LOGW(TAG, "Fingerprint Reset");
+        } else {
+          ESP_LOGE(TAG, "Fingerprint Not reset because cmd fp diff");
+        }
       } else {
-        ESP_LOGW(TAG, "Fingerprint ignored because time < 50ms");
+        ESP_LOGE(TAG, "Fingerprint ignored because time < 50ms");
       }
 
       if (mqtt_) {
