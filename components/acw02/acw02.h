@@ -66,7 +66,7 @@ using namespace acw02_localization;
   struct PresetSlot {
     int index;
     std::string name;
-    std::vector<uint8_t> trame;
+    Frame_with_Fingerprint trame;
   };
 
   const std::string PRESETS_LIST_ELEMENT_CONFIG_DEFAULT = "_______________";
@@ -453,23 +453,22 @@ class ACW02 : public Component, public uart::UARTDevice {
   std::string preset_name_config_ = {""};
 
   std::array<PresetSlot, 8> presets_list = {{
-    {1, "Preset 1 (empty)", {}},
-    {2, "Preset 2 (empty)", {}},
-    {3, "Preset 3 (empty)", {}},
-    {4, "Preset 4 (empty)", {}},
-    {5, "Preset 5 (empty)", {}},
-    {6, "Preset 6 (empty)", {}},
-    {7, "Preset 7 (empty)", {}},
-    {8, "Preset 8 (empty)", {}}
+    {1, "Preset 1 (empty)", {0, "", {}, 0, 0}},
+    {2, "Preset 2 (empty)", {0, "", {}, 0, 0}},
+    {3, "Preset 3 (empty)", {0, "", {}, 0, 0}},
+    {4, "Preset 4 (empty)", {0, "", {}, 0, 0}},
+    {5, "Preset 5 (empty)", {0, "", {}, 0, 0}},
+    {6, "Preset 6 (empty)", {0, "", {}, 0, 0}},
+    {7, "Preset 7 (empty)", {0, "", {}, 0, 0}},
+    {8, "Preset 8 (empty)", {0, "", {}, 0, 0}}
   }};
   std::string get_preset_list(bool only_non_empty, bool forClimate = false);
   std::string encode_trame_base64(const std::vector<uint8_t> &data);
   std::vector<uint8_t> decode_trame_base64(const std::string &base64_str);
 
-  void update_selected_preset(const std::string &new_name, const std::vector<uint8_t> &new_trame);
+  void update_selected_preset(const std::string &new_name, const Frame_with_Fingerprint &new_trame);
   void load_presets_from_flash();
   void save_presets_to_flash();
-  void log_selected_preset_trame();
   void save_single_preset_to_flash(const PresetSlot &preset);
   void delete_preset_by_name();
   PresetSlot get_preset_by_name(const std::string &name);

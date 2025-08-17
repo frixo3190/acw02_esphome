@@ -1051,7 +1051,8 @@ namespace esphome {
         PresetSlot preset = get_preset_by_name(presets_list_element_config_);
 
         if (!preset.name.empty()) {
-          ESP_LOGI(TAG, "Preset %d trouvé avec trame de %d octets", preset.index, preset.trame.size());
+          ESP_LOGI(TAG, "Preset %d trouvé avec trame de %d octets", preset.index, preset.trame.frame.size());
+          ESP_LOGW(TAG, "Preset \"%s\" trame: %s fingerprint: 0x%08X", preset.name.c_str(), format_hex_pretty(preset.trame.frame).c_str(), preset.trame.fingerprint);
           size_t pos = preset.name.find(" (empty)");
           if (pos != std::string::npos) {
             preset.name = "Preset";
@@ -1072,13 +1073,13 @@ namespace esphome {
         }
         PresetSlot preset = get_preset_by_name(presets_list_element_);
         if (preset.name != get_localized_name(app_lang_, "presetNone")) {
-          send_static_command_basic(preset.trame);
+          preset.trame.timestamp_ms = millis();
+          send_command_basic(preset.trame);
         }
       } else if (cmd == "preset_save") {
-        update_selected_preset(preset_name_config_, build_frame().frame);
+        update_selected_preset(preset_name_config_, build_frame());
         preset_name_config_ = "";
         presets_list_element_ = get_localized_name(app_lang_, "presetNone");
-        log_selected_preset_trame();
       } else if (cmd == "preset_delete") {
         delete_preset_by_name();
         preset_name_config_ = "";
@@ -3647,7 +3648,7 @@ namespace esphome {
       }
       bool first = true;
       for (const auto &slot : presets_list) {
-        if (only_non_empty && slot.trame.empty())
+        if (only_non_empty && slot.trame.frame.empty())
           continue;
         if (first && only_non_empty && !forClimate)
           json += ",";
@@ -3713,12 +3714,14 @@ namespace esphome {
       return output;
     }
 
-    void ACW02::update_selected_preset(const std::string &new_name, const std::vector<uint8_t> &new_trame) {
+    void ACW02::update_selected_preset(const std::string &new_name, const Frame_with_Fingerprint &new_trame) {
       for (auto &preset : presets_list) {
         if (preset.name == presets_list_element_config_) {
           preset.trame = new_trame;
           preset.name = std::to_string(preset.index) + " " + new_name;
+          preset.trame.description = "presets \"" + preset.name + "\"";
           save_single_preset_to_flash(preset);
+          ESP_LOGW(TAG, "Save Preset: \"%s\" trame: %s fingerprint: 0x%08X", preset.name.c_str(), format_hex_pretty(preset.trame.frame).c_str(), preset.trame.fingerprint);
           presets_list_element_config_ = PRESETS_LIST_ELEMENT_CONFIG_DEFAULT;
           publish_discovery_preset_select(true);
           publish_discovery_preset_config_select(true);
@@ -3733,7 +3736,7 @@ namespace esphome {
       for (auto &preset : presets_list) {
         int i = preset.index;
 
-        // Lecture du nom
+        // read name
         char name_key[32];
         snprintf(name_key, sizeof(name_key), "preset_%d_name", i);
         auto name_pref = global_preferences->make_preference<char[25]>(fnv1_hash(name_key));
@@ -3742,14 +3745,28 @@ namespace esphome {
           preset.name = name_buf;
         }
 
-        // Lecture de la trame encodée
+        // read encoded frame
         char trame_key[32];
         snprintf(trame_key, sizeof(trame_key), "preset_%d_trame", i);
         auto trame_pref = global_preferences->make_preference<char[64]>(fnv1_hash(trame_key));
         char trame_buf[64];
         if (trame_pref.load(&trame_buf)) {
-          preset.trame = decode_trame_base64(trame_buf);
+          preset.trame.frame = decode_trame_base64(trame_buf);
         }
+
+        // read encoded fingerprint
+        char fp_key[32];
+        snprintf(fp_key, sizeof(fp_key), "preset_%d_fp", i);
+        auto fp_pref = global_preferences->make_preference<uint32_t>(fnv1_hash(fp_key));
+        uint32_t fp = 0;
+        if (fp_pref.load(&fp)) {
+          preset.trame.fingerprint = fp;
+        } else {
+          preset.trame.fingerprint = 0;
+        }
+        preset.trame.description = "presets \"" + preset.name + "\"";;
+        preset.trame.timestamp_ms = 0;
+        preset.trame.tryCnt = 0;
       }
     }
 
@@ -3759,24 +3776,8 @@ namespace esphome {
       }
     }
 
-    void ACW02::log_selected_preset_trame() {
-      for (const auto &preset : presets_list) {
-        if (preset.name == presets_list_element_config_) {
-          std::string hex_str;
-          for (uint8_t b : preset.trame) {
-            char buf[4];
-            snprintf(buf, sizeof(buf), "%02X ", b);
-            hex_str += buf;
-          }
-          ESP_LOGW(TAG, "Preset \"%s\" trame: %s", preset.name.c_str(), hex_str.c_str());
-          return;
-        }
-      }
-      ESP_LOGW(TAG, "No preset found with name: %s", presets_list_element_config_.c_str());
-    }
-
     void ACW02::save_single_preset_to_flash(const PresetSlot &preset) {
-      // Sauvegarde du nom
+      // save name
       char name_key[32];
       snprintf(name_key, sizeof(name_key), "preset_%d_name", preset.index);
       auto name_pref = global_preferences->make_preference<char[25]>(fnv1_hash(name_key));
@@ -3785,15 +3786,22 @@ namespace esphome {
       name_buf[sizeof(name_buf) - 1] = '\0';  // sécurité
       name_pref.save(&name_buf);
 
-      // Sauvegarde de la trame
+      // save frame
       char trame_key[32];
       snprintf(trame_key, sizeof(trame_key), "preset_%d_trame", preset.index);
       auto trame_pref = global_preferences->make_preference<char[64]>(fnv1_hash(trame_key));
-      std::string base64 = encode_trame_base64(preset.trame);
+      std::string base64 = encode_trame_base64(preset.trame.frame);
       char base64_buf[64];
       strncpy(base64_buf, base64.c_str(), sizeof(base64_buf));
       base64_buf[sizeof(base64_buf) - 1] = '\0';
       trame_pref.save(&base64_buf);
+
+      // save fingerprint
+      char fp_key[32];
+      snprintf(fp_key, sizeof(fp_key), "preset_%d_fp", preset.index);
+      auto fp_pref = global_preferences->make_preference<uint32_t>(fnv1_hash(fp_key));
+      uint32_t fp = preset.trame.fingerprint;
+      fp_pref.save(&fp);
     }
 
     void ACW02::delete_preset_by_name() {
@@ -3801,7 +3809,7 @@ namespace esphome {
         if (preset.name == presets_list_element_config_) {
           ESP_LOGI(TAG, "Deleting preset: %s (index %d)", preset.name.c_str(), preset.index);
 
-          // Supprimer le nom personnalisé en écrasant avec le nom par défaut
+          // Delete the custom name by overwriting with the default name
           char name_key[32];
           snprintf(name_key, sizeof(name_key), "preset_%d_name", preset.index);
           auto name_pref = global_preferences->make_preference<char[25]>(fnv1_hash(name_key));
@@ -3809,16 +3817,23 @@ namespace esphome {
           snprintf(default_name, sizeof(default_name), "Preset %d (empty)", preset.index);
           name_pref.save(&default_name);
 
-          // Supprimer la trame en écrasant avec une chaîne vide
+          // Delete the frame by overwriting with an empty string
           char trame_key[32];
           snprintf(trame_key, sizeof(trame_key), "preset_%d_trame", preset.index);
           auto trame_pref = global_preferences->make_preference<char[64]>(fnv1_hash(trame_key));
           char empty[64] = {0};
           trame_pref.save(&empty);
 
-          // Réinitialiser en mémoire
+          // Remove the fp by overwriting with an empty string
+          char fp_key[32];
+          snprintf(fp_key, sizeof(fp_key), "preset_%d_fp", preset.index);
+          auto fp_pref = global_preferences->make_preference<uint32_t>(fnv1_hash(fp_key));
+          uint32_t zero = 0;
+          fp_pref.save(&zero);
+
+          // Reset to memory
           preset.name = default_name;
-          preset.trame.clear();
+          preset.trame = {0, "", {}, 0, 0};
           presets_list_element_config_ = PRESETS_LIST_ELEMENT_CONFIG_DEFAULT;
           publish_discovery_preset_select(true);
           publish_discovery_preset_config_select(true);
