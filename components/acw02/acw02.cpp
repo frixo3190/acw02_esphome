@@ -1051,8 +1051,8 @@ namespace esphome {
         PresetSlot preset = get_preset_by_name(presets_list_element_config_);
 
         if (!preset.name.empty()) {
-          ESP_LOGI(TAG, "Preset %d trouvé avec trame de %d octets", preset.index, preset.trame.frame.size());
-          ESP_LOGW(TAG, "Preset \"%s\" trame: %s fingerprint: 0x%08X", preset.name.c_str(), format_hex_pretty(preset.trame.frame).c_str(), preset.trame.fingerprint);
+          ESP_LOGI(TAG, "Preset %d frame found with %d octets", preset.index, preset.frame_with_fp.frame.size());
+          ESP_LOGW(TAG, "Preset \"%s\" frame: %s fingerprint: 0x%08X", preset.name.c_str(), format_hex_pretty(preset.frame_with_fp.frame).c_str(), preset.frame_with_fp.fingerprint);
           size_t pos = preset.name.find(" (empty)");
           if (pos != std::string::npos) {
             preset.name = "Preset";
@@ -1073,8 +1073,8 @@ namespace esphome {
         }
         PresetSlot preset = get_preset_by_name(presets_list_element_);
         if (preset.name != get_localized_name(app_lang_, "presetNone")) {
-          preset.trame.timestamp_ms = millis();
-          send_command_basic(preset.trame);
+          preset.frame_with_fp.timestamp_ms = millis();
+          send_command_basic(preset.frame_with_fp);
         }
       } else if (cmd == "preset_save") {
         update_selected_preset(preset_name_config_, build_frame());
@@ -3123,7 +3123,7 @@ namespace esphome {
       if (f.size() != 34 || f[0] != 0x7A || f[1] != 0x7A) {
         return;
       }
-      ESP_LOGW(TAG, "decode_state =====>>>> AC trame start !");
+      ESP_LOGW(TAG, "decode_state =====>>>> AC frame start !");
 
       bool previous_power_on = power_on_;
       bool previous_fahrenheit = use_fahrenheit_;
@@ -3294,7 +3294,7 @@ namespace esphome {
             }
         }
       }
-      ESP_LOGW(TAG, "decode_state =====>>>> AC trame end !");
+      ESP_LOGW(TAG, "decode_state =====>>>> AC frame end !");
     }
 
     bool ACW02::force_cool_mode_if_disabled() {
@@ -3648,7 +3648,7 @@ namespace esphome {
       }
       bool first = true;
       for (const auto &slot : presets_list) {
-        if (only_non_empty && slot.trame.frame.empty())
+        if (only_non_empty && slot.frame_with_fp.frame.empty())
           continue;
         if (first && only_non_empty && !forClimate)
           json += ",";
@@ -3661,7 +3661,7 @@ namespace esphome {
       return json;
     }
 
-    std::vector<uint8_t> ACW02::decode_trame_base64(const std::string &input) {
+    std::vector<uint8_t> ACW02::decode_frame_base64(const std::string &input) {
       auto decode_char = [](char c) -> int {
         if (c >= 'A' && c <= 'Z') return c - 'A';
         if (c >= 'a' && c <= 'z') return c - 'a' + 26;
@@ -3691,7 +3691,7 @@ namespace esphome {
       return output;
     }
 
-    std::string ACW02::encode_trame_base64(const std::vector<uint8_t> &input) {
+    std::string ACW02::encode_frame_base64(const std::vector<uint8_t> &input) {
       static const char *base64_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
       std::string output;
       int val = 0, valb = -6;
@@ -3714,14 +3714,14 @@ namespace esphome {
       return output;
     }
 
-    void ACW02::update_selected_preset(const std::string &new_name, const Frame_with_Fingerprint &new_trame) {
+    void ACW02::update_selected_preset(const std::string &new_name, const Frame_with_Fingerprint &new_frame) {
       for (auto &preset : presets_list) {
         if (preset.name == presets_list_element_config_) {
-          preset.trame = new_trame;
+          preset.frame_with_fp = new_frame;
           preset.name = std::to_string(preset.index) + " " + new_name;
-          preset.trame.description = "presets \"" + preset.name + "\"";
+          preset.frame_with_fp.description = "presets \"" + preset.name + "\"";
           save_single_preset_to_flash(preset);
-          ESP_LOGW(TAG, "Save Preset: \"%s\" trame: %s fingerprint: 0x%08X", preset.name.c_str(), format_hex_pretty(preset.trame.frame).c_str(), preset.trame.fingerprint);
+          ESP_LOGW(TAG, "Save Preset: \"%s\" frame: %s fingerprint: 0x%08X", preset.name.c_str(), format_hex_pretty(preset.frame_with_fp.frame).c_str(), preset.frame_with_fp.fingerprint);
           presets_list_element_config_ = PRESETS_LIST_ELEMENT_CONFIG_DEFAULT;
           publish_discovery_preset_select(true);
           publish_discovery_preset_config_select(true);
@@ -3746,12 +3746,12 @@ namespace esphome {
         }
 
         // read encoded frame
-        char trame_key[32];
-        snprintf(trame_key, sizeof(trame_key), "preset_%d_trame", i);
-        auto trame_pref = global_preferences->make_preference<char[64]>(fnv1_hash(trame_key));
-        char trame_buf[64];
-        if (trame_pref.load(&trame_buf)) {
-          preset.trame.frame = decode_trame_base64(trame_buf);
+        char frame_key[32];
+        snprintf(frame_key, sizeof(frame_key), "preset_%d_trame", i);
+        auto frame_pref = global_preferences->make_preference<char[64]>(fnv1_hash(frame_key));
+        char frame_buf[64];
+        if (frame_pref.load(&frame_buf)) {
+          preset.frame_with_fp.frame = decode_frame_base64(frame_buf);
         }
 
         // read encoded fingerprint
@@ -3760,13 +3760,13 @@ namespace esphome {
         auto fp_pref = global_preferences->make_preference<uint32_t>(fnv1_hash(fp_key));
         uint32_t fp = 0;
         if (fp_pref.load(&fp)) {
-          preset.trame.fingerprint = fp;
+          preset.frame_with_fp.fingerprint = fp;
         } else {
-          preset.trame.fingerprint = 0;
+          preset.frame_with_fp.fingerprint = 0;
         }
-        preset.trame.description = "presets \"" + preset.name + "\"";;
-        preset.trame.timestamp_ms = 0;
-        preset.trame.tryCnt = 0;
+        preset.frame_with_fp.description = "presets \"" + preset.name + "\"";;
+        preset.frame_with_fp.timestamp_ms = 0;
+        preset.frame_with_fp.tryCnt = 0;
       }
     }
 
@@ -3787,20 +3787,20 @@ namespace esphome {
       name_pref.save(&name_buf);
 
       // save frame
-      char trame_key[32];
-      snprintf(trame_key, sizeof(trame_key), "preset_%d_trame", preset.index);
-      auto trame_pref = global_preferences->make_preference<char[64]>(fnv1_hash(trame_key));
-      std::string base64 = encode_trame_base64(preset.trame.frame);
+      char frame_key[32];
+      snprintf(frame_key, sizeof(frame_key), "preset_%d_trame", preset.index);
+      auto frame_pref = global_preferences->make_preference<char[64]>(fnv1_hash(frame_key));
+      std::string base64 = encode_frame_base64(preset.frame_with_fp.frame);
       char base64_buf[64];
       strncpy(base64_buf, base64.c_str(), sizeof(base64_buf));
       base64_buf[sizeof(base64_buf) - 1] = '\0';
-      trame_pref.save(&base64_buf);
+      frame_pref.save(&base64_buf);
 
       // save fingerprint
       char fp_key[32];
       snprintf(fp_key, sizeof(fp_key), "preset_%d_fp", preset.index);
       auto fp_pref = global_preferences->make_preference<uint32_t>(fnv1_hash(fp_key));
-      uint32_t fp = preset.trame.fingerprint;
+      uint32_t fp = preset.frame_with_fp.fingerprint;
       fp_pref.save(&fp);
     }
 
@@ -3818,11 +3818,11 @@ namespace esphome {
           name_pref.save(&default_name);
 
           // Delete the frame by overwriting with an empty string
-          char trame_key[32];
-          snprintf(trame_key, sizeof(trame_key), "preset_%d_trame", preset.index);
-          auto trame_pref = global_preferences->make_preference<char[64]>(fnv1_hash(trame_key));
+          char frame_key[32];
+          snprintf(frame_key, sizeof(frame_key), "preset_%d_trame", preset.index);
+          auto frame_pref = global_preferences->make_preference<char[64]>(fnv1_hash(frame_key));
           char empty[64] = {0};
-          trame_pref.save(&empty);
+          frame_pref.save(&empty);
 
           // Remove the fp by overwriting with an empty string
           char fp_key[32];
@@ -3833,7 +3833,7 @@ namespace esphome {
 
           // Reset to memory
           preset.name = default_name;
-          preset.trame = {0, "", {}, 0, 0};
+          preset.frame_with_fp = {0, "", {}, 0, 0};
           presets_list_element_config_ = PRESETS_LIST_ELEMENT_CONFIG_DEFAULT;
           publish_discovery_preset_select(true);
           publish_discovery_preset_config_select(true);

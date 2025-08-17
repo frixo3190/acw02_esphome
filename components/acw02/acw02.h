@@ -44,13 +44,13 @@ using namespace acw02_localization;
   static constexpr int maxRetry = 3;
 
 
-  // globals Statics base trame (keep alive?)
+  // globals Statics base frame (keep alive?)
   static const std::vector<uint8_t> keepalive_frame_ = {
     0x7A, 0x7A, 0x21, 0xD5, 0x0C, 0x00, 0x00, 0xAB,
     0x0A, 0x0A, 0xFC, 0xF9
   };
 
-  // globals Statics base trame (ask status AC)
+  // globals Statics base frame (ask status AC)
   static const std::vector<uint8_t> get_status_frame_ = {
     0x7A, 0x7A, 0x21, 0xD5, 0x0C, 0x00, 0x00, 0xA2,
     0x0A, 0x0A, 0xFE, 0x29
@@ -66,7 +66,7 @@ using namespace acw02_localization;
   struct PresetSlot {
     int index;
     std::string name;
-    Frame_with_Fingerprint trame;
+    Frame_with_Fingerprint frame_with_fp;
   };
 
   const std::string PRESETS_LIST_ELEMENT_CONFIG_DEFAULT = "_______________";
@@ -463,10 +463,10 @@ class ACW02 : public Component, public uart::UARTDevice {
     {8, "Preset 8 (empty)", {0, "", {}, 0, 0}}
   }};
   std::string get_preset_list(bool only_non_empty, bool forClimate = false);
-  std::string encode_trame_base64(const std::vector<uint8_t> &data);
-  std::vector<uint8_t> decode_trame_base64(const std::string &base64_str);
+  std::string encode_frame_base64(const std::vector<uint8_t> &data);
+  std::vector<uint8_t> decode_frame_base64(const std::string &base64_str);
 
-  void update_selected_preset(const std::string &new_name, const Frame_with_Fingerprint &new_trame);
+  void update_selected_preset(const std::string &new_name, const Frame_with_Fingerprint &new_frame);
   void load_presets_from_flash();
   void save_presets_to_flash();
   void save_single_preset_to_flash(const PresetSlot &preset);
