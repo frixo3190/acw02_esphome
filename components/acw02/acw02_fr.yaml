@@ -283,14 +283,6 @@ text_sensor:
     icon: mdi:alert-octagon-outline
     id: ac_error_text
     internal: true
-  - platform: template
-    name: "CMD ignore TX"
-    icon: mdi:alert-octagon-outline
-    id: cmd_ignore_tx
-  - platform: template
-    name: "CMD ignore RX"
-    icon: mdi:alert-octagon-outline
-    id: cmd_ignore_rx
 
 sensor:
   - platform: wifi_signal
@@ -351,8 +343,6 @@ interval:
         id(ac_ctrl).set_mute_next_cmd_delay_text(id(mute_next_cmd_delay));
         id(ac_ctrl).set_mute_next_cmd_after_on_delay_text(id(mute_next_cmd_after_on_delay));
         id(ac_ctrl).set_publish_stats_after_power_on_delay_text(id(publish_stats_after_power_on_delay));
-        id(ac_ctrl).set_cmd_ignore_tx_sensor(id(cmd_ignore_tx));
-        id(ac_ctrl).set_cmd_ignore_rx_sensor(id(cmd_ignore_rx));
   - interval: 2s
     then:
       - lambda: |-

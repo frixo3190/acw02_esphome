@@ -636,24 +636,6 @@ namespace esphome {
       error_text_sensor_ = sensor;
     }
 
-    void ACW02::set_cmd_ignore_tx_sensor(esphome::text_sensor::TextSensor *sensor) {
-      if (cmd_ignore_tx_sensor_ == nullptr) {
-        cmd_ignore_tx_sensor_ = sensor;
-        cmd_ignore_tx_sensor_->publish_state("");
-      } else {
-        cmd_ignore_tx_sensor_ = sensor;
-      }
-    }
-
-    void ACW02::set_cmd_ignore_rx_sensor(esphome::text_sensor::TextSensor *sensor) {
-      if (cmd_ignore_rx_sensor_ == nullptr) {
-        cmd_ignore_rx_sensor_ = sensor;
-        cmd_ignore_rx_sensor_->publish_state("");
-      } else {
-        cmd_ignore_rx_sensor_ = sensor;
-      }
-    }
-
     void ACW02::set_mute_next_cmd_delay_text(esphome::text::Text *text) {
       mute_next_cmd_delay_text_ = text;
     }
@@ -927,6 +909,7 @@ namespace esphome {
               publish_discovery_filter_dirty_sensor();
               publish_discovery_warn_sensor();
               publish_discovery_error_sensor();
+              publish_discovery_cmd_failure_counter_sensor();
               publish_discovery_warn_text_sensor();
               publish_discovery_error_text_sensor();
               send_static_command_basic(get_status_frame_);
@@ -1187,7 +1170,8 @@ namespace esphome {
         presets_list_element_climate = "none";
       }
       payload += "\"presets_list_element_climate\":\"" + presets_list_element_climate + "\",";
-      payload += "\"preset_name_config\":\"" + preset_name_config_ + "\"";
+      payload += "\"preset_name_config\":\"" + preset_name_config_ + "\",";
+      payload += "\"cmd_failure_counter\":\"" + std::to_string(cmd_failure_counter_) + "\"";
       payload += "}";
 
       publish_async(app_name_ + "/state", payload, 1, true);
@@ -2790,6 +2774,39 @@ namespace esphome {
       }
     }
 
+    void ACW02::publish_discovery_cmd_failure_counter_sensor(bool recreate) {
+      if (!mqtt_)
+        return;
+
+      const std::string topic_base = app_name_;
+      const std::string unique_id = app_sanitize_name_ + "_mqtt_cmd_failure_counter_sensor";
+      std::string config_topic = "homeassistant/sensor/" + topic_base + "-cmd-failure-counter/config";
+
+      std::string payload = R"({
+        "name": ")" + get_localized_name(app_lang_, "cmdFailureCounter") + R"(",
+        "object_id": ")" + unique_id + R"(",
+        "unique_id": ")" + unique_id + R"(",
+        "stat_t": ")" + topic_base + R"(/state",
+        "icon": "mdi:alert-box",
+        "val_tpl": "{{ value_json.cmd_failure_counter }}",
+        "avty_t": ")" + topic_base + R"(/status",
+        "pl_on": "true",
+        "pl_off": "false",
+        "pl_avail": "online",
+        "pl_not_avail": "offline")" +
+        build_common_config_suffix() + R"(
+      })";
+
+      if (recreate) {
+        publish_async(config_topic, std::string(""), 1, true);
+        set_timeout("publish_discovery_cmd_failure_counter_sensor", mqtt_delay_rebuild_, [this, config_topic, payload]() {
+          publish_async(config_topic, payload, 1, true);
+        });
+      } else {
+        publish_async(config_topic, payload, 1, true);
+      }
+    }
+
     void ACW02::publish_discovery_warn_text_sensor(bool recreate) {
       if (!mqtt_)
         return;
@@ -2893,6 +2910,7 @@ namespace esphome {
       publish_discovery_filter_dirty_sensor(true);
       publish_discovery_warn_sensor(true);
       publish_discovery_error_sensor(true);
+      publish_discovery_cmd_failure_counter_sensor(true);
       publish_discovery_warn_text_sensor(true);
       publish_discovery_error_text_sensor(true);
     }
@@ -2905,11 +2923,6 @@ namespace esphome {
         publish_discovery_swing_select(true);
         publish_discovery_swing_horizontal_select(true);
       }
-    }
-
-    void ACW02::clear_cmd_ignore() {
-      cmd_ignore_tx_sensor_->publish_state("");
-      cmd_ignore_rx_sensor_->publish_state("");
     }
 
     std::string ACW02::sanitize_name(const std::string &input) const  {
@@ -2931,7 +2944,7 @@ namespace esphome {
       return;
 
       // security for concurr RX/TX
-      if (!rx_buffer_.empty() || (millis() - last_rx_byte_time_ < 100)) {
+      if (!rx_buffer_.empty() || (millis() - last_rx_byte_time_ < SILENCE_RX_MS)) {
         return;
       }
 
@@ -2954,7 +2967,7 @@ namespace esphome {
         ack_wait_ = true;
       }
       if (pkt.fingerprint != 0) {
-        ack_block_until_ = last_tx_ + 120;
+        ack_block_until_ = last_tx_ + ACK_WINDOW_MS;
       }
       tx_queue_.pop_front();
     }
@@ -3006,7 +3019,34 @@ namespace esphome {
       return cmd_send;
     }
 
-     void ACW02::send_static_command_basic(const std::vector<uint8_t> &data) {
+    std::vector<uint8_t> ACW02::make_muted_with_fixed_crc(const std::vector<uint8_t>& frame) const {
+      // Copy by value (we do not modify 'frame')
+      std::vector<uint8_t> out = frame;
+
+      // Command frames: 24 bytes, CRC on the first 22, MSB@22 / LSB@23.
+      if (out.size() < 24) {
+        ESP_LOGW(TAG, "make_muted_with_fixed_crc: frame too short (%u)", (unsigned)out.size());
+        return out;  // returns the unchanged copy
+      }
+
+      // "mute" byte = index 16, bit 0.
+      if (out[16] & 0x01) {
+        // already muted -> nothing to do
+        return out;
+      }
+
+      // Force mute
+      out[16] |= 0x01;
+
+      // Recalculate CRC16 on the first 22 bytes (same rules as build_frame)
+      const uint16_t crc = crc16(out.data(), 22);
+      out[22] = (crc >> 8) & 0xFF;  // MSB
+      out[23] = crc & 0xFF;         // LSB
+
+      return out;
+    }
+
+    void ACW02::send_static_command_basic(const std::vector<uint8_t> &data) {
       Frame_with_Fingerprint data_frame = {0, "", {}, 0, 0};
       data_frame.frame = data;
       tx_queue_.push_back(data_frame);
@@ -3209,14 +3249,20 @@ namespace esphome {
       }
 
       uint32_t now = millis();
-      if (now - cmd_send_fingerprint_tmp.timestamp_ms >= 50) {
+      if (now - cmd_send_fingerprint_tmp.timestamp_ms >= ACK_EVAL_MIN_MS) {
         if (!from_remote_ && cmd_send_fingerprint_tmp.fingerprint != 0) {
           Frame_with_Fingerprint cmd_recieve_fingerprint = fingerprint();
           log_fingerprint("decode_frame", cmd_recieve_fingerprint);
           if (!compare_fingerprints(cmd_send_fingerprint_tmp.fingerprint, cmd_recieve_fingerprint.fingerprint)) {
-            log_fingerprint("Mismatch cmd ignore", cmd_send_fingerprint_tmp, cmd_recieve_fingerprint, true);
             if (cmd_send_fingerprint_tmp.tryCnt < maxRetry) {
               Frame_with_Fingerprint cmd_send_fingerprint_before_send = cmd_send_fingerprint_tmp;
+              if (cmd_send_fingerprint_before_send.tryCnt == 0) {
+                log_fingerprint("Mismatch cmd", cmd_send_fingerprint_tmp, cmd_recieve_fingerprint);
+                cmd_send_fingerprint_before_send.frame = make_muted_with_fixed_crc(cmd_send_fingerprint_before_send.frame);
+                cmd_failure_counter_ = cmd_failure_counter_ + 1;
+              } else {
+                log_fingerprint("Mismatch retry cmd", cmd_send_fingerprint_tmp, cmd_recieve_fingerprint);
+              }
               cmd_send_fingerprint_before_send.tryCnt = cmd_send_fingerprint_before_send.tryCnt + 1;
               ESP_LOGE(TAG, "Last tx retry %d/%d", cmd_send_fingerprint_before_send.tryCnt, maxRetry);
               send_command_basic(cmd_send_fingerprint_before_send);
@@ -3238,7 +3284,7 @@ namespace esphome {
           ESP_LOGE(TAG, "Fingerprint Not reset because cmd fp diff");
         }
       } else {
-        ESP_LOGE(TAG, "Fingerprint ignored because time < 50ms");
+        ESP_LOGE(TAG, "Fingerprint ignored because time < %lu ms", (unsigned long)ACK_EVAL_MIN_MS);
       }
 
       if (mqtt_) {
@@ -3604,31 +3650,20 @@ namespace esphome {
       return std::string(buf);
     }
 
-    void ACW02::log_fingerprint(std::string from, Frame_with_Fingerprint fp, Frame_with_Fingerprint tfp, bool sensored) const {
+    void ACW02::log_fingerprint(std::string from, Frame_with_Fingerprint fp, Frame_with_Fingerprint tfp) const {
       if (tfp.fingerprint != 0)
       {
+        ESP_LOGE(TAG, "%s", from.c_str());
         char buftx[255];
         snprintf(buftx, sizeof(buftx), "Fingerprint TX = 0x%08X -> %s", fp.fingerprint, fp.description.c_str());
-        ESP_LOGW(TAG, "%s", buftx);
+        ESP_LOGE(TAG, "%s", buftx);
         char bufrx[255];
         snprintf(bufrx, sizeof(bufrx), "Fingerprint RX = 0x%08X -> %s", tfp.fingerprint, tfp.description.c_str());
-        ESP_LOGW(TAG, "%s", bufrx);
-        if (sensored) {
-          if (cmd_ignore_tx_sensor_ != nullptr) {
-            cmd_ignore_tx_sensor_->publish_state(buftx);
-          }
-          if (cmd_ignore_rx_sensor_ != nullptr) {
-            cmd_ignore_rx_sensor_->publish_state(bufrx);
-          }
-        }
-        
+        ESP_LOGE(TAG, "%s", bufrx);    
       } else {
         char buf[255];
         snprintf(buf, sizeof(buf), "%s : Fingerprint = 0x%08X -> %s", from.c_str(), fp.fingerprint, fp.description.c_str());
         ESP_LOGW(TAG, "%s", buf);
-        if (sensored && cmd_ignore_tx_sensor_ != nullptr) {
-          cmd_ignore_tx_sensor_->publish_state(buf);
-        }
       }
       
     }

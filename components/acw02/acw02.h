@@ -246,6 +246,7 @@ class ACW02 : public Component, public uart::UARTDevice {
   void publish_discovery_filter_dirty_sensor(bool recreate = false);
   void publish_discovery_warn_sensor(bool recreate = false);
   void publish_discovery_error_sensor(bool recreate = false);
+  void publish_discovery_cmd_failure_counter_sensor(bool recreate = false);
   void publish_discovery_warn_text_sensor(bool recreate = false);
   void publish_discovery_error_text_sensor(bool recreate = false);
 
@@ -253,8 +254,6 @@ class ACW02 : public Component, public uart::UARTDevice {
   void rebuild_mqtt_entity();
   // MQTT publics function for apply disable option mode
   void apply_disable_settings();
- 
-  void clear_cmd_ignore();
   
   // Functions publics
   std::string sanitize_name(const std::string &input) const;
@@ -275,7 +274,10 @@ class ACW02 : public Component, public uart::UARTDevice {
   uint32_t last_rx_byte_time_{0};
   std::deque<Frame_with_Fingerprint> tx_queue_;
   uint32_t last_tx_{0};
-  static constexpr uint32_t TX_INTERVAL_MS = 300;
+  static constexpr uint32_t SILENCE_RX_MS = 120;
+  static constexpr uint32_t ACK_WINDOW_MS = 120;
+  static constexpr uint32_t TX_INTERVAL_MS = 180;
+  static constexpr uint32_t ACK_EVAL_MIN_MS  = 50;  // wait ≥50 ms after TX before comparing RX/TX
   bool ack_wait_ = false;
   uint32_t ack_block_until_ = 0;
 
@@ -397,6 +399,7 @@ class ACW02 : public Component, public uart::UARTDevice {
 
   // Protected functions for command UART
   Frame_with_Fingerprint build_frame(bool bypassMute = false) const;
+  std::vector<uint8_t> make_muted_with_fixed_crc(const std::vector<uint8_t>& frame) const;
    void send_static_command_basic(const std::vector<uint8_t> &data);
   void send_command_basic(const Frame_with_Fingerprint &data);
   void send_command(bool skipResetClean = false);
@@ -437,13 +440,12 @@ class ACW02 : public Component, public uart::UARTDevice {
   void recalculate_climate_depending_by_option();
 
   // fingerprint
-  esphome::text_sensor::TextSensor *cmd_ignore_tx_sensor_{nullptr};
-  esphome::text_sensor::TextSensor *cmd_ignore_rx_sensor_{nullptr};
+  int cmd_failure_counter_ = 0;
   mutable Frame_with_Fingerprint cmd_send_fingerprint_ = {0, "", {}, 0, 0};
   Frame_with_Fingerprint fingerprint() const;
   uint32_t ac_to_fingerprint() const;
   std::string fingerprint_to_string() const;
-  void log_fingerprint(std::string from, Frame_with_Fingerprint fp, Frame_with_Fingerprint tfp = {0, "", {}, 0, 0}, bool sensored = false) const;
+  void log_fingerprint(std::string from, Frame_with_Fingerprint fp, Frame_with_Fingerprint tfp = {0, "", {}, 0, 0}) const;
   bool compare_fingerprints(uint32_t a, uint32_t b);
 
   // presets
