@@ -92,11 +92,11 @@ namespace esphome {
         last_rx_byte_time_ = millis();
       }
 
-      // if (!rx_buffer_.empty() && millis() - last_rx_byte_time_ > 10) {
-      //   ESP_LOGI(TAG, "RX: [%s]", format_hex_pretty(rx_buffer_).c_str());
-      //   decode_state(rx_buffer_);
-      //   rx_buffer_.clear();
-      // }
+      // for check size rx buffer
+      if (rx_buffer_.size() > rx_max_depth_) {
+        rx_max_depth_ = rx_buffer_.size();
+        ESP_LOGW(TAG, "RX max depth = %u", (unsigned)rx_max_depth_);
+      }
 
       // Wait at least 10ms of silence before processing buffer
       if (!rx_buffer_.empty() && millis() - last_rx_byte_time_ > 10) {

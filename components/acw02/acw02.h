@@ -278,6 +278,7 @@ class ACW02 : public Component, public uart::UARTDevice {
   static constexpr uint32_t ACK_WINDOW_MS = 120;
   static constexpr uint32_t TX_INTERVAL_MS = 180;
   static constexpr uint32_t ACK_EVAL_MIN_MS  = 50;  // wait ≥50 ms after TX before comparing RX/TX
+  uint32_t rx_max_depth_ = 0; // for check size rx buffer
   bool ack_wait_ = false;
   uint32_t ack_block_until_ = 0;
 
