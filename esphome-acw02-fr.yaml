@@ -19,6 +19,8 @@ esphome:
 
 esp32:
   board: ${board}
+  framework:
+    type: arduino
 
 web_server:
   port: 80
