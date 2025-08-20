@@ -54,7 +54,8 @@ static const std::map<std::string, std::map<std::string, std::string>> LOCALIZED
             {"presetName", "Z-Preset-3: Nom"},
             {"presetSave", "Z-Preset-4: Sauvegarder"},
             {"presetDelete", "Z-Preset-5: Supprimer"},
-            {"presetNone", "Aucun"}
+            {"presetNone", "Aucun"},
+            {"cmdFailureCounter", "Compteur d'échec de cmd"}
         }},
         {"en", {
             {"climate", "AC"},
@@ -98,7 +99,8 @@ static const std::map<std::string, std::map<std::string, std::string>> LOCALIZED
             {"presetName", "Z-Preset-3: Name"},
             {"presetSave", "Z-Preset-4: Save"},
             {"presetDelete", "Z-Preset-5: Delete"},
-            {"presetNone", "Off"}
+            {"presetNone", "Off"},
+            {"cmdFailureCounter", "Cmd failure counter"}
         }}
     };
 
