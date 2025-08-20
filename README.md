@@ -3,6 +3,12 @@
 
 ---
 
+## 📋 Requirements
+
+- Home Assistant with **MQTT integration** enabled and properly configured
+- A working MQTT broker (e.g., Mosquitto)
+
+
 ## ⚙️ Settings
 
 ### 📁 Base Configuration

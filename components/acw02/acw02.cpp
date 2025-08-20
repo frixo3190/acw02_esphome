@@ -21,7 +21,7 @@ namespace esphome {
       app_sanitize_name_ = sanitize_name(app_name_);
       app_mac_ = get_mac_address();
 
-      send_command_basic(keepalive_frame_);
+      send_static_command_basic(keepalive_frame_);
       presets_list_element_config_ = PRESETS_LIST_ELEMENT_CONFIG_DEFAULT;
       presets_list_element_ = get_localized_name(app_lang_, "presetNone");
       mute_pref_ = global_preferences->make_preference<bool>(1U, "ac_mute");
@@ -79,7 +79,7 @@ namespace esphome {
         ESP_LOGD(TAG, "mode json %s ", build_options_json(app_lang_, "mode").c_str());
         ESP_LOGD(TAG, "fan json %s ", build_options_json(app_lang_, "fan").c_str());
         ESP_LOGD(TAG, "swing json %s ", build_options_json(app_lang_, "swing").c_str());
-        // send_command_basic(get_status_frame_);
+        //  send_static_command_basic(get_status_frame_);
       });
     }
 
@@ -92,11 +92,11 @@ namespace esphome {
         last_rx_byte_time_ = millis();
       }
 
-      // if (!rx_buffer_.empty() && millis() - last_rx_byte_time_ > 10) {
-      //   ESP_LOGI(TAG, "RX: [%s]", format_hex_pretty(rx_buffer_).c_str());
-      //   decode_state(rx_buffer_);
-      //   rx_buffer_.clear();
-      // }
+      // for check size rx buffer
+      if (rx_buffer_.size() > rx_max_depth_) {
+        rx_max_depth_ = rx_buffer_.size();
+        ESP_LOGW(TAG, "RX max depth = %u", (unsigned)rx_max_depth_);
+      }
 
       // Wait at least 10ms of silence before processing buffer
       if (!rx_buffer_.empty() && millis() - last_rx_byte_time_ > 10) {
@@ -119,7 +119,7 @@ namespace esphome {
 
             if (computed_crc == expected_crc) {
               std::vector<uint8_t> frame(start, start + size);
-              ESP_LOGI(TAG, "RX: [%s]", format_hex_pretty(frame).c_str());
+              ESP_LOGW(TAG, "RX: [%s]", format_hex_pretty(frame).c_str());
               decode_state(frame);
               offset += size;
               found = true;
@@ -142,7 +142,7 @@ namespace esphome {
       if (millis() - last_keepalive > 60000 && tx_queue_.empty()) {
         if (millis() - last_rx_byte_time_ > 200) {
           last_keepalive = millis();
-          send_command_basic(keepalive_frame_);
+          send_static_command_basic(keepalive_frame_);
         }
       }
     }
@@ -649,7 +649,7 @@ namespace esphome {
     }
 
     void ACW02::reload_ac_info() {
-      send_command_basic(get_status_frame_);
+      send_static_command_basic(get_status_frame_);
     }
 
     std::string ACW02::get_mac_address() {
@@ -909,36 +909,52 @@ namespace esphome {
               publish_discovery_filter_dirty_sensor();
               publish_discovery_warn_sensor();
               publish_discovery_error_sensor();
+              publish_discovery_cmd_failure_counter_sensor();
               publish_discovery_warn_text_sensor();
               publish_discovery_error_text_sensor();
-              send_command_basic(get_status_frame_);
+              send_static_command_basic(get_status_frame_);
             });
             mqtt_->subscribe(app_name_ + "/cmd/#", [this](const std::string &topic, const std::string &payload) {
               mqtt_callback(topic, payload);
-            });
+            }, 1);
+            mqtt_->subscribe(app_name_ + "/cmd_ac/#", [this](const std::string &topic, const std::string &payload) {
+              mqtt_callback(topic, payload);
+            }, 1);
             mqtt_->subscribe(app_name_ + "/ping/request", [this](const std::string &topic, const std::string &payload) {
               ESP_LOGW(TAG, "Ping request received: %s", payload.c_str());
               this->set_timeout("delayed_ping_response", 200, [this, payload]() {
                 publish_async(app_name_ + "/ping/response", payload, 1, false);
               });
-            });
+            }, 1);
+            // for generate failed compare fingerprint
+            // set_interval("test", 500, [this]() {
+            //   write_array(get_status_frame_);
+            // });
         });
         mqtt_->set_on_disconnect([this](mqtt::MQTTClientDisconnectReason reason) {
-          ESP_LOGI(TAG, "MQTT disconnected (reason=%d)", static_cast<int>(reason));
+          ESP_LOGW(TAG, "MQTT disconnected (reason=%d)", static_cast<int>(reason));
           if (mqtt_connected_sensor_) mqtt_connected_sensor_->publish_state(false);
         });
       }
     }
 
     void ACW02::mqtt_callback(const std::string &topic, const std::string &payload) {
+      ESP_LOGW(TAG, "mqtt_callback =====>>>> start !");
       std::string cmd = topic.substr(topic.find_last_of('/') + 1);
+      if (topic.find("/cmd_ac/") != std::string::npos) {
+        ESP_LOGW(TAG, "mqtt_callback cmd type cmd_ac !");
+      }
+
       //calc start fingerprint
       bool tmp_send_cmd = false;
       uint32_t start_f = ac_to_fingerprint();
       bool prev_power_status = is_power_on();
       bool isDisplayCmd = false;
+      bool was_power = power_on_;
+      Mode was_mode = mode_;
 
-      ESP_LOGI(TAG, "mqtt_callback_ payload %s %s %s", cmd.c_str(), topic.c_str(), payload.c_str());
+      ESP_LOGW(TAG, "mqtt_callback_ payload %s %s %s", cmd.c_str(), topic.c_str(), payload.c_str());
+      ESP_LOGW(TAG, "mqtt_callback_ status %s %s", power_on_ ? "on" : "off",  mode_to_string_climate(mode_).c_str());
       if (cmd == "power_climate") {
         set_mode_climate(payload == "OFF" ? "off" : mode_to_string_climate(mode_));
         tmp_send_cmd = true;
@@ -946,6 +962,7 @@ namespace esphome {
         set_mode(payload == key_to_txt(app_lang_, "mode", "OFF") ? key_to_txt(app_lang_, "mode", "OFF") : mode_to_string(app_lang_, mode_));
         tmp_send_cmd = true;
       } else if (cmd == "mode_climate") {
+        ESP_LOGW(TAG, "mqtt_callback_ set_mode_climate");
         set_mode_climate(payload);
         tmp_send_cmd = true;
       } else if (cmd == "mode") {
@@ -1017,7 +1034,8 @@ namespace esphome {
         PresetSlot preset = get_preset_by_name(presets_list_element_config_);
 
         if (!preset.name.empty()) {
-          ESP_LOGI(TAG, "Preset %d trouvé avec trame de %d octets", preset.index, preset.trame.size());
+          ESP_LOGI(TAG, "Preset %d frame found with %d octets", preset.index, preset.frame_with_fp.frame.size());
+          ESP_LOGW(TAG, "Preset \"%s\" frame: %s fingerprint: 0x%08X", preset.name.c_str(), format_hex_pretty(preset.frame_with_fp.frame).c_str(), preset.frame_with_fp.fingerprint);
           size_t pos = preset.name.find(" (empty)");
           if (pos != std::string::npos) {
             preset.name = "Preset";
@@ -1038,13 +1056,13 @@ namespace esphome {
         }
         PresetSlot preset = get_preset_by_name(presets_list_element_);
         if (preset.name != get_localized_name(app_lang_, "presetNone")) {
-          send_command_basic(preset.trame);
+          preset.frame_with_fp.timestamp_ms = millis();
+          send_command_basic(preset.frame_with_fp);
         }
       } else if (cmd == "preset_save") {
         update_selected_preset(preset_name_config_, build_frame());
         preset_name_config_ = "";
         presets_list_element_ = get_localized_name(app_lang_, "presetNone");
-        log_selected_preset_trame();
       } else if (cmd == "preset_delete") {
         delete_preset_by_name();
         preset_name_config_ = "";
@@ -1059,7 +1077,17 @@ namespace esphome {
 
       bool after_power_status = is_power_on();
       uint32_t end_f = ac_to_fingerprint();
-      if (tmp_send_cmd && !compare_fingerprints(start_f, end_f)) {
+      bool changed = !compare_fingerprints(start_f, end_f);
+
+      ESP_LOGW(TAG,
+        "DECIDE cmd=%s fp_start=0x%08X fp_end=0x%08X changed=%d | before{pwr=%d,mode=%d,temp_enc=%u} after{pwr=%d,mode=%d,temp_enc=%u}",
+        cmd.c_str(), start_f, end_f, (int)changed,
+        (int)was_power, (int)was_mode, (unsigned)encode_temperature_byte(),
+        (int)power_on_, (int)mode_, (unsigned)encode_temperature_byte());
+
+      ESP_LOGW(TAG, "mqtt_callback_ compare_fingerprints 0x%08X 0x%08X", start_f, end_f);
+      if (tmp_send_cmd && changed) {
+        ESP_LOGW(TAG, "mqtt_callback_ send_command");
         send_command(isDisplayCmd);
         presets_list_element_ = get_localized_name(app_lang_, "presetNone");
         if (mute_next_cmd_after_on_delay_ > 0 && !prev_power_status && after_power_status) {
@@ -1078,6 +1106,7 @@ namespace esphome {
         time_publish_stats_after_power_on_ = millis() + publish_stats_after_power_on_delay_;
       }
       publish_state();
+      ESP_LOGW(TAG, "mqtt_callback =====>>>> end !");
     }
 
     void ACW02::publish_state() {
@@ -1141,7 +1170,8 @@ namespace esphome {
         presets_list_element_climate = "none";
       }
       payload += "\"presets_list_element_climate\":\"" + presets_list_element_climate + "\",";
-      payload += "\"preset_name_config\":\"" + preset_name_config_ + "\"";
+      payload += "\"preset_name_config\":\"" + preset_name_config_ + "\",";
+      payload += "\"cmd_failure_counter\":\"" + std::to_string(cmd_failure_counter_) + "\"";
       payload += "}";
 
       publish_async(app_name_ + "/state", payload, 1, true);
@@ -1219,16 +1249,16 @@ namespace esphome {
         "object_id": ")" + unique_id + R"(",
         "unique_id": ")" + unique_id + R"(",
         "stat_t": ")" + topic_base + R"(/state",
-        "cmd_t": ")" + topic_base + R"(/cmd/mode_climate",)";
+        "cmd_t": ")" + topic_base + R"(/cmd_ac/mode_climate",)";
         if (!disable_swing_vertical_ && !disable_swing_horizontal_) {
           payload += R"(
-          "preset_mode_command_topic": ")" + topic_base + R"(/cmd/swing_horizontal",
+          "preset_mode_command_topic": ")" + topic_base + R"(/cmd_ac/swing_horizontal",
           "preset_mode_state_topic": ")" + topic_base + R"(/state",
           "preset_mode_value_template": "{{ value_json.swing_horizontal_climate }}",
           "preset_modes": )" + build_options_json(app_lang_, "swingHorizontal", "STOP") + R"(,)";
         } else if (preset_) {
           payload += R"(
-          "preset_mode_command_topic": ")" + topic_base + R"(/cmd/presets_list_element",
+          "preset_mode_command_topic": ")" + topic_base + R"(/cmd_ac/presets_list_element",
           "preset_mode_state_topic": ")" + topic_base + R"(/state",
           "preset_mode_value_template": "{{ value_json.presets_list_element_climate }}",
           "preset_modes": )" + get_preset_list(true, true) + R"(,)";
@@ -1236,41 +1266,41 @@ namespace esphome {
         payload += R"(
         "mode_stat_t": ")" + topic_base + R"(/state",
         "mode_stat_tpl": "{{ value_json.mode_climate }}",
-        "mode_cmd_t": ")" + topic_base + R"(/cmd/mode_climate",
+        "mode_cmd_t": ")" + topic_base + R"(/cmd_ac/mode_climate",
         "modes": )" + build_modes_json_climate() + R"(,
-        "temp_cmd_t": ")" + topic_base + "/cmd/temp" + temp_suffix + R"(",
+        "temp_cmd_t": ")" + topic_base + "/cmd_ac/temp" + temp_suffix + R"(",
         "temp_stat_t": ")" + topic_base + R"(/state",
         "temp_stat_tpl": "{{ value_json.temp)" + temp_suffix + R"( }}",
         "curr_temp_t": ")" + topic_base + R"(/state",
         "curr_temp_tpl": "{{ value_json.ambient)" + temp_suffix + R"( }}",
-        "fan_mode_cmd_t": ")" + topic_base + R"(/cmd/fan",
+        "fan_mode_cmd_t": ")" + topic_base + R"(/cmd_ac/fan",
         "fan_mode_stat_t": ")" + topic_base + R"(/state",
         "fan_mode_stat_tpl": "{{ value_json.fan }}",
         "fan_modes": )" + build_fan_speed_json() + R"(,)";
         
         if (!disable_swing_vertical_ && !disable_swing_horizontal_) {
           payload += R"(
-          "swing_mode_cmd_t": ")" + topic_base + R"(/cmd/swing",
+          "swing_mode_cmd_t": ")" + topic_base + R"(/cmd_ac/swing",
           "swing_mode_stat_t": ")" + topic_base + R"(/state",
           "swing_mode_stat_tpl": "{{ value_json.swing }}",
           "swing_modes": )" + build_options_json(app_lang_, "swing") + R"(,)";
         } else {
           if (disable_swing_vertical_ && !disable_swing_horizontal_) {
              payload += R"(
-            "swing_mode_cmd_t": ")" + topic_base + R"(/cmd/swing_horizontal",
+            "swing_mode_cmd_t": ")" + topic_base + R"(/cmd_ac/swing_horizontal",
             "swing_mode_stat_t": ")" + topic_base + R"(/state",
             "swing_mode_stat_tpl": "{{ value_json.swing_horizontal }}",
             "swing_modes": )" + build_options_json(app_lang_, "swingHorizontal") + R"(,)";
           } else if (disable_swing_horizontal_ && !disable_swing_vertical_) {
              payload += R"(
-            "swing_mode_cmd_t": ")" + topic_base + R"(/cmd/swing",
+            "swing_mode_cmd_t": ")" + topic_base + R"(/cmd_ac/swing",
             "swing_mode_stat_t": ")" + topic_base + R"(/state",
             "swing_mode_stat_tpl": "{{ value_json.swing }}",
             "swing_modes": )" + build_options_json(app_lang_, "swing") + R"(,)";
           }
         }
         payload += R"(
-        "pow_cmd_t": ")" + topic_base + R"(/cmd/power_climate",
+        "pow_cmd_t": ")" + topic_base + R"(/cmd_ac/power_climate",
         "pow_stat_t": ")" + topic_base + R"(/state",
         "pow_stat_tpl": "{{ value_json.power_climate }}",
         "min_temp": )" + (mintemp) + R"(,
@@ -1305,7 +1335,7 @@ namespace esphome {
         "object_id": ")" + unique_id + R"(",
         "unique_id": ")" + unique_id + R"(",
         "icon": "mdi:thermostat",
-        "cmd_t": ")" + topic_base + R"(/cmd/mode",
+        "cmd_t": ")" + topic_base + R"(/cmd_ac/mode",
         "stat_t": ")" + topic_base + R"(/state",
         "val_tpl": "{{ value_json.mode }}",
         "options": )" + build_modes_json() + R"(,
@@ -1339,7 +1369,7 @@ namespace esphome {
         "object_id": ")" + unique_id + R"(",
         "unique_id": ")" + unique_id + R"(",
         "icon": "mdi:fan",
-        "cmd_t": ")" + topic_base + R"(/cmd/fan",
+        "cmd_t": ")" + topic_base + R"(/cmd_ac/fan",
         "stat_t": ")" + topic_base + R"(/state",
         "val_tpl": "{{ value_json.fan }}",
         "options": )" + build_options_json(app_lang_, "fan") + R"(,
@@ -1382,7 +1412,7 @@ namespace esphome {
         "name": ")" + get_localized_name(app_lang_, "unit") + R"(",
         "object_id": ")" + unique_id + R"(",
         "unique_id": ")" + unique_id + R"(",
-        "cmd_t": ")" + topic_base + R"(/cmd/unit",
+        "cmd_t": ")" + topic_base + R"(/cmd_ac/unit",
         "stat_t": ")" + topic_base + R"(/state",
         "val_tpl": "{{ value_json.unit }}",
         "options": ["°C", "°F"],
@@ -1416,7 +1446,7 @@ namespace esphome {
         "object_id": ")" + unique_id + R"(",
         "unique_id": ")" + unique_id + R"(",
         "icon": "mdi:swap-vertical",
-        "cmd_t": ")" + topic_base + R"(/cmd/swing",
+        "cmd_t": ")" + topic_base + R"(/cmd_ac/swing",
         "stat_t": ")" + topic_base + R"(/state",
         "val_tpl": "{{ value_json.swing }}",
         "options": )" + build_options_json(app_lang_, "swing") + R"(,
@@ -1450,7 +1480,7 @@ namespace esphome {
         "object_id": ")" + unique_id + R"(",
         "unique_id": ")" + unique_id + R"(",
         "icon": "mdi:swap-horizontal",
-        "cmd_t": ")" + topic_base + R"(/cmd/swing_horizontal",
+        "cmd_t": ")" + topic_base + R"(/cmd_ac/swing_horizontal",
         "stat_t": ")" + topic_base + R"(/state",
         "val_tpl": "{{ value_json.swing_horizontal }}",
         "options": )" + build_options_json(app_lang_, "swingHorizontal") + R"(,
@@ -1484,7 +1514,7 @@ namespace esphome {
         "object_id": ")" + unique_id + R"(",
         "unique_id": ")" + unique_id + R"(",
         "icon": "mdi:content-save",
-        "cmd_t": ")" + topic_base + R"(/cmd/presets_list_element",
+        "cmd_t": ")" + topic_base + R"(/cmd_ac/presets_list_element",
         "stat_t": ")" + topic_base + R"(/state",
         "val_tpl": "{{ value_json.presets_list_element }}",
         "options": )" + get_preset_list(true) + R"(,
@@ -1552,7 +1582,7 @@ namespace esphome {
         "object_id": ")" + unique_id + R"(",
         "unique_id": ")" + unique_id + R"(",
         "icon": "mdi:spray-bottle",
-        "cmd_t": ")" + topic_base + R"(/cmd/clean",
+        "cmd_t": ")" + topic_base + R"(/cmd_ac/clean",
         "stat_t": ")" + topic_base + R"(/state",
         "val_tpl": "{{ value_json.clean }}",
         "pl_on": "on",
@@ -1597,7 +1627,7 @@ namespace esphome {
         "object_id": ")" + unique_id + R"(",
         "unique_id": ")" + unique_id + R"(",
         "icon": "mdi:currency-usd-off",
-        "cmd_t": ")" + topic_base + R"(/cmd/eco",
+        "cmd_t": ")" + topic_base + R"(/cmd_ac/eco",
         "stat_t": ")" + topic_base + R"(/state",
         "availability_mode": "all",
         "availability_template": "{{ value_json.mode == 'cool' }}",
@@ -1644,7 +1674,7 @@ namespace esphome {
         "object_id": ")" + unique_id + R"(",
         "unique_id": ")" + unique_id + R"(",
         "icon": "mdi:lightbulb",
-        "cmd_t": ")" + topic_base + R"(/cmd/display",
+        "cmd_t": ")" + topic_base + R"(/cmd_ac/display",
         "stat_t": ")" + topic_base + R"(/state",
         "val_tpl": "{{ value_json.display }}",
         "pl_on": "on",
@@ -1678,7 +1708,7 @@ namespace esphome {
         "name": ")" + get_localized_name(app_lang_, "night") + R"(",
         "object_id": ")" + unique_id + R"(",
         "unique_id": ")" + unique_id + R"(",
-        "cmd_t": ")" + topic_base + R"(/cmd/night",
+        "cmd_t": ")" + topic_base + R"(/cmd_ac/night",
         "stat_t": ")" + topic_base + R"(/state",
         "val_tpl": "{{ value_json.night }}",
         "pl_on": "on",
@@ -1723,7 +1753,7 @@ namespace esphome {
         "name": ")" + get_localized_name(app_lang_, "purifier") + R"(",
         "object_id": ")" + unique_id + R"(",
         "unique_id": ")" + unique_id + R"(",
-        "cmd_t": ")" + topic_base + R"(/cmd/purifier",
+        "cmd_t": ")" + topic_base + R"(/cmd_ac/purifier",
         "stat_t": ")" + topic_base + R"(/state",
         "val_tpl": "{{ value_json.purifier }}",
         "pl_on": "on",
@@ -2334,7 +2364,7 @@ namespace esphome {
         "name": ")" + get_localized_name(app_lang_, "temp") + R"(",
         "object_id": ")" + unique_id + R"(",
         "unique_id": ")" + unique_id + R"(",
-        "cmd_t": ")" + topic_base + "/cmd/temp" + temp_suffix + R"(",
+        "cmd_t": ")" + topic_base + "/cmd_ac/temp" + temp_suffix + R"(",
         "stat_t": ")" + topic_base + R"(/state",
         "val_tpl": "{{ value_json.temp)" + temp_suffix + R"( }}",
         "min": )" + to_string(min) + R"(,
@@ -2744,6 +2774,39 @@ namespace esphome {
       }
     }
 
+    void ACW02::publish_discovery_cmd_failure_counter_sensor(bool recreate) {
+      if (!mqtt_)
+        return;
+
+      const std::string topic_base = app_name_;
+      const std::string unique_id = app_sanitize_name_ + "_mqtt_cmd_failure_counter_sensor";
+      std::string config_topic = "homeassistant/sensor/" + topic_base + "-cmd-failure-counter/config";
+
+      std::string payload = R"({
+        "name": ")" + get_localized_name(app_lang_, "cmdFailureCounter") + R"(",
+        "object_id": ")" + unique_id + R"(",
+        "unique_id": ")" + unique_id + R"(",
+        "stat_t": ")" + topic_base + R"(/state",
+        "icon": "mdi:alert-box",
+        "val_tpl": "{{ value_json.cmd_failure_counter }}",
+        "avty_t": ")" + topic_base + R"(/status",
+        "pl_on": "true",
+        "pl_off": "false",
+        "pl_avail": "online",
+        "pl_not_avail": "offline")" +
+        build_common_config_suffix() + R"(
+      })";
+
+      if (recreate) {
+        publish_async(config_topic, std::string(""), 1, true);
+        set_timeout("publish_discovery_cmd_failure_counter_sensor", mqtt_delay_rebuild_, [this, config_topic, payload]() {
+          publish_async(config_topic, payload, 1, true);
+        });
+      } else {
+        publish_async(config_topic, payload, 1, true);
+      }
+    }
+
     void ACW02::publish_discovery_warn_text_sensor(bool recreate) {
       if (!mqtt_)
         return;
@@ -2847,6 +2910,7 @@ namespace esphome {
       publish_discovery_filter_dirty_sensor(true);
       publish_discovery_warn_sensor(true);
       publish_discovery_error_sensor(true);
+      publish_discovery_cmd_failure_counter_sensor(true);
       publish_discovery_warn_text_sensor(true);
       publish_discovery_error_text_sensor(true);
     }
@@ -2880,7 +2944,7 @@ namespace esphome {
       return;
 
       // security for concurr RX/TX
-      if (!rx_buffer_.empty() || (millis() - last_rx_byte_time_ < 100)) {
+      if (!rx_buffer_.empty() || (millis() - last_rx_byte_time_ < SILENCE_RX_MS)) {
         return;
       }
 
@@ -2888,13 +2952,28 @@ namespace esphome {
       return;
 
       const auto &pkt = tx_queue_.front();
-      ESP_LOGI(TAG, "TX: [%s]", format_hex_pretty(pkt).c_str());
-      write_array(pkt);
+      if (ack_wait_ && pkt.tryCnt == 0 && millis() < ack_block_until_) {
+        return;
+      }
+      ESP_LOGW(TAG, "TX: [%s]", format_hex_pretty(pkt.frame).c_str());
+      cmd_send_fingerprint_ = pkt;
+      if (pkt.fingerprint != 0) {
+       log_fingerprint("write_frame", cmd_send_fingerprint_);
+      }
+      write_array(pkt.frame);
       last_tx_ = millis();
+      cmd_send_fingerprint_.timestamp_ms = last_tx_;
+      if (pkt.tryCnt == 0 && pkt.fingerprint != 0) {
+        ack_wait_ = true;
+      }
+      if (pkt.fingerprint != 0) {
+        ack_block_until_ = last_tx_ + ACK_WINDOW_MS;
+      }
       tx_queue_.pop_front();
     }
 
-    std::vector<uint8_t> ACW02::build_frame(bool bypassMute) const {
+    Frame_with_Fingerprint ACW02::build_frame(bool bypassMute) const {
+      Frame_with_Fingerprint cmd_send = fingerprint();
       std::vector<uint8_t> frame(24, 0x00);
       frame[0] = frame[1] = 0x7A;
       frame[2] = 0x21;
@@ -2936,11 +3015,50 @@ namespace esphome {
       uint16_t crc = crc16(frame.data(), 22);
       frame[22] = (crc >> 8) & 0xFF;
       frame[23] = crc & 0xFF;
-      return frame;
+      cmd_send.frame = frame;
+      return cmd_send;
     }
 
-    void ACW02::send_command_basic(const std::vector<uint8_t> &data) {
-      tx_queue_.push_back(data);
+    std::vector<uint8_t> ACW02::make_muted_with_fixed_crc(const std::vector<uint8_t>& frame) const {
+      // Copy by value (we do not modify 'frame')
+      std::vector<uint8_t> out = frame;
+
+      // Command frames: 24 bytes, CRC on the first 22, MSB@22 / LSB@23.
+      if (out.size() < 24) {
+        ESP_LOGW(TAG, "make_muted_with_fixed_crc: frame too short (%u)", (unsigned)out.size());
+        return out;  // returns the unchanged copy
+      }
+
+      // "mute" byte = index 16, bit 0.
+      if (out[16] & 0x01) {
+        // already muted -> nothing to do
+        return out;
+      }
+
+      // Force mute
+      out[16] |= 0x01;
+
+      // Recalculate CRC16 on the first 22 bytes (same rules as build_frame)
+      const uint16_t crc = crc16(out.data(), 22);
+      out[22] = (crc >> 8) & 0xFF;  // MSB
+      out[23] = crc & 0xFF;         // LSB
+
+      return out;
+    }
+
+    void ACW02::send_static_command_basic(const std::vector<uint8_t> &data) {
+      Frame_with_Fingerprint data_frame = {0, "", {}, 0, 0};
+      data_frame.frame = data;
+      tx_queue_.push_back(data_frame);
+    }
+
+    void ACW02::send_command_basic(const Frame_with_Fingerprint &data) {
+      if (data.tryCnt > 0){
+        tx_queue_.push_front(data);
+      }
+      else { 
+        tx_queue_.push_back(data);
+      }
     }
 
     void ACW02::send_command(bool skipResetClean) {
@@ -2948,7 +3066,7 @@ namespace esphome {
         clean_ = false;
         force_clean_ = false;
       }
-      ESP_LOGI(TAG, "send command");
+      ESP_LOGW(TAG, "send command");
       send_command_basic(build_frame());
     }
 
@@ -2963,7 +3081,7 @@ namespace esphome {
     }
 
     void ACW02::decode_state(const std::vector<uint8_t> &f) {
-
+      Frame_with_Fingerprint cmd_send_fingerprint_tmp = cmd_send_fingerprint_;
       if (f.size() == 28 && f[0] == 0x7A && f[1] == 0x7A && f[2] == 0xD5 && f[3] == 0x21) {
         bool old_filter_dirty_ = filter_dirty_;
         bool old_warn_ = warn_;
@@ -3045,6 +3163,7 @@ namespace esphome {
       if (f.size() != 34 || f[0] != 0x7A || f[1] != 0x7A) {
         return;
       }
+      ESP_LOGW(TAG, "decode_state =====>>>> AC frame start !");
 
       bool previous_power_on = power_on_;
       bool previous_fahrenheit = use_fahrenheit_;
@@ -3105,7 +3224,7 @@ namespace esphome {
       display_  = flags & 0x80;
       from_remote_ = flags & 0x04 || (display_ && flags & 0x08);
 
-      ESP_LOGI(TAG,
+      ESP_LOGW(TAG,
       "RX decode: PWR=%s | Mode=%s | Mode climate=%s | Fan=%s | Temp=%.1f°C / %.1f°F [%s] | "
       "Eco=%d | Night=%d | Clean=%d | Purifier=%d | Display=%d | Swing=%s | SwingH=%s | Silent=%s | Origin=%s",
       power_on_ ? "ON" : "OFF",
@@ -3125,8 +3244,47 @@ namespace esphome {
         ambient_temp_c_  = temp_int + temp_dec / 10.0f;
         ambient_temp_f_  = celsius_to_fahrenheit(ambient_temp_c_, false);
 
-        ESP_LOGI(TAG, "RX ambient temp: %.1f°C / %.1f°F (raw=0x%02X 0x%02X)",
+        ESP_LOGW(TAG, "RX ambient temp: %.1f°C / %.1f°F (raw=0x%02X 0x%02X)",
         ambient_temp_c_, ambient_temp_f_, temp_int, temp_dec);
+      }
+
+      uint32_t now = millis();
+      if (now - cmd_send_fingerprint_tmp.timestamp_ms >= ACK_EVAL_MIN_MS) {
+        if (!from_remote_ && cmd_send_fingerprint_tmp.fingerprint != 0) {
+          Frame_with_Fingerprint cmd_recieve_fingerprint = fingerprint();
+          log_fingerprint("decode_frame", cmd_recieve_fingerprint);
+          if (!compare_fingerprints(cmd_send_fingerprint_tmp.fingerprint, cmd_recieve_fingerprint.fingerprint)) {
+            if (cmd_send_fingerprint_tmp.tryCnt < maxRetry) {
+              Frame_with_Fingerprint cmd_send_fingerprint_before_send = cmd_send_fingerprint_tmp;
+              if (cmd_send_fingerprint_before_send.tryCnt == 0) {
+                log_fingerprint("Mismatch cmd", cmd_send_fingerprint_tmp, cmd_recieve_fingerprint);
+                cmd_send_fingerprint_before_send.frame = make_muted_with_fixed_crc(cmd_send_fingerprint_before_send.frame);
+                cmd_failure_counter_ = cmd_failure_counter_ + 1;
+              } else {
+                log_fingerprint("Mismatch retry cmd", cmd_send_fingerprint_tmp, cmd_recieve_fingerprint);
+              }
+              cmd_send_fingerprint_before_send.tryCnt = cmd_send_fingerprint_before_send.tryCnt + 1;
+              ESP_LOGE(TAG, "Last tx retry %d/%d", cmd_send_fingerprint_before_send.tryCnt, maxRetry);
+              send_command_basic(cmd_send_fingerprint_before_send);
+            } else {
+              ESP_LOGE(TAG, "Last tx cannot retry because max exceeded");
+              ack_wait_ = false;
+            }
+            
+          } else {
+            ack_wait_ = false;
+          }
+        }
+        if (cmd_send_fingerprint_tmp.fingerprint == cmd_send_fingerprint_.fingerprint &&
+          cmd_send_fingerprint_tmp.timestamp_ms == cmd_send_fingerprint_.timestamp_ms &&
+          cmd_send_fingerprint_tmp.tryCnt == cmd_send_fingerprint_.tryCnt) {
+          cmd_send_fingerprint_ = {0, "", {}, 0, 0};
+           ESP_LOGW(TAG, "Fingerprint Reset");
+        } else {
+          ESP_LOGE(TAG, "Fingerprint Not reset because cmd fp diff");
+        }
+      } else {
+        ESP_LOGE(TAG, "Fingerprint ignored because time < %lu ms", (unsigned long)ACK_EVAL_MIN_MS);
       }
 
       if (mqtt_) {
@@ -3182,6 +3340,7 @@ namespace esphome {
             }
         }
       }
+      ESP_LOGW(TAG, "decode_state =====>>>> AC frame end !");
     }
 
     bool ACW02::force_cool_mode_if_disabled() {
@@ -3440,6 +3599,16 @@ namespace esphome {
       
     }
 
+    Frame_with_Fingerprint ACW02::fingerprint() const {
+      return {
+        ac_to_fingerprint(),
+        fingerprint_to_string(),
+        {},
+        millis(),
+        0
+      };
+    }
+
     uint32_t ACW02::ac_to_fingerprint() const {
       uint32_t hash = 2166136261u;
       auto hash_combine = [&hash](uint8_t value) {
@@ -3462,6 +3631,43 @@ namespace esphome {
       return hash;
     }
 
+     std::string ACW02::fingerprint_to_string() const {
+      char buf[256];
+      snprintf(buf, sizeof(buf),
+        "Mode=%s Fan=%s Power=%s Temp=%d SwingH=%s SwingPos=%s Eco=%s Night=%s Clean=%s Purifier=%s Display=%s",
+        mode_to_string(app_lang_, mode_).c_str(),
+        fan_to_string(app_lang_, fan_).c_str(),
+        power_on_ ? "On" : "Off",
+        target_temp_c_,
+        swing_horizontal_to_string(app_lang_, swing_horizontal_).c_str(),
+        swing_to_string(app_lang_, swing_position_).c_str(),
+        eco_ ? "On" : "Off",
+        night_ ? "On" : "Off",
+        clean_ ? "On" : "Off",
+        purifier_ ? "On" : "Off",
+        display_ ? "On" : "Off"
+      );
+      return std::string(buf);
+    }
+
+    void ACW02::log_fingerprint(std::string from, Frame_with_Fingerprint fp, Frame_with_Fingerprint tfp) const {
+      if (tfp.fingerprint != 0)
+      {
+        ESP_LOGE(TAG, "%s", from.c_str());
+        char buftx[255];
+        snprintf(buftx, sizeof(buftx), "Fingerprint TX = 0x%08X -> %s", fp.fingerprint, fp.description.c_str());
+        ESP_LOGE(TAG, "%s", buftx);
+        char bufrx[255];
+        snprintf(bufrx, sizeof(bufrx), "Fingerprint RX = 0x%08X -> %s", tfp.fingerprint, tfp.description.c_str());
+        ESP_LOGE(TAG, "%s", bufrx);    
+      } else {
+        char buf[255];
+        snprintf(buf, sizeof(buf), "%s : Fingerprint = 0x%08X -> %s", from.c_str(), fp.fingerprint, fp.description.c_str());
+        ESP_LOGW(TAG, "%s", buf);
+      }
+      
+    }
+
     bool ACW02::compare_fingerprints(uint32_t a, uint32_t b) {
       return a == b;
     }
@@ -3477,7 +3683,7 @@ namespace esphome {
       }
       bool first = true;
       for (const auto &slot : presets_list) {
-        if (only_non_empty && slot.trame.empty())
+        if (only_non_empty && slot.frame_with_fp.frame.empty())
           continue;
         if (first && only_non_empty && !forClimate)
           json += ",";
@@ -3490,7 +3696,7 @@ namespace esphome {
       return json;
     }
 
-    std::vector<uint8_t> ACW02::decode_trame_base64(const std::string &input) {
+    std::vector<uint8_t> ACW02::decode_frame_base64(const std::string &input) {
       auto decode_char = [](char c) -> int {
         if (c >= 'A' && c <= 'Z') return c - 'A';
         if (c >= 'a' && c <= 'z') return c - 'a' + 26;
@@ -3520,7 +3726,7 @@ namespace esphome {
       return output;
     }
 
-    std::string ACW02::encode_trame_base64(const std::vector<uint8_t> &input) {
+    std::string ACW02::encode_frame_base64(const std::vector<uint8_t> &input) {
       static const char *base64_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
       std::string output;
       int val = 0, valb = -6;
@@ -3543,12 +3749,14 @@ namespace esphome {
       return output;
     }
 
-    void ACW02::update_selected_preset(const std::string &new_name, const std::vector<uint8_t> &new_trame) {
+    void ACW02::update_selected_preset(const std::string &new_name, const Frame_with_Fingerprint &new_frame) {
       for (auto &preset : presets_list) {
         if (preset.name == presets_list_element_config_) {
-          preset.trame = new_trame;
+          preset.frame_with_fp = new_frame;
           preset.name = std::to_string(preset.index) + " " + new_name;
+          preset.frame_with_fp.description = "presets \"" + preset.name + "\"";
           save_single_preset_to_flash(preset);
+          ESP_LOGW(TAG, "Save Preset: \"%s\" frame: %s fingerprint: 0x%08X", preset.name.c_str(), format_hex_pretty(preset.frame_with_fp.frame).c_str(), preset.frame_with_fp.fingerprint);
           presets_list_element_config_ = PRESETS_LIST_ELEMENT_CONFIG_DEFAULT;
           publish_discovery_preset_select(true);
           publish_discovery_preset_config_select(true);
@@ -3563,7 +3771,7 @@ namespace esphome {
       for (auto &preset : presets_list) {
         int i = preset.index;
 
-        // Lecture du nom
+        // read name
         char name_key[32];
         snprintf(name_key, sizeof(name_key), "preset_%d_name", i);
         auto name_pref = global_preferences->make_preference<char[25]>(fnv1_hash(name_key));
@@ -3572,14 +3780,28 @@ namespace esphome {
           preset.name = name_buf;
         }
 
-        // Lecture de la trame encodée
-        char trame_key[32];
-        snprintf(trame_key, sizeof(trame_key), "preset_%d_trame", i);
-        auto trame_pref = global_preferences->make_preference<char[64]>(fnv1_hash(trame_key));
-        char trame_buf[64];
-        if (trame_pref.load(&trame_buf)) {
-          preset.trame = decode_trame_base64(trame_buf);
+        // read encoded frame
+        char frame_key[32];
+        snprintf(frame_key, sizeof(frame_key), "preset_%d_trame", i);
+        auto frame_pref = global_preferences->make_preference<char[64]>(fnv1_hash(frame_key));
+        char frame_buf[64];
+        if (frame_pref.load(&frame_buf)) {
+          preset.frame_with_fp.frame = decode_frame_base64(frame_buf);
         }
+
+        // read encoded fingerprint
+        char fp_key[32];
+        snprintf(fp_key, sizeof(fp_key), "preset_%d_fp", i);
+        auto fp_pref = global_preferences->make_preference<uint32_t>(fnv1_hash(fp_key));
+        uint32_t fp = 0;
+        if (fp_pref.load(&fp)) {
+          preset.frame_with_fp.fingerprint = fp;
+        } else {
+          preset.frame_with_fp.fingerprint = 0;
+        }
+        preset.frame_with_fp.description = "presets \"" + preset.name + "\"";;
+        preset.frame_with_fp.timestamp_ms = 0;
+        preset.frame_with_fp.tryCnt = 0;
       }
     }
 
@@ -3589,24 +3811,8 @@ namespace esphome {
       }
     }
 
-    void ACW02::log_selected_preset_trame() {
-      for (const auto &preset : presets_list) {
-        if (preset.name == presets_list_element_config_) {
-          std::string hex_str;
-          for (uint8_t b : preset.trame) {
-            char buf[4];
-            snprintf(buf, sizeof(buf), "%02X ", b);
-            hex_str += buf;
-          }
-          ESP_LOGW(TAG, "Preset \"%s\" trame: %s", preset.name.c_str(), hex_str.c_str());
-          return;
-        }
-      }
-      ESP_LOGW(TAG, "No preset found with name: %s", presets_list_element_config_.c_str());
-    }
-
     void ACW02::save_single_preset_to_flash(const PresetSlot &preset) {
-      // Sauvegarde du nom
+      // save name
       char name_key[32];
       snprintf(name_key, sizeof(name_key), "preset_%d_name", preset.index);
       auto name_pref = global_preferences->make_preference<char[25]>(fnv1_hash(name_key));
@@ -3615,15 +3821,22 @@ namespace esphome {
       name_buf[sizeof(name_buf) - 1] = '\0';  // sécurité
       name_pref.save(&name_buf);
 
-      // Sauvegarde de la trame
-      char trame_key[32];
-      snprintf(trame_key, sizeof(trame_key), "preset_%d_trame", preset.index);
-      auto trame_pref = global_preferences->make_preference<char[64]>(fnv1_hash(trame_key));
-      std::string base64 = encode_trame_base64(preset.trame);
+      // save frame
+      char frame_key[32];
+      snprintf(frame_key, sizeof(frame_key), "preset_%d_trame", preset.index);
+      auto frame_pref = global_preferences->make_preference<char[64]>(fnv1_hash(frame_key));
+      std::string base64 = encode_frame_base64(preset.frame_with_fp.frame);
       char base64_buf[64];
       strncpy(base64_buf, base64.c_str(), sizeof(base64_buf));
       base64_buf[sizeof(base64_buf) - 1] = '\0';
-      trame_pref.save(&base64_buf);
+      frame_pref.save(&base64_buf);
+
+      // save fingerprint
+      char fp_key[32];
+      snprintf(fp_key, sizeof(fp_key), "preset_%d_fp", preset.index);
+      auto fp_pref = global_preferences->make_preference<uint32_t>(fnv1_hash(fp_key));
+      uint32_t fp = preset.frame_with_fp.fingerprint;
+      fp_pref.save(&fp);
     }
 
     void ACW02::delete_preset_by_name() {
@@ -3631,7 +3844,7 @@ namespace esphome {
         if (preset.name == presets_list_element_config_) {
           ESP_LOGI(TAG, "Deleting preset: %s (index %d)", preset.name.c_str(), preset.index);
 
-          // Supprimer le nom personnalisé en écrasant avec le nom par défaut
+          // Delete the custom name by overwriting with the default name
           char name_key[32];
           snprintf(name_key, sizeof(name_key), "preset_%d_name", preset.index);
           auto name_pref = global_preferences->make_preference<char[25]>(fnv1_hash(name_key));
@@ -3639,16 +3852,23 @@ namespace esphome {
           snprintf(default_name, sizeof(default_name), "Preset %d (empty)", preset.index);
           name_pref.save(&default_name);
 
-          // Supprimer la trame en écrasant avec une chaîne vide
-          char trame_key[32];
-          snprintf(trame_key, sizeof(trame_key), "preset_%d_trame", preset.index);
-          auto trame_pref = global_preferences->make_preference<char[64]>(fnv1_hash(trame_key));
+          // Delete the frame by overwriting with an empty string
+          char frame_key[32];
+          snprintf(frame_key, sizeof(frame_key), "preset_%d_trame", preset.index);
+          auto frame_pref = global_preferences->make_preference<char[64]>(fnv1_hash(frame_key));
           char empty[64] = {0};
-          trame_pref.save(&empty);
+          frame_pref.save(&empty);
 
-          // Réinitialiser en mémoire
+          // Remove the fp by overwriting with an empty string
+          char fp_key[32];
+          snprintf(fp_key, sizeof(fp_key), "preset_%d_fp", preset.index);
+          auto fp_pref = global_preferences->make_preference<uint32_t>(fnv1_hash(fp_key));
+          uint32_t zero = 0;
+          fp_pref.save(&zero);
+
+          // Reset to memory
           preset.name = default_name;
-          preset.trame.clear();
+          preset.frame_with_fp = {0, "", {}, 0, 0};
           presets_list_element_config_ = PRESETS_LIST_ELEMENT_CONFIG_DEFAULT;
           publish_discovery_preset_select(true);
           publish_discovery_preset_config_select(true);
