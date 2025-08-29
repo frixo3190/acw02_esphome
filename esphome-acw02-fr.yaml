@@ -13,6 +13,7 @@ esphome:
   name: ${dev_name}
   friendly_name: ${dev_friendly}
   platformio_options:
+    board_build.f_cpu: 40000000L
     build_flags:
       - -DDLOCALE_LANG=\"${lang}\"
       - -DDBOARD=\"${board}\"
@@ -32,8 +33,8 @@ web_server:
   local : true
   include_internal: true
   
-logger:
-  level: INFO
+#logger:
+#  level: INFO
   
 api:
   encryption:
@@ -48,7 +49,9 @@ ota:
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
-  power_save_mode: none
+  power_save_mode: high
+  output_power: 8.5dB
+  fast_connect: true
   # networks:
   #   - ssid: !secret wifi_ssid
   #     password: !secret wifi_password
@@ -96,3 +99,15 @@ packages:
 acw02:
   id: ac_ctrl
   uart_id: uart_acw02
+
+# output:
+#   - platform: gpio
+#     pin: GPIO2
+#     id: led_builtin
+
+# light:
+#   - platform: binary
+#     name: "LED ESP32"
+#     output: led_builtin
+#     internal: true   # empêche la LED de consommer si non utilisée
+
