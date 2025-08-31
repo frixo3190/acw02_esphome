@@ -289,10 +289,6 @@ sensor:
     name: "WiFi: Signal"
     id: wifi__signal
     update_interval: 20s
-  - platform: internal_temperature
-    name: "ESP: Température CPU"
-    id: esp__temp
-    update_interval: 20s
   - platform: template
     name: "ESP: Mémoire libre"
     id: esp__memory

@@ -7,7 +7,7 @@ substitutions:
   ap_password: "fallbackpassword"
   web_server_username: admin
   web_server_password: admin
-  board: esp32dev
+  board: d1_mini
 
 esphome:
   name: ${dev_name}
@@ -17,10 +17,9 @@ esphome:
       - -DDLOCALE_LANG=\"${lang}\"
       - -DDBOARD=\"${board}\"
 
-esp32:
+esp8266:
   board: ${board}
-  framework:
-    type: arduino
+  restore_from_flash: false
 
 web_server:
   port: 80
