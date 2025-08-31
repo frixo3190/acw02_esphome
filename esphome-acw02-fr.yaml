@@ -33,7 +33,7 @@ web_server:
   
 logger:
   level: DEBUG
-  baud_rate: 460800
+  baud_rate: 9600
   
 
 
