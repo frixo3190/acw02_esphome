@@ -1,13 +1,13 @@
 substitutions:
-  dev_name: acw02-salon
-  dev_friendly: ACW02 salon
+  dev_name: esp8266-salon
+  dev_friendly: esp8266 salon
   lang: "fr"
   api_encrypted_key: "D2oldc0VP++fni6src89tCSC0UwBhNPgyc8vgYN8/mA="
   ota_password: "REPLACE_WITH_YOUR_PASSWORD"
   ap_password: "fallbackpassword!"
   web_server_username: admin
   web_server_password: admin
-  board: esp32dev
+  board: d1_mini
   acw02_ref: main
 
 esphome:
@@ -18,10 +18,9 @@ esphome:
       - -DDLOCALE_LANG=\"${lang}\"
       - -DDBOARD=\"${board}\"
 
-esp32:
+esp8266:
   board: ${board}
-  framework:
-    type: arduino
+  restore_from_flash: false
 
 web_server:
   port: 80
@@ -34,6 +33,7 @@ web_server:
   include_internal: true
   
 logger:
+  baud_rate: 0
   level: INFO
   
 api:
@@ -80,17 +80,16 @@ captive_portal:
 
 uart:
   id: uart_acw02
-  tx_pin: GPIO17
-  rx_pin: GPIO16
+  tx_pin: GPIO1 #17
+  rx_pin: GPIO3 #16
   baud_rate: 9600
   stop_bits: 1
   rx_buffer_size: 1024
 
 external_components:
   - source:
-      type: git
-      url: https://github.com/devildant/acw02_esphome
-      ref: ${acw02_ref}
+      type: local
+      path: components
 
 packages:
   acw02_entities: github://devildant/acw02_esphome/components/acw02/acw02_fr.yaml@${acw02_ref}
