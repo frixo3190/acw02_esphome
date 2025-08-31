@@ -3048,9 +3048,9 @@ namespace esphome {
     }
 
     void ACW02::send_static_command_basic(const std::vector<uint8_t> &data) {
-      Frame_with_Fingerprint data_frame = {0, "", {}, 0, 0};
-      data_frame.frame = data;
-      tx_queue_.push_back(data_frame);
+      // Frame_with_Fingerprint data_frame = {0, "", {}, 0, 0};
+      // data_frame.frame = data;
+      // tx_queue_.push_back(data_frame);
     }
 
     void ACW02::send_command_basic(const Frame_with_Fingerprint &data) {

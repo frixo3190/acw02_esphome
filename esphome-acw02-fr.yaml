@@ -33,7 +33,7 @@ web_server:
   
 logger:
   level: DEBUG
-  baud_rate: 9600
+  baud_rate: 115200
   
 
 
@@ -73,7 +73,7 @@ uart:
   id: uart_acw02
   tx_pin: GPIO1 #GPIO17
   rx_pin: GPIO3 #GPIO16
-  baud_rate: 9600
+  baud_rate: 115200
   stop_bits: 1
   rx_buffer_size: 1024
 
