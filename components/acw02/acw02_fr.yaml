@@ -289,14 +289,7 @@ sensor:
     name: "WiFi: Signal"
     id: wifi__signal
     update_interval: 20s
-  - platform: template
-    name: "ESP: Mémoire libre"
-    id: esp__memory
-    lambda: |-
-      return heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024.0;
-    unit_of_measurement: "kB"
-    update_interval: 20s
-    entity_category: "diagnostic"
+
 
 binary_sensor:
   - platform: template
@@ -355,8 +348,6 @@ interval:
           id(wifi__ssid).update();
           id(wifi__bssid).update();
           id(wifi__signal).update();
-          id(esp__temp).update();
-          id(esp__memory).update();
   - interval: 40s
     then:
       - lambda: |-

@@ -7,8 +7,7 @@
 #include "esphome/core/preferences.h"
 #include <deque>
 #include "esphome/components/mqtt/mqtt_client.h"
-#include <esp_wifi.h>
-#include <esp_mac.h>
+#include <ESP8266WiFi.h>
 #include "esphome/core/application.h"
 #include <algorithm>
 #include "esphome/components/wifi/wifi_component.h"

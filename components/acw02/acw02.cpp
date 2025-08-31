@@ -6,6 +6,7 @@ namespace esphome {
   namespace acw02 {
 
     void ACW02::setup() {
+      ESP_LOGD(TAG, "ACW02 setup");
       #if defined(DLOCALE_LANG)
         app_lang_ = DLOCALE_LANG;
       #else
@@ -15,11 +16,13 @@ namespace esphome {
         app_board_ = DBOARD;
       #endif
 
+      ESP_LOGD(TAG, "test");
+
       mqtt_connexion();
       app_name_ = App.get_name();
       app_friendly_name_ = App.get_friendly_name();
       app_sanitize_name_ = sanitize_name(app_name_);
-      app_mac_ = get_mac_address();
+      app_mac_ = ""; //get_mac_address();
 
       send_static_command_basic(keepalive_frame_);
       presets_list_element_config_ = PRESETS_LIST_ELEMENT_CONFIG_DEFAULT;
@@ -84,6 +87,7 @@ namespace esphome {
     }
 
     void ACW02::loop() {
+      return;
       process_tx_queue();
 
       while (available()) {
@@ -653,12 +657,9 @@ namespace esphome {
     }
 
     std::string ACW02::get_mac_address() {
-      uint8_t mac[6];
-      esp_read_mac(mac, ESP_MAC_WIFI_STA);
-      char buf[13];
-      snprintf(buf, sizeof(buf), "%02x%02x%02x%02x%02x%02x",
-      mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-      return std::string(buf);
+        String mac = WiFi.macAddress();  // récupère la MAC sous forme "XX:XX:XX:XX:XX:XX"
+        mac.replace(":", "");            // supprime les ":" pour garder juste les hex
+        return std::string(mac.c_str()); // convertit en std::string
     }
 
     std::string ACW02::get_address() {
