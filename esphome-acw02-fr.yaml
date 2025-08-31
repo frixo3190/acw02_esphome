@@ -6,7 +6,7 @@ esp8266:
 
 logger:
   level: DEBUG
-  baud_rate: 0     # désactive les logs sur UART0
+
 
 wifi:
   ssid: "wifi_becheau"
@@ -19,15 +19,25 @@ ota:
   platform: esphome
   password: "MonMotDePasseOTA"
 
-uart:
-  id: uart_log
-  tx_pin:
-    number: GPIO1
-    inverted: true #active with octo
-  rx_pin:
-    number: GPIO3
-    inverted: true #active with octo
-  baud_rate: 9600  # ou 115200 si nécessaire
-  debug:
-    direction: RX
-    dummy_receiver: true
+web_server:
+  port: 80
+  auth:
+    username: admin
+    password: admin
+  version: 3
+  log: true
+  local : true
+  include_internal: true
+
+# uart:
+#   id: uart_log
+#   tx_pin:
+#     number: GPIO1
+#     inverted: true #active with octo
+#   rx_pin:
+#     number: GPIO3
+#     inverted: true #active with octo
+#   baud_rate: 9600  # ou 115200 si nécessaire
+#   debug:
+#     direction: RX
+#     dummy_receiver: true
