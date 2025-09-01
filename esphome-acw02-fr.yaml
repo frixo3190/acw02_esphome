@@ -23,7 +23,7 @@ esp8266:
 
   
 logger:
-  level: INFO
+  level: VERY_VERBOSE
   
 
 
