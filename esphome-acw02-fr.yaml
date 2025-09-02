@@ -2,7 +2,6 @@ substitutions:
   dev_name: acw02-salon
   dev_friendly: ACW02 salon
   lang: "fr"
-
   board: d1_mini
   
 
@@ -10,20 +9,19 @@ esphome:
   name: ${dev_name}
   friendly_name: ${dev_friendly}
   platformio_options:
+    framework: arduino
     build_flags:
       - -DDLOCALE_LANG=\"${lang}\"
       - -DDBOARD=\"${board}\"
 
 esp8266:
   board: ${board}
-  framework:
-    platform_version: 4.0.1
-  
 
 
   
 logger:
-  level: VERY_VERBOSE
+  level: INFO
+  baud_rate: 74880
   
 
 
@@ -39,3 +37,5 @@ binary_sensor:
   
 acw02:
   name: Empty switch
+  
+  

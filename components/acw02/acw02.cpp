@@ -12,13 +12,11 @@ void EmptyBinarySensor::setup() {
     
 }
   
-void EmptyBinarySensor::update() {
 
-}
 
 void EmptyBinarySensor::dump_config() {
     ESP_LOGCONFIG(TAG, "Custom binary sensor");
 }
 
-} //namespace empty_binary_output
-} //namespace esphome
+} 
+} 

@@ -11,10 +11,9 @@
 namespace esphome {
 namespace acw02 {
 
-class EmptyBinarySensor : public binary_sensor::BinarySensor, public PollingComponent {
+class EmptyBinarySensor : public binary_sensor::BinarySensor, public Component {
  public:
   void setup() override;
-  void update() override;
   void dump_config() override;
 };
 
