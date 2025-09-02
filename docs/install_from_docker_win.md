@@ -123,6 +123,8 @@ usbipd unbind --busid 3-3
 - `detach-usb.bat` : script for detach usb to docker
 - `start-docker-with-attach-USB.bat` : run attach USB to docker and start docker (ota + usb)
 - `stop-docker-with-attach-USB.bat` : run stop docker and detach USB to docker (ota + usb)
+- `logs-fr.bat` : show logs OTA (FR)
+- `logs-en.bat` : show logs OTA (EN)
 
 ---
 

@@ -1,5 +1,34 @@
-# acw02_esphome  
-(for Teknopoint and Airton AC units using the Tuya ACW02 Wi-Fi module)
+# ACW02 ESPHome Module  
+
+Custom ESPHome component for **Teknopoint** and **Airton** AC units using the **Tuya ACW02 Wi-Fi module**.  
+
+---
+
+## ⚠️ Compatibility Warning  
+
+> **Important**  
+> - Works on most **Teknopoint** units *(unconfirmed but no known issues so far, see the [Community Compatibility List](#-community-compatibility-list))*.  
+> - For **Airton**, confirmed to work on models **above reference 409934**.  
+> - On older Airton units (≤ 409934), the AC may not provide enough power for the module to operate (see the [Community Compatibility List](#-community-compatibility-list)).  
+
+### ❌ Symptoms of incompatibility
+- Wi-Fi cannot be enabled on the AC (Wi-Fi logo never appears).  
+- ESP LED turns on briefly, then shuts off.  
+
+---
+
+## ✅ Community Compatibility List  
+
+A non-exhaustive list of tested models is available here:  
+👉 [COMPATIBILITY.md](https://github.com/devildant/acw02_esphome/blob/main/COMPATIBILITY.md)  
+
+---
+
+## 📌 Contribute  
+
+Help improve this project by reporting your unit compatibility.  
+If your model is not referenced, please submit a report (**tested units only**):  
+👉 [Submit your unit](https://github.com/devildant/acw02_esphome/issues/new?template=unit_report.yml)  
 
 ---
 
@@ -7,6 +36,7 @@
 
 - Home Assistant with **MQTT integration** enabled and properly configured
 - A working MQTT broker (e.g., Mosquitto)
+- Enable the WIFI with the AC remote
 
 
 ## ⚙️ Settings
@@ -101,8 +131,9 @@ wifi_password3: "testesp32"
 - **[4 Channels Logic Level Converter Bi-Directional Shifter (x1): CYT1076](https://amzn.eu/d/2MhG08s)**  
   ![CYT1076](PCB/images/components/4%20Channels%20Logic%20Level%20Converter%20Bi-Directional%20Shifter.PNG)
 
-- **[ESP32-WROOM-32 D1 Mini NodeMCU (x1)](https://amzn.eu/d/3mS1B7W)**  
+- **[ESP32-WROOM-32 D1 Mini NodeMCU (micro usb version recommended (x1)](https://amzn.eu/d/3mS1B7W)**  
   ![ESP32](PCB/images/components/ESP32-WROOM-32%20D1%20Mini%20NodeMCU.PNG)
+
 
 - **[5 pins male 2.54mm (x1): MaleL7.5-1X5P](https://fr.aliexpress.com/item/1005007128029220.html)**  
   ![MaleL7.5-1X5P](PCB/images/components/5%20pin%20male%202.54.PNG)

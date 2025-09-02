@@ -20,7 +20,7 @@ esphome:
 esp32:
   board: ${board}
   framework:
-    type: arduino
+    type: esp-idf
 
 web_server:
   port: 80
@@ -66,6 +66,10 @@ mqtt:
   password: ""
   enable_on_boot: false
   discovery: false
+  keepalive: 30s
+  clean_session: false
+  idf_send_async: false
+  wait_for_connection: false
   topic_prefix: ${dev_name}
   birth_message:
     topic: ${dev_name}/status

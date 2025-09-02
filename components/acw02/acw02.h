@@ -7,7 +7,7 @@
 #include "esphome/core/preferences.h"
 #include <deque>
 #include "esphome/components/mqtt/mqtt_client.h"
-#include <esp_wifi.h>
+// #include <esp_wifi.h>
 #include <esp_mac.h>
 #include "esphome/core/application.h"
 #include <algorithm>
@@ -274,6 +274,8 @@ class ACW02 : public Component, public uart::UARTDevice {
   uint32_t last_rx_byte_time_{0};
   std::deque<Frame_with_Fingerprint> tx_queue_;
   uint32_t last_tx_{0};
+  static constexpr uint32_t INTERVAL_INTERNAL_MQTT_KEEPALIVE = 15000;
+  static constexpr uint32_t INTERVAL_INTERNAL_AC_KEEPALIVE = 60000;
   static constexpr uint32_t SILENCE_RX_MS = 120;
   static constexpr uint32_t ACK_WINDOW_MS = 120;
   static constexpr uint32_t TX_INTERVAL_MS = 180;
@@ -281,7 +283,11 @@ class ACW02 : public Component, public uart::UARTDevice {
   uint32_t rx_max_depth_ = 0; // for check size rx buffer
   bool ack_wait_ = false;
   uint32_t ack_block_until_ = 0;
-
+  // Timing constants (already have these near your others)
+  static constexpr uint32_t ACK_RETRY_TIMEOUT_MS = 220;  // 200–300ms is fine
+  static constexpr uint32_t ACK_ABORT_MS = 1200;
+  bool timeout_retry_pending_{false};
+  
   // variables AC
   Mode mode_ {Mode::COOL};
   bool power_on_ {false};
@@ -397,6 +403,12 @@ class ACW02 : public Component, public uart::UARTDevice {
 
   // Protected functions for command queue
   void process_tx_queue();
+
+  // jitter retry
+  uint32_t compute_retry_jitter(int tryCnt) const;
+
+  // Check and retry if cmd don't have ACK AC
+  void check_timeout_retry();
 
   // Protected functions for command UART
   Frame_with_Fingerprint build_frame(bool bypassMute = false) const;

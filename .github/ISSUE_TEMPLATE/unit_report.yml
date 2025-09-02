@@ -1,0 +1,56 @@
+name: "📋 Indoor AC Unit Compatibility"
+description: "Report an indoor unit tested with the ACW02 ESPHome module."
+title: "[Compatibility] Brand / Commercial Model / Ref Model"
+labels: ["Compatibility"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Before you submit**: please check if your model is already listed here (closed issues):
+        https://github.com/devildant/acw02_esphome/issues?q=is%3Aissue+state%3Aclosed+label%3ACompatibility
+
+  - type: dropdown
+    id: brand
+    attributes:
+      label: Brand
+      options:
+        - "Teknopoint"
+        - "Airton"
+    validations:
+      required: true
+
+  - type: input
+    id: model
+    attributes:
+      label: Commercial Model
+      description: "Brand name ref"
+      placeholder: "ex: 409731, 409732, TW-SKIV-07, TW-SKIV-09.."
+    validations:
+      required: true
+
+  - type: input
+    id: altref
+    attributes:
+      label: Ref Model
+      description: "indoor AC REF"
+      placeholder: "ex: None, SMVH12B-3A2A3NG(I), TW-SMVH07A-2C1A3NG(I)..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: works
+    attributes:
+      label: Works with ACW02 ESPHome?
+      options:
+        - "✅ Yes"
+        - "⚠️ Partially (some functions missing)"
+        - "❌ No"
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional Notes
+      description: "Mention if specific functions do not work (swing, display, eco, etc.)"
+      placeholder: "Example: works with Teknopoint ARX35, but vertical swing not supported"
