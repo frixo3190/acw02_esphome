@@ -1,6 +1,6 @@
 substitutions:
-  dev_name: acw02-salon
-  dev_friendly: ACW02 salon
+  dev_name: clim-salon
+  dev_friendly: clim salon
   lang: "fr"
   api_encrypted_key: "D2oldc0VP++fni6src89tCSC0UwBhNPgyc8vgYN8/mA="
   ota_password: "motdepasseclim!"
