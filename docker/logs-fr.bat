@@ -1,0 +1,1 @@
+docker exec -it esphome-builder-ota esphome logs /src/esphome-acw02-fr.yaml

@@ -1,5 +1,29 @@
-# acw02_esphome  
-(for Teknopoint and Airton AC units using the Tuya ACW02 Wi-Fi module)
+# ACW02 ESPHome Module  
+
+Custom ESPHome component for **Teknopoint** and **Airton** AC units using the **Tuya ACW02 Wi-Fi module**.  
+
+---
+
+## ⚠️ Compatibility Warning  
+
+> **Important**  
+> - Works on most **Teknopoint** units *(unconfirmed but no known issues so far, see the [Community Compatibility List](#-community-compatibility-list))*.  
+> - Works on most **Airton** units *(unconfirmed but no known issues so far, see the [Community Compatibility List](#-community-compatibility-list))*.  
+
+---
+
+## ✅ Community Compatibility List  
+
+A non-exhaustive list of tested models is available here:  
+👉 [COMPATIBILITY.md](https://github.com/devildant/acw02_esphome/blob/main/COMPATIBILITY.md)  
+
+---
+
+## 📌 Contribute  
+
+Help improve this project by reporting your unit compatibility.  
+If your model is not referenced, please submit a report (**tested units only**):  
+👉 [Submit your unit](https://github.com/devildant/acw02_esphome/issues/new?template=unit_report.yml)  
 
 ---
 
@@ -7,6 +31,7 @@
 
 - Home Assistant with **MQTT integration** enabled and properly configured
 - A working MQTT broker (e.g., Mosquitto)
+- Enable the WIFI with the AC remote
 
 
 ## ⚙️ Settings
@@ -101,8 +126,39 @@ wifi_password3: "testesp32"
 - **[4 Channels Logic Level Converter Bi-Directional Shifter (x1): CYT1076](https://amzn.eu/d/2MhG08s)**  
   ![CYT1076](PCB/images/components/4%20Channels%20Logic%20Level%20Converter%20Bi-Directional%20Shifter.PNG)
 
-- **[ESP32-WROOM-32 D1 Mini NodeMCU (x1)](https://amzn.eu/d/3mS1B7W)**  
-  ![ESP32](PCB/images/components/ESP32-WROOM-32%20D1%20Mini%20NodeMCU.PNG)
+- **[ESP32-WROOM-32 D1 Mini NodeMCU (micro usb version recommended (x1))](https://amzn.eu/d/3mS1B7W)**  
+  ![ESP32](PCB/images/components/ESP32-WROOM-32%20D1%20Mini%20NodeMCU2.PNG)
+
+  > ⚠️ **Compatibility Warning**  
+  > Avoid very cheap ESP32 D1 Mini clones (often found on AliExpress).  
+  > Several users reported issues with these boards.  
+  > Prefer trusted brands such as **AZDelivery** or other well-reviewed suppliers.  
+
+  **❌ Symptoms of low-cost ESP32 incompatibility**  
+  - Wi-Fi cannot be enabled on the AC (Wi-Fi logo never appears).  
+  - ESP LED turns on briefly, then shuts off.  
+  - Voltage on VCC drops from 5 V to ~1.8–2 V when connected to the AC board.  
+
+  **🛠️ Why does this happen?**  
+  Cheap ESP32 D1 Mini clones often cut corners in **power regulation** and **stability**:  
+  - *Weak 5 V → 3.3 V regulator* — old AMS1117 regulators waste power and cannot handle Wi-Fi current peaks.  
+  - *Poor decoupling capacitors* — cheap boards lack the capacitors needed to smooth fast spikes.  
+  - *Inconsistent ESP32 modules* — some clones use non-genuine or B-grade chips.  
+
+  **✅ Why AZDelivery & trusted brands work**  
+  - Use original **Espressif WROOM-32** modules.  
+  - Include a **modern LDO regulator** that tolerates bursts up to 500–600 mA.  
+  - Proper capacitors ensure stable operation during Wi-Fi activity.  
+  - As a result, even when powered from the AC’s limited 12 V port, they stay stable and connect without issue.
+
+  **🔍 Observation**  
+  By comparing ESP32 boards that work and those that don’t, I noticed visible differences.  
+  If your ESP has the same configuration as in the image below (red square), it should *theoretically* be compatible.  
+  It's just an observation, I don't know how to differentiate the good esp32 d1 mini cards from the bad ones, it's possible that cards with differences work
+  ![ESP32 config](PCB/images/components/ESP32-config-maybe-ok.PNG) 
+
+  Note: The images on the official AZDelivery website are not up to date, but they are on Amazon.
+
 
 - **[5 pins male 2.54mm (x1): MaleL7.5-1X5P](https://fr.aliexpress.com/item/1005007128029220.html)**  
   ![MaleL7.5-1X5P](PCB/images/components/5%20pin%20male%202.54.PNG)
@@ -131,13 +187,28 @@ wifi_password3: "testesp32"
 - GREEN = GND
 
 🔧 Solder pins between ESP32 and PCB (red square):  
-![solder](PCB/images/components/esp32%20solder%20pins.png)
+![solder](PCB/images/components/esp32%20solder%20pins2.png)
 
 📌 [See Solder Board Helper section](#solder-board-helper)
 
 ---
 
 ## 🧱 3D Files
+
+### 🖨️ Printing Material  
+
+| Material | Compatible | Notes |
+|----------|------------|-------|
+| PLA      | ❌ No       | Not recommended (low heat resistance) |
+| PETG     | ✅ Yes (recommended) | Good balance of strength & printability |
+| ABS      | ✅ Yes      | Better heat resistance |
+| ASA      | ✅ Yes      | UV resistant, suitable for outdoors |
+| PC       | ✅ Yes      | Very strong & heat resistant |
+
+> ⚠️ **Why not use PLA?**  
+> - PLA has a glass transition temperature of only **45–50 °C (or even lower)**.  
+> - By contrast, **PETG can withstand up to ~80 °C**, making it much more reliable.  
+> - For electronic components that generate heat, PLA is unsafe in warm environments — especially if your AC unit also provides **heating**.  
 
 ### 📂 Available in the `3Dfiles/` directory:
 
@@ -166,7 +237,7 @@ wifi_password3: "testesp32"
 
 ![airflow5](3Dfiles/images/airflow5.jpg)
 
-![airflow6](3Dfiles/images/airflow6.jpg)
+![airflow6](3Dfiles/images/airflow6.jpg) 
 
 #### BONUS: for airton support
 You don't seem to have a mounting bracket for the module, so I'll provide one for you to stick on your air conditioner. :) (fix with double-sided tape)

@@ -1,0 +1,56 @@
+# .github/workflows/autoclose-compatibility.yml
+name: Auto-close Compatibility Reports
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  close_compat:
+    if: github.event.label.name == 'Compatibility'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract fields and rename issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          ISSUE: ${{ github.event.issue.number }}
+        run: |
+          body="$(gh issue view "$ISSUE" --repo "$REPO" --json body --jq .body)"
+
+          extract_block () {
+            printf "%s" "$body" \
+              | awk -v key="$1" '
+                  BEGIN{ RS="\r?\n"; insec=0 }
+                  {
+                    if ($0 ~ "^###[ ]+" key "$") { insec=1; next }
+                    if (insec && $0 ~ "^###[ ]+") { insec=0 }
+                    if (insec) print
+                  }' \
+              | sed ':a;N;$!ba;s/\n/ /g' \
+              | sed 's/^[[:space:]]*-\s*//; s/^[[:space:]]*//; s/[[:space:]]*$//'
+          }
+
+          brand="$(extract_block "Brand")"
+          cmodel="$(extract_block "Commercial Model")"
+          rmodel="$(extract_block "Ref Model")"
+
+          # Nettoyage ref model
+          case "$(echo "$rmodel" | tr '[:upper:]' '[:lower:]')" in
+            ""|"none"|"-") rmodel="-" ;;
+          esac
+
+          newtitle="[Compatibility] ${brand} / ${cmodel} / ${rmodel}"
+
+          gh issue edit "$ISSUE" --repo "$REPO" --title "$newtitle"
+
+      - uses: peter-evans/close-issue@v3
+        with:
+          comment: |
+            🔒 Thanks for submitting a compatibility report!
+            This issue has been renamed and closed automatically to keep the tracker clean.
+            Your report remains visible and will be aggregated into COMPATIBILITY.md.

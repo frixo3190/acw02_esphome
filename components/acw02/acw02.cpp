@@ -138,8 +138,10 @@ namespace esphome {
           rx_buffer_.erase(rx_buffer_.begin(), rx_buffer_.begin() + offset);
       }
 
+      check_timeout_retry();
+
       static uint32_t last_keepalive = 0;
-      if (millis() - last_keepalive > 60000 && tx_queue_.empty()) {
+      if (!ack_wait_ && millis() - last_keepalive > INTERVAL_INTERNAL_AC_KEEPALIVE && tx_queue_.empty()) {
         if (millis() - last_rx_byte_time_ > 200) {
           last_keepalive = millis();
           send_static_command_basic(keepalive_frame_);
@@ -839,7 +841,7 @@ namespace esphome {
 
       set_timeout("mqtt_connect", 2000, [this]() {
         if (wifi::global_wifi_component->is_connected()) {
-          ESP_LOGI(TAG, "Wi-Fi OK; attempting MQTT connection…");
+          ESP_LOGW(TAG, "Wi-Fi OK; attempting MQTT connection…");
           mqtt_->enable();
           mqtt_initializer();
           set_timeout("mqtt_retry", 5000, [this]() {
@@ -848,7 +850,7 @@ namespace esphome {
             }
           });
         } else {
-          ESP_LOGI(TAG, "Wi-Fi not connected; retrying in 5 s");
+          ESP_LOGW(TAG, "Wi-Fi not connected; retrying in 5 s");
           set_timeout("mqtt_retry", 2000, [this]() { mqtt_connexion(); });
         }
       });
@@ -857,7 +859,7 @@ namespace esphome {
     void ACW02::mqtt_initializer() {
       if (mqtt_) {
         mqtt_->set_on_connect([this](bool first) {
-          ESP_LOGI(TAG, "MQTT connected → publishing discovery and state");
+          ESP_LOGW(TAG, "MQTT connected → publishing discovery and state");
           if (mqtt_connected_sensor_) mqtt_connected_sensor_->publish_state(true);
           set_timeout("mqtt_discovery_delay", 100, [this]() {
             set_interval("mqtt_publish_flush", 50, [this]() {
@@ -869,6 +871,18 @@ namespace esphome {
                 mqtt_->publish(entry.topic, entry.payload, entry.qos, entry.retain);
                 mqtt_publish_queue_.pop_front();
               }
+              });
+              this->set_interval("hb_last_seen", INTERVAL_INTERNAL_MQTT_KEEPALIVE, [this]() {
+                // Get current UNIX time (epoch seconds)
+                time_t now = ::time(nullptr);
+
+                // Convert to string
+                std::string payload = std::to_string(static_cast<long>(now));
+
+                // Publish retained, QoS 1
+                publish_async(app_name_ + "/last_seen", payload, 1, true);
+
+                ESP_LOGW(TAG, "Heartbeat last_seen published (epoch): %s", payload.c_str());
               });
               publish_discovery_climate();
               publish_discovery_mode_select();
@@ -2952,25 +2966,115 @@ namespace esphome {
       return;
 
       const auto &pkt = tx_queue_.front();
-      if (ack_wait_ && pkt.tryCnt == 0 && millis() < ack_block_until_) {
+
+      if (millis() < ack_block_until_) {
+        return;
+      }
+
+      if (ack_wait_ && pkt.fingerprint != 0 && pkt.tryCnt == 0) {
         return;
       }
       ESP_LOGW(TAG, "TX: [%s]", format_hex_pretty(pkt.frame).c_str());
-      cmd_send_fingerprint_ = pkt;
-      if (pkt.fingerprint != 0) {
-       log_fingerprint("write_frame", cmd_send_fingerprint_);
-      }
       write_array(pkt.frame);
       last_tx_ = millis();
-      cmd_send_fingerprint_.timestamp_ms = last_tx_;
-      if (pkt.tryCnt == 0 && pkt.fingerprint != 0) {
-        ack_wait_ = true;
-      }
+
       if (pkt.fingerprint != 0) {
-        ack_block_until_ = last_tx_ + ACK_WINDOW_MS;
+        // Track only "real" AC commands (frames that carry a state change)
+        cmd_send_fingerprint_ = pkt;
+        log_fingerprint("write_frame", cmd_send_fingerprint_);
+        cmd_send_fingerprint_.timestamp_ms = last_tx_;
+
+        // New (re)TX of a real command → allow future timeout-based retries
+        timeout_retry_pending_ = false;
+
+        // ACK window only for a fresh real command
+        if (pkt.tryCnt == 0) {
+          ack_wait_ = true;
+        }
+        uint32_t extra = 0;
+        if (pkt.tryCnt > 0) {
+          extra = compute_retry_jitter(pkt.tryCnt);
+        }
+        ack_block_until_ = last_tx_ + ACK_WINDOW_MS + extra;
+      } else {
+        // Keepalive / status poll: do not touch in-flight tracking
+        // (no cmd_send_fingerprint_, no ack_wait_, no ack_block_until_, no timeout flag)
       }
       tx_queue_.pop_front();
     }
+
+    uint32_t ACW02::compute_retry_jitter(int tryCnt) const {
+      const uint32_t jitter_min = 5;
+      const uint32_t jitter_max = 15;
+
+      // We mix millis() with tryCnt to vary
+      uint32_t seed = (millis() / 7u) + (tryCnt * 131u);
+
+      // Bounded pseudo-random value
+      uint32_t jitter = jitter_min + (seed % (jitter_max - jitter_min + 1));
+
+      ESP_LOGW(TAG, "Retry jitter (tryCnt=%d) = %u ms", tryCnt, jitter);
+      return jitter;
+    }
+
+    void ACW02::check_timeout_retry() {
+      // Trigger a silent timeout-based retry if no 34B ACK-like RX was seen
+      // within the expected window after the last TX. This complements the
+      // fingerprint-based retry path inside decode_state().
+      const uint32_t now = millis();
+      const auto &p = cmd_send_fingerprint_;
+
+      if (p.fingerprint == 0) return;  // nothing in-flight
+
+      const uint32_t dt = (uint32_t)(now - p.timestamp_ms);
+
+      // Conditions:
+      // - we have waited long enough to allow the AC to respond (ACK_EVAL_MIN_MS)
+      // - we crossed the timeout (ACK_RETRY_TIMEOUT_MS)
+      // - we still have retries left
+      // - we have not already enqueued a timeout-based retry for this TX
+      if (dt >= ACK_EVAL_MIN_MS &&
+          dt >= ACK_RETRY_TIMEOUT_MS &&
+          p.tryCnt < maxRetry &&
+          !timeout_retry_pending_) {
+
+        Frame_with_Fingerprint retry = p;  // snapshot current in-flight
+        retry.tryCnt++;
+
+        // Make the frame "mute" only if it was not already mute, then fix CRC.
+        retry.frame = make_muted_with_fixed_crc(retry.frame);
+
+        // Your send_command_basic() already prioritizes retries (push_front when tryCnt>0).
+        send_command_basic(retry);
+
+        // Prevent multiple enqueues while we wait for the retry to actually TX.
+        timeout_retry_pending_ = true;
+
+        ESP_LOGW(TAG, "Retry on timeout: dt=%lu ms, try=%d/%d",
+         (unsigned long)dt, (int)retry.tryCnt, (int)maxRetry);
+      }
+
+      // --- Safety net / fail-safe ---------------------------------------------
+      // If no RX 34B ever arrives, decode_state() will never clear ack_wait_.
+      // After we have exhausted maxRetry, release the gate after a global timeout
+      // so that the system doesn't remain blocked forever.
+
+      if (p.tryCnt >= maxRetry) {
+        if (dt >= ACK_ABORT_MS) {
+          ESP_LOGE(TAG, "Ack timeout: aborting in-flight cmd after %u ms (tries=%d/%d)",
+             (unsigned)dt, (int)p.tryCnt, (int)maxRetry);
+          cmd_send_fingerprint_ = {0, "", {}, 0, 0};  // clear in-flight
+          cmd_failure_counter_++;       // count a failure for observability
+          ack_wait_ = false;            // release the "fresh command" gate
+          ack_block_until_ = 0;
+          timeout_retry_pending_ = false;
+          // Fallback: force a quick state resync now (34B status frame)
+          send_static_command_basic(get_status_frame_);
+          ESP_LOGW(TAG, "Fingerprint Reset (abort)");
+        }
+      }
+    }
+
 
     Frame_with_Fingerprint ACW02::build_frame(bool bypassMute) const {
       Frame_with_Fingerprint cmd_send = fingerprint();
@@ -3268,20 +3372,29 @@ namespace esphome {
               send_command_basic(cmd_send_fingerprint_before_send);
             } else {
               ESP_LOGE(TAG, "Last tx cannot retry because max exceeded");
+              cmd_failure_counter_++;
               ack_wait_ = false;
+              ack_block_until_ = 0;
+              timeout_retry_pending_ = false;
+              // Fallback: resync immediately (fp==0 does not touch in-flight tracking)
+              send_static_command_basic(get_status_frame_);
+              ESP_LOGW(TAG, "Fingerprint Reset (max-retry fallback)");
             }
             
           } else {
+            const uint32_t rtt = (uint32_t)(now - cmd_send_fingerprint_tmp.timestamp_ms);
+            ESP_LOGW(TAG, "ACK matched after %lu ms", (unsigned long)rtt);
             ack_wait_ = false;
+            timeout_retry_pending_ = false;
           }
-        }
-        if (cmd_send_fingerprint_tmp.fingerprint == cmd_send_fingerprint_.fingerprint &&
-          cmd_send_fingerprint_tmp.timestamp_ms == cmd_send_fingerprint_.timestamp_ms &&
-          cmd_send_fingerprint_tmp.tryCnt == cmd_send_fingerprint_.tryCnt) {
-          cmd_send_fingerprint_ = {0, "", {}, 0, 0};
-           ESP_LOGW(TAG, "Fingerprint Reset");
-        } else {
-          ESP_LOGE(TAG, "Fingerprint Not reset because cmd fp diff");
+          if (cmd_send_fingerprint_tmp.fingerprint == cmd_send_fingerprint_.fingerprint &&
+            cmd_send_fingerprint_tmp.timestamp_ms == cmd_send_fingerprint_.timestamp_ms &&
+            cmd_send_fingerprint_tmp.tryCnt == cmd_send_fingerprint_.tryCnt) {
+            cmd_send_fingerprint_ = {0, "", {}, 0, 0};
+            ESP_LOGW(TAG, "Fingerprint Reset");
+          } else {
+            ESP_LOGE(TAG, "Fingerprint Not reset because cmd fp diff");
+          }
         }
       } else {
         ESP_LOGE(TAG, "Fingerprint ignored because time < %lu ms", (unsigned long)ACK_EVAL_MIN_MS);
