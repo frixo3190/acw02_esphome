@@ -34,8 +34,12 @@ usbipd list
 echo.
 echo Waiting 3 seconds before UP...
 timeout /t 3 /nobreak >nul
+echo.
+echo depending on whether you use a d1 mini or c3/c6 one of the containers usb or usb-c3c6 will be in error this is normal
+echo.
 
 docker compose up -d esphome-usb
+docker compose up -d esphome-usb-c3c6
 docker compose up -d esphome-ota
 
 pause

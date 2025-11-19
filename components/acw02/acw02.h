@@ -118,6 +118,17 @@ class ACW02 : public Component, public uart::UARTDevice {
   void set_disable_swing_vertical(bool on, bool published = true);
   void set_disable_swing_horizontal(bool on, bool published = true);
 
+  // Setters publics, sync element esphome native in yaml to cpp
+  void entity_mdns_sync(const std::string &payload);
+  void entity_wifi_ip_sync(const std::string &payload);
+  void entity_wifi_ssid_sync(const std::string &payload);
+  void entity_wifi_bssid_sync(const std::string &payload);
+  void entity_wifi_mac_sync(const std::string &payload);
+  void entity_esp_version_sync(const std::string &payload);
+  void entity_wifi_signal_sync(const std::string &payload);
+  void entity_internal_temperature_sync(const std::string &payload);
+  void entity_esp_memory_sync(const std::string &payload);
+
   // Setters publics presets
   void set_preset(bool on, bool published = true);
 
@@ -249,6 +260,15 @@ class ACW02 : public Component, public uart::UARTDevice {
   void publish_discovery_cmd_failure_counter_sensor(bool recreate = false);
   void publish_discovery_warn_text_sensor(bool recreate = false);
   void publish_discovery_error_text_sensor(bool recreate = false);
+  void publish_discovery_mdns_text_sensor(bool recreate = false);
+  void publish_discovery_wifi_ip_text_sensor(bool recreate = false);
+  void publish_discovery_wifi_ssid_text_sensor(bool recreate = false);
+  void publish_discovery_wifi_bssid_text_sensor(bool recreate = false);
+  void publish_discovery_wifi_mac_text_sensor(bool recreate = false);
+  void publish_discovery_esp_version_text_sensor(bool recreate = false);
+  void publish_discovery_wifi_signal_text_sensor(bool recreate = false);
+  void publish_discovery_internal_temperature_text_sensor(bool recreate = false);
+  void publish_discovery_esp_memory_text_sensor(bool recreate = false);
 
   // MQTT publics function for rebuild all mqtt entities
   void rebuild_mqtt_entity();
@@ -269,11 +289,23 @@ class ACW02 : public Component, public uart::UARTDevice {
   std::string app_lang_ {"en"};
   std::string app_board_ {""};
 
+  std::string app_mdns_ {""};
+  std::string app_wifi_ip_ {""};
+  std::string app_wifi_ssid_ {""};
+  std::string app_wifi_bssid_ {""};
+  std::string app_wifi_mac_ {""};
+  std::string app_esp_version_ {""};
+  std::string app_wifi_signal_ {""};
+  std::string app_internal_temperature_ {""};
+  std::string app_esp_memory_ {""};
+
   // variables command queue
   std::vector<uint8_t> rx_buffer_;
   uint32_t last_rx_byte_time_{0};
   std::deque<Frame_with_Fingerprint> tx_queue_;
   uint32_t last_tx_{0};
+  static constexpr uint32_t INTERVAL_MQTT_BETWEEN_CMD = 60;
+  static constexpr uint32_t DELAY_MQTT_G1_GENERATE = 1500;
   static constexpr uint32_t INTERVAL_INTERNAL_MQTT_KEEPALIVE = 15000;
   static constexpr uint32_t INTERVAL_INTERNAL_AC_KEEPALIVE = 60000;
   static constexpr uint32_t SILENCE_RX_MS = 120;
@@ -376,7 +408,8 @@ class ACW02 : public Component, public uart::UARTDevice {
   std::string mqtt_username_;
   std::string mqtt_password_;
   int mqtt_port_ = 1883;
-  int mqtt_delay_rebuild_ = 300;
+  int mqtt_delay_rebuild_short_ = 300;
+  int mqtt_delay_rebuild_ = 800;
   binary_sensor::BinarySensor *mqtt_connected_sensor_{nullptr};
 
 

@@ -2,6 +2,10 @@
 #include "esphome/core/log.h"
 #include "esphome/core/helpers.h"
 
+#ifdef CONFIG_IDF_TARGET_ESP32C6
+#include "driver/gpio.h"
+#endif
+
 namespace esphome {
   namespace acw02 {
 
@@ -13,6 +17,21 @@ namespace esphome {
       #endif
       #if defined(DBOARD)
         app_board_ = DBOARD;
+      #endif
+
+      // force use external Wi-Fi antenna (XIAO ESP32-C6)
+      #if CONFIG_IDF_TARGET_ESP32C6
+        // GPIO3 -> LOW
+        gpio_reset_pin(GPIO_NUM_3);
+        gpio_set_direction(GPIO_NUM_3, GPIO_MODE_OUTPUT);
+        gpio_set_level(GPIO_NUM_3, 0);
+
+        // GPIO14 -> HIGH
+        gpio_reset_pin(GPIO_NUM_14);
+        gpio_set_direction(GPIO_NUM_14, GPIO_MODE_OUTPUT);
+        gpio_set_level(GPIO_NUM_14, 1);
+
+        ESP_LOGW(TAG, "RF switch set for XIAO ESP32-C6: external Wi-Fi antenna enabled");
       #endif
 
       mqtt_connexion();
@@ -480,6 +499,15 @@ namespace esphome {
         publish_discovery_g1_rebuild_mqtt_entities_button(true);
         publish_discovery_g1_get_status_button(true);
         publish_discovery_z_config_validate_button(true);
+        publish_discovery_mdns_text_sensor(true);
+        publish_discovery_wifi_ip_text_sensor(true);
+        publish_discovery_wifi_ssid_text_sensor(true);
+        publish_discovery_wifi_bssid_text_sensor(true);
+        publish_discovery_wifi_mac_text_sensor(true);
+        publish_discovery_esp_version_text_sensor(true);
+        publish_discovery_wifi_signal_text_sensor(true);
+        publish_discovery_internal_temperature_text_sensor(true);
+        publish_discovery_esp_memory_text_sensor(true);
       }
     }
 
@@ -546,6 +574,82 @@ namespace esphome {
         if (published) {
           publish_state();
         }
+      }
+    }
+
+    void ACW02::entity_mdns_sync(const std::string &payload) {
+      std::string tmpEntity = app_mdns_;
+      app_mdns_ = payload;
+      if (app_mdns_ != tmpEntity) {
+        publish_state();
+      }
+    }
+
+    void ACW02::entity_wifi_ip_sync(const std::string &payload) {
+      std::string tmpEntity = app_wifi_ip_;
+      app_wifi_ip_ = payload;
+      if (app_wifi_ip_ != tmpEntity) {
+        publish_state();
+      }
+    }
+
+    void ACW02::entity_wifi_ssid_sync(const std::string &payload) {
+      std::string tmpEntity = app_wifi_ssid_;
+      app_wifi_ssid_ = payload;
+      if (app_wifi_ssid_ != tmpEntity) {
+        publish_state();
+      }
+    }
+
+    void ACW02::entity_wifi_bssid_sync(const std::string &payload) {
+      std::string tmpEntity = app_wifi_bssid_;
+      app_wifi_bssid_ = payload;
+      if (app_wifi_bssid_ != tmpEntity) {
+        publish_state();
+      }
+    }
+
+    void ACW02::entity_wifi_mac_sync(const std::string &payload) {
+      std::string tmpEntity = app_wifi_mac_;
+      app_wifi_mac_ = payload;
+      if (app_wifi_mac_ != tmpEntity) {
+        publish_state();
+      }
+    }
+
+    void ACW02::entity_esp_version_sync(const std::string &payload) {
+      std::string tmpEntity = app_esp_version_;
+      app_esp_version_ = payload;
+      if (app_esp_version_ != tmpEntity) {
+        publish_state();
+      }
+    }
+
+    void ACW02::entity_wifi_signal_sync(const std::string &payload) {
+      std::string tmpEntity = app_wifi_signal_;
+      app_wifi_signal_ = payload;
+      if (app_wifi_signal_ != tmpEntity) {
+        publish_state();
+      }
+    }
+
+    void ACW02::entity_internal_temperature_sync(const std::string &payload) {
+      std::string tmpEntity = app_internal_temperature_;
+      std::string formatted = payload;
+      std::replace(formatted.begin(), formatted.end(), '.', ',');
+      app_internal_temperature_ = formatted;
+      if (app_internal_temperature_ != tmpEntity) {
+        publish_state();
+      }
+    }
+    
+    void ACW02::entity_esp_memory_sync(const std::string &payload) {
+      std::string tmpEntity = app_esp_memory_;
+      std::string formatted = payload;
+      std::replace(formatted.begin(), formatted.end(), '.', ',');
+      app_esp_memory_ = formatted;
+      if (app_esp_memory_ != tmpEntity) {
+        publish_state();
       }
     }
 
@@ -844,11 +948,12 @@ namespace esphome {
           ESP_LOGW(TAG, "Wi-Fi OK; attempting MQTT connection…");
           mqtt_->enable();
           mqtt_initializer();
-          set_timeout("mqtt_retry", 5000, [this]() {
-            if (!mqtt_->is_connected()) {
-              mqtt_->disable();
-            }
-          });
+          // The code below is commented out because it can cause a bug with MQTT if it is stopped for a long time.
+          // set_timeout("mqtt_retry", 5000, [this]() {
+          //   if (!mqtt_->is_connected()) {
+          //     mqtt_->disable();
+          //   }
+          // });
         } else {
           ESP_LOGW(TAG, "Wi-Fi not connected; retrying in 5 s");
           set_timeout("mqtt_retry", 2000, [this]() { mqtt_connexion(); });
@@ -859,15 +964,22 @@ namespace esphome {
     void ACW02::mqtt_initializer() {
       if (mqtt_) {
         mqtt_->set_on_connect([this](bool first) {
+          mqtt_publish_queue_.clear();
           ESP_LOGW(TAG, "MQTT connected → publishing discovery and state");
           if (mqtt_connected_sensor_) mqtt_connected_sensor_->publish_state(true);
           set_timeout("mqtt_discovery_delay", 100, [this]() {
-            set_interval("mqtt_publish_flush", 50, [this]() {
-              if (!mqtt_ || !mqtt_->is_connected()) {
+            set_interval("mqtt_publish_flush", INTERVAL_MQTT_BETWEEN_CMD, [this]() {
+              // The code below is commented out because it can cause a bug with MQTT if it is stopped for a long time.
+              // if (!mqtt_ || !mqtt_->is_connected()) {
+              //   ESP_LOGE(TAG, "mqtt_publish_flush return");
+              //   return;
+              // }
+              if (!mqtt_ ) {
                 return;
               }
               if (!mqtt_publish_queue_.empty()) {
                 const auto &entry = mqtt_publish_queue_.front();
+                ESP_LOGW(TAG, "mqtt_publish_queue_ publish to mqtt %s", entry.topic.c_str());
                 mqtt_->publish(entry.topic, entry.payload, entry.qos, entry.retain);
                 mqtt_publish_queue_.pop_front();
               }
@@ -879,8 +991,8 @@ namespace esphome {
                 // Convert to string
                 std::string payload = std::to_string(static_cast<long>(now));
 
-                // Publish retained, QoS 1
-                publish_async(app_name_ + "/last_seen", payload, 1, true);
+                // Publish retained false, QoS 1
+                publish_async(app_name_ + "/last_seen", payload, 1, false);
 
                 ESP_LOGW(TAG, "Heartbeat last_seen published (epoch): %s", payload.c_str());
               });
@@ -897,25 +1009,9 @@ namespace esphome {
               publish_discovery_display_switch();
               publish_discovery_night_switch();
               publish_discovery_purifier_switch();
-              publish_discovery_g1_mute_switch();
-              publish_discovery_g1_option_recalculate_climate_switch();
-              publish_discovery_g1_reset_eco_purifier_ac_off_switch();
-              publish_discovery_disable_mode_auto_switch();
-              publish_discovery_disable_mode_heat_switch();
-              publish_discovery_disable_mode_dry_switch();
-              publish_discovery_disable_mode_fan_switch();
-              publish_discovery_disable_swing_vertical_switch();
-              publish_discovery_disable_swing_horizontal_switch();
               publish_discovery_preset_switch();
-              publish_discovery_g1_mute_next_cmd_delay_text();
-              publish_discovery_g1_mute_next_cmd_after_on_delay_text();
-              publish_discovery_g1_publish_stats_after_power_on_delay_text();
               publish_discovery_preset_name_config_text();
               publish_discovery_temperature_number();
-              publish_discovery_g1_reload_button();
-              publish_discovery_g1_rebuild_mqtt_entities_button();
-              publish_discovery_g1_get_status_button();
-              publish_discovery_z_config_validate_button();
               publish_discovery_preset_save_button();
               publish_discovery_preset_delete_button();
               publish_discovery_temperature_sensor();
@@ -926,6 +1022,35 @@ namespace esphome {
               publish_discovery_cmd_failure_counter_sensor();
               publish_discovery_warn_text_sensor();
               publish_discovery_error_text_sensor();
+              if (option_g1_mqtt_) {
+                set_timeout("publish_discovery_option_g1_mqtt_recreate", DELAY_MQTT_G1_GENERATE, [this]() {
+                  publish_discovery_g1_mute_switch();
+                  publish_discovery_g1_option_recalculate_climate_switch();
+                  publish_discovery_g1_reset_eco_purifier_ac_off_switch();
+                  publish_discovery_disable_mode_auto_switch();
+                  publish_discovery_disable_mode_heat_switch();
+                  publish_discovery_disable_mode_dry_switch();
+                  publish_discovery_disable_mode_fan_switch();
+                  publish_discovery_disable_swing_vertical_switch();
+                  publish_discovery_disable_swing_horizontal_switch();
+                  publish_discovery_g1_mute_next_cmd_delay_text();
+                  publish_discovery_g1_mute_next_cmd_after_on_delay_text();
+                  publish_discovery_g1_publish_stats_after_power_on_delay_text();
+                  publish_discovery_g1_reload_button();
+                  publish_discovery_g1_rebuild_mqtt_entities_button();
+                  publish_discovery_g1_get_status_button();
+                  publish_discovery_z_config_validate_button();
+                  publish_discovery_mdns_text_sensor();
+                  publish_discovery_wifi_ip_text_sensor();
+                  publish_discovery_wifi_ssid_text_sensor();
+                  publish_discovery_wifi_bssid_text_sensor();
+                  publish_discovery_wifi_mac_text_sensor();
+                  publish_discovery_esp_version_text_sensor();
+                  publish_discovery_wifi_signal_text_sensor();
+                  publish_discovery_internal_temperature_text_sensor();
+                  publish_discovery_esp_memory_text_sensor();
+                });
+              }
               send_static_command_basic(get_status_frame_);
             });
             mqtt_->subscribe(app_name_ + "/cmd/#", [this](const std::string &topic, const std::string &payload) {
@@ -948,6 +1073,13 @@ namespace esphome {
         mqtt_->set_on_disconnect([this](mqtt::MQTTClientDisconnectReason reason) {
           ESP_LOGW(TAG, "MQTT disconnected (reason=%d)", static_cast<int>(reason));
           if (mqtt_connected_sensor_) mqtt_connected_sensor_->publish_state(false);
+          this->cancel_interval("mqtt_publish_flush");
+          this->cancel_interval("hb_last_seen");
+          this->cancel_timeout("mqtt_discovery_delay");
+          ack_wait_ = false;
+          ack_block_until_ = 0;
+          timeout_retry_pending_ = false;
+          cmd_send_fingerprint_ = {0, "", {}, 0, 0};
         });
       }
     }
@@ -1124,8 +1256,10 @@ namespace esphome {
     }
 
     void ACW02::publish_state() {
-      if (!mqtt_)
+      if (!mqtt_) {
+        ESP_LOGE(TAG, "publish_state =====>>>> mqtt_ is false");
         return;
+      }
 
       if (publish_stats_after_power_on_delay_ > 0 && time_publish_stats_after_power_on_ > 0 && time_publish_stats_after_power_on_ > millis()) {
          set_timeout("publish_state_after_on", 100, [this]() {
@@ -1176,6 +1310,15 @@ namespace esphome {
       payload += "\"disable_mode_fan\":\"" + std::string(disable_mode_fan_ ? "on" : "off") + "\",";
       payload += "\"disable_swing_vertical\":\"" + std::string(disable_swing_vertical_ ? "on" : "off") + "\",";
       payload += "\"disable_swing_horizontal\":\"" + std::string(disable_swing_horizontal_ ? "on" : "off") + "\",";
+      payload += "\"mdns\":\""  + app_mdns_ + "\",";
+      payload += "\"wifi_ip\":\""  + app_wifi_ip_ + "\",";
+      payload += "\"wifi_ssid\":\""  + app_wifi_ssid_ + "\",";
+      payload += "\"wifi_bssid\":\""  + app_wifi_bssid_ + "\",";
+      payload += "\"wifi_mac\":\""  + app_wifi_mac_ + "\",";
+      payload += "\"esp_version\":\""  + app_esp_version_ + "\",";
+      payload += "\"wifi_signal\":\""  + app_wifi_signal_ + " dBm\",";
+      payload += "\"internal_temperature\":\""  + app_internal_temperature_ + " °C\",";
+      payload += "\"esp_memory\":\""  + app_esp_memory_ + " kB\",";
       payload += "\"preset\":\"" + std::string(preset_ ? "on" : "off") + "\",";
       payload += "\"presets_list_element_config\":\"" + presets_list_element_config_ + "\",";
       payload += "\"presets_list_element\":\"" + presets_list_element_ + "\",";
@@ -1187,7 +1330,7 @@ namespace esphome {
       payload += "\"preset_name_config\":\"" + preset_name_config_ + "\",";
       payload += "\"cmd_failure_counter\":\"" + std::to_string(cmd_failure_counter_) + "\"";
       payload += "}";
-
+      ESP_LOGW(TAG, "publish_state send");
       publish_async(app_name_ + "/state", payload, 1, true);
     }
 
@@ -1327,7 +1470,7 @@ namespace esphome {
       std::string config_topic = "homeassistant/climate/" + topic_base + "/config";
       if (recreate) {
         publish_async(config_topic, std::string(""), 1, true);
-        set_timeout("mqtt_publish_discovery_climate_publish", mqtt_delay_rebuild_, [this, config_topic, payload]() {
+        set_timeout("mqtt_publish_discovery_climate_publish", mqtt_delay_rebuild_short_, [this, config_topic, payload]() {
           publish_async(config_topic, payload, 1, true);
         });
       } else {
@@ -2882,7 +3025,333 @@ namespace esphome {
         publish_async(config_topic, payload, 1, true);
       }
     }
-        
+
+    void ACW02::publish_discovery_mdns_text_sensor(bool recreate) {
+      if (!mqtt_)
+        return;
+
+      const std::string topic_base = app_name_;
+      const std::string unique_id = app_sanitize_name_ + "_mqtt_mdns";
+      std::string config_topic = "homeassistant/sensor/" + topic_base + "-mdns/config";
+
+      if (!option_g1_mqtt_) {
+        publish_async(config_topic, std::string(""), 1, true);
+        return;
+      }
+
+      std::string payload = R"({
+        "name": ")" + get_localized_name(app_lang_, "MDNS") + R"(",
+        "object_id": ")" + unique_id + R"(",
+        "unique_id": ")" + unique_id + R"(",
+        "entity_category": "diagnostic",
+        "stat_t": ")" + topic_base + R"(/state",
+        "val_tpl": "{{ value_json.mdns }}",
+        "avty_t": ")" + topic_base + R"(/status",
+        "pl_avail": "online",
+        "pl_not_avail": "offline")" +
+        build_common_config_suffix() + R"(
+      })";
+
+      if (recreate) {
+        publish_async(config_topic, std::string(""), 1, true);
+        set_timeout("publish_discovery_mdns_text_sensor", mqtt_delay_rebuild_, [this, config_topic, payload]() {
+          publish_async(config_topic, payload, 1, true);
+        });
+      } else {
+        publish_async(config_topic, payload, 1, true);
+      }
+    }
+
+    void ACW02::publish_discovery_wifi_ip_text_sensor(bool recreate) {
+      if (!mqtt_)
+        return;
+
+      const std::string topic_base = app_name_;
+      const std::string unique_id = app_sanitize_name_ + "_mqtt_wifi_ip";
+      std::string config_topic = "homeassistant/sensor/" + topic_base + "-wifi-ip/config";
+
+      if (!option_g1_mqtt_) {
+        publish_async(config_topic, std::string(""), 1, true);
+        return;
+      }
+
+      std::string payload = R"({
+        "name": ")" + get_localized_name(app_lang_, "WiFiIP") + R"(",
+        "object_id": ")" + unique_id + R"(",
+        "unique_id": ")" + unique_id + R"(",
+        "entity_category": "diagnostic",
+        "stat_t": ")" + topic_base + R"(/state",
+        "val_tpl": "{{ value_json.wifi_ip }}",
+        "avty_t": ")" + topic_base + R"(/status",
+        "pl_avail": "online",
+        "pl_not_avail": "offline")" +
+        build_common_config_suffix() + R"(
+      })";
+
+      if (recreate) {
+        publish_async(config_topic, std::string(""), 1, true);
+        set_timeout("publish_discovery_wifi_ip_text_sensor", mqtt_delay_rebuild_, [this, config_topic, payload]() {
+          publish_async(config_topic, payload, 1, true);
+        });
+      } else {
+        publish_async(config_topic, payload, 1, true);
+      }
+    }
+
+    void ACW02::publish_discovery_wifi_ssid_text_sensor(bool recreate) {
+      if (!mqtt_)
+        return;
+
+      const std::string topic_base = app_name_;
+      const std::string unique_id = app_sanitize_name_ + "_mqtt_wifi_ssid";
+      std::string config_topic = "homeassistant/sensor/" + topic_base + "-wifi-ssid/config";
+
+      if (!option_g1_mqtt_) {
+        publish_async(config_topic, std::string(""), 1, true);
+        return;
+      }
+
+      std::string payload = R"({
+        "name": ")" + get_localized_name(app_lang_, "WiFiSSID") + R"(",
+        "object_id": ")" + unique_id + R"(",
+        "unique_id": ")" + unique_id + R"(",
+        "entity_category": "diagnostic",
+        "stat_t": ")" + topic_base + R"(/state",
+        "val_tpl": "{{ value_json.wifi_ssid }}",
+        "avty_t": ")" + topic_base + R"(/status",
+        "pl_avail": "online",
+        "pl_not_avail": "offline")" +
+        build_common_config_suffix() + R"(
+      })";
+
+      if (recreate) {
+        publish_async(config_topic, std::string(""), 1, true);
+        set_timeout("publish_discovery_wifi_ssid_text_sensor", mqtt_delay_rebuild_, [this, config_topic, payload]() {
+          publish_async(config_topic, payload, 1, true);
+        });
+      } else {
+        publish_async(config_topic, payload, 1, true);
+      }
+    }
+
+    void ACW02::publish_discovery_wifi_bssid_text_sensor(bool recreate) {
+      if (!mqtt_)
+        return;
+
+      const std::string topic_base = app_name_;
+      const std::string unique_id = app_sanitize_name_ + "_mqtt_wifi_bssid";
+      std::string config_topic = "homeassistant/sensor/" + topic_base + "-wifi-bssid/config";
+
+      if (!option_g1_mqtt_) {
+        publish_async(config_topic, std::string(""), 1, true);
+        return;
+      }
+
+      std::string payload = R"({
+        "name": ")" + get_localized_name(app_lang_, "WiFiBSSID") + R"(",
+        "object_id": ")" + unique_id + R"(",
+        "unique_id": ")" + unique_id + R"(",
+        "entity_category": "diagnostic",
+        "stat_t": ")" + topic_base + R"(/state",
+        "val_tpl": "{{ value_json.wifi_bssid }}",
+        "avty_t": ")" + topic_base + R"(/status",
+        "pl_avail": "online",
+        "pl_not_avail": "offline")" +
+        build_common_config_suffix() + R"(
+      })";
+
+      if (recreate) {
+        publish_async(config_topic, std::string(""), 1, true);
+        set_timeout("publish_discovery_wifi_bssid_text_sensor", mqtt_delay_rebuild_, [this, config_topic, payload]() {
+          publish_async(config_topic, payload, 1, true);
+        });
+      } else {
+        publish_async(config_topic, payload, 1, true);
+      }
+    }
+
+    void ACW02::publish_discovery_wifi_mac_text_sensor(bool recreate) {
+      if (!mqtt_)
+        return;
+
+      const std::string topic_base = app_name_;
+      const std::string unique_id = app_sanitize_name_ + "_mqtt_wifi_mac";
+      std::string config_topic = "homeassistant/sensor/" + topic_base + "-wifi-mac/config";
+
+      if (!option_g1_mqtt_) {
+        publish_async(config_topic, std::string(""), 1, true);
+        return;
+      }
+
+      std::string payload = R"({
+        "name": ")" + get_localized_name(app_lang_, "WiFiMAC") + R"(",
+        "object_id": ")" + unique_id + R"(",
+        "unique_id": ")" + unique_id + R"(",
+        "entity_category": "diagnostic",
+        "stat_t": ")" + topic_base + R"(/state",
+        "val_tpl": "{{ value_json.wifi_mac }}",
+        "avty_t": ")" + topic_base + R"(/status",
+        "pl_avail": "online",
+        "pl_not_avail": "offline")" +
+        build_common_config_suffix() + R"(
+      })";
+
+      if (recreate) {
+        publish_async(config_topic, std::string(""), 1, true);
+        set_timeout("publish_discovery_wifi_mac_text_sensor", mqtt_delay_rebuild_, [this, config_topic, payload]() {
+          publish_async(config_topic, payload, 1, true);
+        });
+      } else {
+        publish_async(config_topic, payload, 1, true);
+      }
+    }
+
+    void ACW02::publish_discovery_esp_version_text_sensor(bool recreate) {
+      if (!mqtt_)
+        return;
+
+      const std::string topic_base = app_name_;
+      const std::string unique_id = app_sanitize_name_ + "_mqtt_esp_version";
+      std::string config_topic = "homeassistant/sensor/" + topic_base + "-esp-version/config";
+
+      if (!option_g1_mqtt_) {
+        publish_async(config_topic, std::string(""), 1, true);
+        return;
+      }
+
+      std::string payload = R"({
+        "name": ")" + get_localized_name(app_lang_, "ESPVERSION") + R"(",
+        "object_id": ")" + unique_id + R"(",
+        "unique_id": ")" + unique_id + R"(",
+        "entity_category": "diagnostic",
+        "icon": "mdi:new-box",
+        "stat_t": ")" + topic_base + R"(/state",
+        "val_tpl": "{{ value_json.esp_version }}",
+        "avty_t": ")" + topic_base + R"(/status",
+        "pl_avail": "online",
+        "pl_not_avail": "offline")" +
+        build_common_config_suffix() + R"(
+      })";
+
+      if (recreate) {
+        publish_async(config_topic, std::string(""), 1, true);
+        set_timeout("publish_discovery_esp_version_text_sensor", mqtt_delay_rebuild_, [this, config_topic, payload]() {
+          publish_async(config_topic, payload, 1, true);
+        });
+      } else {
+        publish_async(config_topic, payload, 1, true);
+      }
+    }
+
+    void ACW02::publish_discovery_wifi_signal_text_sensor(bool recreate) {
+      if (!mqtt_)
+        return;
+
+      const std::string topic_base = app_name_;
+      const std::string unique_id = app_sanitize_name_ + "_mqtt_wifi_signal";
+      std::string config_topic = "homeassistant/sensor/" + topic_base + "-wifi-signal/config";
+
+      if (!option_g1_mqtt_) {
+        publish_async(config_topic, std::string(""), 1, true);
+        return;
+      }
+
+      std::string payload = R"({
+        "name": ")" + get_localized_name(app_lang_, "WiFiSIGNAL") + R"(",
+        "object_id": ")" + unique_id + R"(",
+        "unique_id": ")" + unique_id + R"(",
+        "entity_category": "diagnostic",
+        "icon": "mdi:wifi",
+        "stat_t": ")" + topic_base + R"(/state",
+        "val_tpl": "{{ value_json.wifi_signal }}",
+        "avty_t": ")" + topic_base + R"(/status",
+        "pl_avail": "online",
+        "pl_not_avail": "offline")" +
+        build_common_config_suffix() + R"(
+      })";
+
+      if (recreate) {
+        publish_async(config_topic, std::string(""), 1, true);
+        set_timeout("publish_discovery_wifi_signal_text_sensor", mqtt_delay_rebuild_, [this, config_topic, payload]() {
+          publish_async(config_topic, payload, 1, true);
+        });
+      } else {
+        publish_async(config_topic, payload, 1, true);
+      }
+    }
+
+    void ACW02::publish_discovery_internal_temperature_text_sensor(bool recreate) {
+      if (!mqtt_)
+        return;
+
+      const std::string topic_base = app_name_;
+      const std::string unique_id = app_sanitize_name_ + "_mqtt_internal_temperature";
+      std::string config_topic = "homeassistant/sensor/" + topic_base + "-internal-temperature/config";
+
+      if (!option_g1_mqtt_) {
+        publish_async(config_topic, std::string(""), 1, true);
+        return;
+      }
+
+      std::string payload = R"({
+        "name": ")" + get_localized_name(app_lang_, "INTERNALTEMP") + R"(",
+        "object_id": ")" + unique_id + R"(",
+        "unique_id": ")" + unique_id + R"(",
+        "entity_category": "diagnostic",
+        "icon": "mdi:thermometer",
+        "stat_t": ")" + topic_base + R"(/state",
+        "val_tpl": "{{ value_json.internal_temperature }}",
+        "avty_t": ")" + topic_base + R"(/status",
+        "pl_avail": "online",
+        "pl_not_avail": "offline")" +
+        build_common_config_suffix() + R"(
+      })";
+
+      if (recreate) {
+        publish_async(config_topic, std::string(""), 1, true);
+        set_timeout("publish_discovery_internal_temperature_text_sensor", mqtt_delay_rebuild_, [this, config_topic, payload]() {
+          publish_async(config_topic, payload, 1, true);
+        });
+      } else {
+        publish_async(config_topic, payload, 1, true);
+      }
+    }
+
+    void ACW02::publish_discovery_esp_memory_text_sensor(bool recreate) {
+      if (!mqtt_)
+        return;
+
+      const std::string topic_base = app_name_;
+      const std::string unique_id = app_sanitize_name_ + "_mqtt_esp_memory";
+      std::string config_topic = "homeassistant/sensor/" + topic_base + "-esp-memory/config";
+
+      if (!option_g1_mqtt_) {
+        publish_async(config_topic, std::string(""), 1, true);
+        return;
+      }
+
+      std::string payload = R"({
+        "name": ")" + get_localized_name(app_lang_, "ESPMEMORY") + R"(",
+        "object_id": ")" + unique_id + R"(",
+        "unique_id": ")" + unique_id + R"(",
+        "entity_category": "diagnostic",
+        "stat_t": ")" + topic_base + R"(/state",
+        "val_tpl": "{{ value_json.esp_memory }}",
+        "avty_t": ")" + topic_base + R"(/status",
+        "pl_avail": "online",
+        "pl_not_avail": "offline")" +
+        build_common_config_suffix() + R"(
+      })";
+
+      if (recreate) {
+        publish_async(config_topic, std::string(""), 1, true);
+        set_timeout("publish_discovery_esp_memory_text_sensor", mqtt_delay_rebuild_, [this, config_topic, payload]() {
+          publish_async(config_topic, payload, 1, true);
+        });
+      } else {
+        publish_async(config_topic, payload, 1, true);
+      }
+    }
 
     void ACW02::rebuild_mqtt_entity() {
       publish_discovery_climate(true);
@@ -2898,25 +3367,9 @@ namespace esphome {
       publish_discovery_display_switch(true);
       publish_discovery_night_switch(true);
       publish_discovery_purifier_switch(true);
-      publish_discovery_g1_mute_switch(true);
-      publish_discovery_g1_option_recalculate_climate_switch(true);
-      publish_discovery_g1_reset_eco_purifier_ac_off_switch(true);
-      publish_discovery_disable_mode_auto_switch(true);
-      publish_discovery_disable_mode_heat_switch(true);
-      publish_discovery_disable_mode_dry_switch(true);
-      publish_discovery_disable_mode_fan_switch(true);
-      publish_discovery_disable_swing_vertical_switch(true);
-      publish_discovery_disable_swing_horizontal_switch(true);
       publish_discovery_preset_switch(true);
-      publish_discovery_g1_mute_next_cmd_delay_text(true);
-      publish_discovery_g1_mute_next_cmd_after_on_delay_text(true);
-      publish_discovery_g1_publish_stats_after_power_on_delay_text(true);
       publish_discovery_preset_name_config_text(true);
       publish_discovery_temperature_number(true);
-      publish_discovery_g1_reload_button(true);
-      publish_discovery_g1_rebuild_mqtt_entities_button(true);
-      publish_discovery_g1_get_status_button(true);
-      publish_discovery_z_config_validate_button(true);
       publish_discovery_preset_save_button(true);
       publish_discovery_preset_delete_button(true);
       publish_discovery_temperature_sensor(true);
@@ -2927,6 +3380,35 @@ namespace esphome {
       publish_discovery_cmd_failure_counter_sensor(true);
       publish_discovery_warn_text_sensor(true);
       publish_discovery_error_text_sensor(true);
+      if (option_g1_mqtt_) {
+         set_timeout("publish_discovery_option_g1_mqtt_recreate", DELAY_MQTT_G1_GENERATE, [this]() {
+          publish_discovery_g1_mute_switch(true);
+          publish_discovery_g1_option_recalculate_climate_switch(true);
+          publish_discovery_g1_reset_eco_purifier_ac_off_switch(true);
+          publish_discovery_disable_mode_auto_switch(true);
+          publish_discovery_disable_mode_heat_switch(true);
+          publish_discovery_disable_mode_dry_switch(true);
+          publish_discovery_disable_mode_fan_switch(true);
+          publish_discovery_disable_swing_vertical_switch(true);
+          publish_discovery_disable_swing_horizontal_switch(true);
+          publish_discovery_g1_mute_next_cmd_delay_text(true);
+          publish_discovery_g1_mute_next_cmd_after_on_delay_text(true);
+          publish_discovery_g1_publish_stats_after_power_on_delay_text(true);
+          publish_discovery_g1_reload_button(true);
+          publish_discovery_g1_rebuild_mqtt_entities_button(true);
+          publish_discovery_g1_get_status_button(true);
+          publish_discovery_z_config_validate_button(true);
+          publish_discovery_mdns_text_sensor(true);
+          publish_discovery_wifi_ip_text_sensor(true);
+          publish_discovery_wifi_ssid_text_sensor(true);
+          publish_discovery_wifi_bssid_text_sensor(true);
+          publish_discovery_wifi_mac_text_sensor(true);
+          publish_discovery_esp_version_text_sensor(true);
+          publish_discovery_wifi_signal_text_sensor(true);
+          publish_discovery_internal_temperature_text_sensor(true);
+          publish_discovery_esp_memory_text_sensor(true);
+        });
+      }
     }
 
     void ACW02::apply_disable_settings() {
@@ -3477,7 +3959,7 @@ namespace esphome {
     }
 
     void ACW02::publish_async(const std::string &topic, const std::string &payload, int qos, bool retain) {
-      if (mqtt_publish_queue_.size() >= 64) {
+      if (mqtt_publish_queue_.size() >= 128) {
         mqtt_publish_queue_.pop_front();
       }
       mqtt_publish_queue_.push_back(MqttPublishEntry{topic, payload, qos, retain});

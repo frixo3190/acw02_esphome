@@ -49,15 +49,15 @@
 | #  | Description |
 |---:|-------------|
 | 1  | Destroy and recreate the Climate entity to reflect options like eco |
-| 2  | Enable MQTT version of G1 command and Z-config exclusion (useful if not using ESPHome integration in Home Assistant) |
+| 2  | Enable MQTT version of G1 command, Z-config exclusion and diagnostic (useful if not using ESPHome integration in Home Assistant, or if you want use the module on jeedom) |
 | 3  | Mute all commands sent from ESP to the AC (except for clean action) |
 | 4  | Destroy and recreate all MQTT entities |
 | 5  | Request status update from AC |
 | 6  | Restart the ESP |
-| 7  | MQTT IP (auto-saved; the validate button only restarts the ESP) |
-| 8  | MQTT username (auto-saved; the validate button only restarts the ESP) |
-| 9  | MQTT password (auto-saved; the validate button only restarts the ESP) |
-| 10 | MQTT port (auto-saved; the validate button only restarts the ESP) |
+| 7  | ![Mandatory](https://img.shields.io/badge/-MANDATORY-darkred?style=flat-square) MQTT IP (auto-saved; the validate button only restarts the ESP) |
+| 8  | ![Mandatory](https://img.shields.io/badge/-MANDATORY-darkred?style=flat-square) MQTT username (auto-saved; the validate button only restarts the ESP) |
+| 9  | ![Mandatory](https://img.shields.io/badge/-MANDATORY-darkred?style=flat-square) MQTT password (auto-saved; the validate button only restarts the ESP) |
+| 10 | ![Mandatory](https://img.shields.io/badge/-MANDATORY-darkred?style=flat-square) MQTT port (auto-saved; the validate button only restarts the ESP) |
 | 11 | Restart ESP to apply MQTT access changes |
 | 12 | Disable "Auto" mode (auto-saved; validate button will recreate MQTT entities) |
 | 13 | Disable "Dry" mode (auto-saved; validate button will recreate MQTT entities) |
@@ -108,7 +108,7 @@
 ![webfr](images/FR-WEB.PNG)
 
 
-## 🧩 Optional: MQTT Only Without ESPHome HA Integration
+## 🧩 Optional: MQTT Only Without ESPHome HA Integration (ex not connect to ha with esphome or jeedom)
 
 ### 📄 In `yaml`
 

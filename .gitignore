@@ -8,7 +8,7 @@ components/acw02/__pycache__/
 perso/
 
 
-secrets.yaml
+./secrets.yaml
 
 3Dfiles/images/Thumbs.db
 
