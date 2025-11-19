@@ -23,3 +23,16 @@ services:
       - /dev/ttyUSB0:/dev/ttyUSB0
     stdin_open: true
     tty: true
+  esphome-usb-c3c6:
+    build:
+      context: .
+      args:
+        ESPHOME_VERSION: ${ESPHOME_VERSION}
+    container_name: esphome-builder-usb-c3c6
+    volumes:
+      - ../:/src:ro
+      - ./bin_generated:/output
+    devices:
+      - /dev/ttyACM0:/dev/ttyACM0
+    stdin_open: true
+    tty: true

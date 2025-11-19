@@ -7,7 +7,25 @@ substitutions:
   ap_password: "fallbackpassword"
   web_server_username: admin
   web_server_password: admin
+  # ESP32 D1 mini WROOM 32
   board: esp32dev
+  TX: GPIO17
+  RX: GPIO16
+  
+  ## LOLIN ESP32 C3 MINI
+  # board: lolin_c3_mini
+  # TX: GPIO21
+  # RX: GPIO20
+
+  ## XIAO (seeeds studio) ESP32 C3
+  # board: seeed_xiao_esp32c3
+  # TX: GPIO21
+  # RX: GPIO20
+
+  ## XIAO (seeeds studio) ESP32 C6
+  # board: seeed_xiao_esp32c6
+  # TX: GPIO16
+  # RX: GPIO17
 
 esphome:
   name: ${dev_name}
@@ -60,6 +78,7 @@ mqtt:
   enable_on_boot: false
   discovery: false
   keepalive: 30s
+  log_topic: null
   clean_session: false
   idf_send_async: false
   wait_for_connection: false
@@ -76,8 +95,8 @@ captive_portal:
 
 uart:
   id: uart_acw02
-  tx_pin: GPIO17
-  rx_pin: GPIO16
+  tx_pin: ${TX}
+  rx_pin: ${RX}
   baud_rate: 9600
   stop_bits: 1
   rx_buffer_size: 1024

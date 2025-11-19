@@ -1,25 +1,139 @@
-name: ESPHome Auto-Build (Latest Version)
+name: ESPHome Auto-Build (Latest)
 
 on:
   schedule:
-    - cron: '0 6 * * 6'
+    - cron: '0 6 * * 6'   # chaque samedi à 06:00 UTC
   workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Empêche deux runs de ce workflow de se chevaucher
+concurrency:
+  group: esphome-autobuild-badges
+  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
+    strategy:
+      fail-fast: false
+      max-parallel: 1   # exécution séquentielle (évite tout conflit de push/commit)
+      matrix:
+        include:
+          - id: d1-mini
+            path: test-build/builder-acw02-fr-d1-mini.yaml
+          - id: lolin-c3
+            path: test-build/builder-acw02-fr-lolin-c3.yaml
+          - id: xiao-c3
+            path: test-build/builder-acw02-fr-xiao-c3.yaml
+          - id: xiao-c6
+            path: test-build/builder-acw02-fr-xiao-c6.yaml
+
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: 3.11
+          python-version: '3.11'
 
       - name: Install latest ESPHome
-        run: pip install --upgrade esphome
+        run: python -m pip install --upgrade esphome
 
-      - name: Compile firmware
-        run: esphome compile esphome-acw02-fr.yaml
+      - name: Capture ESPHome version
+        id: ver
+        shell: bash
+        run: |
+          set -e
+          V=$(esphome version | tr -d '\r' | sed 's/^Version:[[:space:]]*//;s/^[[:space:]]*//;s/[[:space:]]*$//')
+          [ -z "$V" ] && V="unknown"
+          echo "ESPHOME_VERSION=$V" >> "$GITHUB_ENV"
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+
+      - name: Read last passing version (if any) for ${{ matrix.id }}
+        id: last
+        shell: bash
+        run: |
+          mkdir -p .ci/last_success
+          LAST=$(cat ".ci/last_success/${{ matrix.id }}.txt" 2>/dev/null || true)
+          echo "last=$LAST" >> "$GITHUB_OUTPUT"
+
+      - name: Compile firmware (${{ matrix.id }})
+        id: compile
+        shell: bash
+        run: |
+          set +e
+          esphome compile "${{ matrix.path }}"
+          status=$?
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          if [ $status -ne 0 ]; then
+            echo "failed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "failed=false" >> "$GITHUB_OUTPUT"
+          fi
+          # On ne casse pas la CI ici; la step finale gère l'échec
+          exit 0
+
+      - name: Prepare/update badge JSON files for ${{ matrix.id }}
+        if: always()
+        shell: bash
+        run: |
+          set -e
+          mkdir -p .ci/badges .ci/last_success
+          FAILED="${{ steps.compile.outputs.failed }}"
+          LAST="${{ steps.last.outputs.last }}"
+          VER="${ESPHOME_VERSION}"
+          BID="${{ matrix.id }}"
+
+          # Version ESPHome (séquentiel => pas de conflit)
+          printf '%s' '{"schemaVersion":1,"label":"ESPHome","message":"'"$VER"'","color":"blue"}' > .ci/badges/esphome.json
+
+          if [ "$FAILED" = "false" ]; then
+            printf '%s' "$VER" > ".ci/last_success/${BID}.txt"
+            printf '%s' '{"schemaVersion":1,"label":"Build ('"$BID"')","message":"passing","color":"darkgreen"}' > ".ci/badges/build-${BID}.json"
+            printf '%s' '{"schemaVersion":1,"label":"Last passing ('"$BID"')","message":"'"$VER"'","color":"darkgreen"}' > ".ci/badges/last_passing-${BID}.json"
+            printf '%s' '{"schemaVersion":1,"label":"Problem version ('"$BID"')","message":"-","color":"lightgrey"}' > ".ci/badges/problem-${BID}.json"
+          else
+            printf '%s' '{"schemaVersion":1,"label":"Build ('"$BID"')","message":"failing","color":"darkred"}' > ".ci/badges/build-${BID}.json"
+            if [ -n "$LAST" ]; then
+              printf '%s' '{"schemaVersion":1,"label":"Last passing ('"$BID"')","message":"'"$LAST"'","color":"blue"}' > ".ci/badges/last_passing-${BID}.json"
+            else
+              printf '%s' '{"schemaVersion":1,"label":"Last passing ('"$BID"')","message":"-","color":"lightgrey"}' > ".ci/badges/last_passing-${BID}.json"
+            fi
+            printf '%s' '{"schemaVersion":1,"label":"Problem version ('"$BID"')","message":"'"$VER"'","color":"darkred"}' > ".ci/badges/problem-${BID}.json"
+          fi
+
+          echo "== Files generated =="
+          ls -l .ci/badges || true
+          ls -l .ci/last_success || true
+
+      - name: Commit & push badge updates for ${{ matrix.id }}
+        if: always()
+        shell: bash
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Ajoute TOUT le dossier .ci (séquentiel => safe)
+          git add -A .ci || true
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          git commit -m "CI(${{ matrix.id }}): badges for ESPHome ${ESPHOME_VERSION} (failed=${{ steps.compile.outputs.failed }})"
+          git pull --rebase || true
+          git push || echo "Nothing to push"
+
+      - name: Fail job if compile failed (${{ matrix.id }})
+        if: steps.compile.outputs.failed == 'true'
+        run: |
+          LAST="${{ steps.last.outputs.last }}"
+          [ -z "$LAST" ] && LAST="-"
+          echo "Compilation failed for '${{ matrix.id }}' with ESPHome ${ESPHOME_VERSION}. Last passing: $LAST"
+          exit 1
