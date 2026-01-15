@@ -113,7 +113,7 @@ acw02:
   id: ac_ctrl
   uart_id: uart_acw02
 
-interval:
-  - interval: 60s
-    then:
-      - lambda: "ESP_LOGD(\"keepalive\", \"ping\");"
+# interval:
+#   - interval: 60s
+#     then:
+#       - lambda: "ESP_LOGD(\"keepalive\", \"ping\");"
