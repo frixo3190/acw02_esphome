@@ -1,0 +1,121 @@
+name: Update COMPATIBILITY.md
+
+on:
+  schedule:
+    - cron: "0 0 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: read
+
+jobs:
+  build-list:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Generate COMPATIBILITY.md from issues (grouped by brand)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          extract_block () {
+            printf "%s" "$1" \
+              | awk -v key="$2" '
+                BEGIN{ RS="\r?\n"; insec=0 }
+                {
+                  if ($0 ~ "^###[ ]+" key "$") { insec=1; next }
+                  if (insec && $0 ~ "^###[ ]+") { insec=0 }
+                  if (insec) print
+                }' \
+              | sed ':a;N;$!ba;s/\n/ /g' \
+              | sed 's/|/\\|/g' \
+              | sed 's/^[[:space:]]*-\s*//; s/^[[:space:]]*//; s/[[:space:]]*$//' \
+              | sed 's/^[[:space:]]*$/-/'
+          }
+
+          extract_status () {
+            awk '
+              BEGIN{ RS="\r?\n"; insec=0 }
+              /^###[[:space:]]+Works with ACW02 ESPHome(\?)?$/ { insec=1; next }
+              insec && /^###/ { insec=0 }
+              insec { print }
+            ' \
+            | sed ':a;N;$!ba;s/\n/ /g' \
+            | sed 's/^[[:space:]]*-\s*//; s/^[[:space:]]*//; s/[[:space:]]*$//' \
+            | sed 's/|/\\|/g'
+          }
+
+          {
+            echo "# ACW02 ESPHome Compatibility List"
+            echo
+            echo "_This file is generated from issues labeled \`Compatibility\`._"
+            echo
+          } > COMPATIBILITY.md
+
+          mapfile -t ISSUES < <(gh issue list --repo "$REPO" --label "Compatibility" --state all --json number --jq '.[].number')
+
+          declare -A ROWS_BY_BRAND
+
+          for num in "${ISSUES[@]}"; do
+            body="$(gh issue view "$num" --repo "$REPO" --json body --jq .body)"
+
+            brand="$(extract_block "$body" "Brand")"
+            cmodel="$(extract_block "$body" "Commercial Model")"
+            rmodel="$(extract_block "$body" "Ref Model")"
+            works="$(printf "%s" "$body" | extract_status)"
+            notes="$(extract_block "$body" "Additional Notes")"
+
+            # Valeurs par défaut
+            [ -z "$brand" ]  && brand="Unknown"
+            [ -z "$cmodel" ] && cmodel="-"
+            [ -z "$rmodel" ] && rmodel="-"
+            [ -z "$works" ]  && works="-"
+            [ -z "$notes" ]  && notes="-"
+
+            # Nettoyage du Ref Model : None / none / - => "-"
+            case "$(echo "$rmodel" | tr '[:upper:]' '[:lower:]')" in
+              "none"|" - "|"none " )
+                rmodel="-"
+                ;;
+            esac
+
+            # Normalisation Status
+            case "$works" in
+              "Yes") works="✅ Yes" ;;
+              "No") works="❌ No" ;;
+              "Partially"|"Partially (some functions missing)") works="⚠️ Partially (some functions missing)" ;;
+            esac
+
+            row="| ${cmodel} | ${rmodel} | ${works} | ${notes} |"
+
+            if [[ -n "${ROWS_BY_BRAND[$brand]+x}" ]]; then
+              ROWS_BY_BRAND[$brand]="${ROWS_BY_BRAND[$brand]}"$'\n'"$row"
+            else
+              ROWS_BY_BRAND[$brand]="$row"
+            fi
+          done
+
+          mapfile -t BRANDS < <(printf "%s\n" "${!ROWS_BY_BRAND[@]}" | sort -f)
+
+          for b in "${BRANDS[@]}"; do
+            echo "## ${b}" >> COMPATIBILITY.md
+            echo >> COMPATIBILITY.md
+            echo "| Commercial Model | Ref Model | Status | Notes |" >> COMPATIBILITY.md
+            echo "|------------------|-----------|--------|-------|" >> COMPATIBILITY.md
+            printf "%s\n" "${ROWS_BY_BRAND[$b]}" >> COMPATIBILITY.md
+            echo >> COMPATIBILITY.md
+          done
+
+      - name: Commit changes
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add COMPATIBILITY.md
+          git commit -m "Update COMPATIBILITY.md [skip ci]" || echo "No changes"
+          git push

@@ -1,0 +1,68 @@
+name: "🐞 Bug Report"
+description: "Report a problem or unexpected behavior with the ACW02 ESPHome module"
+title: "[Bug] Brand Model - Short description"
+labels: ["bug"]
+body:
+  - type: input
+    id: brand
+    attributes:
+      label: Brand
+      description: "Example: Airton, Teknopoint, Daikin..."
+      placeholder: "Airton"
+    validations:
+      required: true
+
+  - type: input
+    id: model
+    attributes:
+      label: Exact Model
+      description: "Full reference as written on the indoor unit."
+      placeholder: "Teknopoint ARX35"
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: "Which version of ACW02 ESPHome or firmware are you using?"
+      placeholder: "Example: v1.2.0 (ESPHome 2025.7.2)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug description
+      description: "Explain what the bug is and what happened."
+      placeholder: "Example: The Teknopoint ARX35 does not respond to swing commands."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: "Provide clear steps to reproduce the issue."
+      placeholder: |
+        1. Set mode to Cool
+        2. Enable swing
+        3. Observe no response from the unit
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: "What you expected to happen."
+      placeholder: "Swing should start moving."
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: "Paste any relevant logs (ESPHome logs, UART frames, etc.)."
+      render: shell

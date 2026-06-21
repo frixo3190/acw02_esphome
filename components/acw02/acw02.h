@@ -7,7 +7,7 @@
 #include "esphome/core/preferences.h"
 #include <deque>
 #include "esphome/components/mqtt/mqtt_client.h"
-#include <esp_wifi.h>
+// #include <esp_wifi.h>
 #include <esp_mac.h>
 #include "esphome/core/application.h"
 #include <algorithm>
@@ -33,13 +33,24 @@ using namespace acw02_localization;
   // globals Statics
   static const char *const TAG = "acw02";
 
-  // globals Statics base trame (keep alive?)
+  struct Frame_with_Fingerprint {
+    uint32_t fingerprint;
+    std::string description;
+    std::vector<uint8_t> frame;
+    uint32_t timestamp_ms;
+    int tryCnt;
+  };
+
+  static constexpr int maxRetry = 3;
+
+
+  // globals Statics base frame (keep alive?)
   static const std::vector<uint8_t> keepalive_frame_ = {
     0x7A, 0x7A, 0x21, 0xD5, 0x0C, 0x00, 0x00, 0xAB,
     0x0A, 0x0A, 0xFC, 0xF9
   };
 
-  // globals Statics base trame (ask status AC)
+  // globals Statics base frame (ask status AC)
   static const std::vector<uint8_t> get_status_frame_ = {
     0x7A, 0x7A, 0x21, 0xD5, 0x0C, 0x00, 0x00, 0xA2,
     0x0A, 0x0A, 0xFE, 0x29
@@ -55,7 +66,7 @@ using namespace acw02_localization;
   struct PresetSlot {
     int index;
     std::string name;
-    std::vector<uint8_t> trame;
+    Frame_with_Fingerprint frame_with_fp;
   };
 
   const std::string PRESETS_LIST_ELEMENT_CONFIG_DEFAULT = "_______________";
@@ -107,6 +118,17 @@ class ACW02 : public Component, public uart::UARTDevice {
   void set_disable_swing_vertical(bool on, bool published = true);
   void set_disable_swing_horizontal(bool on, bool published = true);
 
+  // Setters publics, sync element esphome native in yaml to cpp
+  void entity_mdns_sync(const std::string &payload);
+  void entity_wifi_ip_sync(const std::string &payload);
+  void entity_wifi_ssid_sync(const std::string &payload);
+  void entity_wifi_bssid_sync(const std::string &payload);
+  void entity_wifi_mac_sync(const std::string &payload);
+  void entity_esp_version_sync(const std::string &payload);
+  void entity_wifi_signal_sync(const std::string &payload);
+  void entity_internal_temperature_sync(const std::string &payload);
+  void entity_esp_memory_sync(const std::string &payload);
+
   // Setters publics presets
   void set_preset(bool on, bool published = true);
 
@@ -126,6 +148,8 @@ class ACW02 : public Component, public uart::UARTDevice {
   void set_error_sensor(binary_sensor::BinarySensor *sensor);
   void set_warn_text_sensor(esphome::text_sensor::TextSensor *sensor);
   void set_error_text_sensor(esphome::text_sensor::TextSensor *sensor);
+  void set_cmd_ignore_tx_sensor(esphome::text_sensor::TextSensor *sensor);
+  void set_cmd_ignore_rx_sensor(esphome::text_sensor::TextSensor *sensor);
 
   // Setters sensor for mute with delay and condition
   void set_mute_next_cmd_delay_text(esphome::text::Text *text);
@@ -233,14 +257,24 @@ class ACW02 : public Component, public uart::UARTDevice {
   void publish_discovery_filter_dirty_sensor(bool recreate = false);
   void publish_discovery_warn_sensor(bool recreate = false);
   void publish_discovery_error_sensor(bool recreate = false);
+  void publish_discovery_cmd_failure_counter_sensor(bool recreate = false);
   void publish_discovery_warn_text_sensor(bool recreate = false);
   void publish_discovery_error_text_sensor(bool recreate = false);
+  void publish_discovery_mdns_text_sensor(bool recreate = false);
+  void publish_discovery_wifi_ip_text_sensor(bool recreate = false);
+  void publish_discovery_wifi_ssid_text_sensor(bool recreate = false);
+  void publish_discovery_wifi_bssid_text_sensor(bool recreate = false);
+  void publish_discovery_wifi_mac_text_sensor(bool recreate = false);
+  void publish_discovery_esp_version_text_sensor(bool recreate = false);
+  void publish_discovery_wifi_signal_text_sensor(bool recreate = false);
+  void publish_discovery_internal_temperature_text_sensor(bool recreate = false);
+  void publish_discovery_esp_memory_text_sensor(bool recreate = false);
 
   // MQTT publics function for rebuild all mqtt entities
   void rebuild_mqtt_entity();
   // MQTT publics function for apply disable option mode
   void apply_disable_settings();
- 
+  
   // Functions publics
   std::string sanitize_name(const std::string &input) const;
   std::string int_to_string(int value);
@@ -255,16 +289,40 @@ class ACW02 : public Component, public uart::UARTDevice {
   std::string app_lang_ {"en"};
   std::string app_board_ {""};
 
+  std::string app_mdns_ {""};
+  std::string app_wifi_ip_ {""};
+  std::string app_wifi_ssid_ {""};
+  std::string app_wifi_bssid_ {""};
+  std::string app_wifi_mac_ {""};
+  std::string app_esp_version_ {""};
+  std::string app_wifi_signal_ {""};
+  std::string app_internal_temperature_ {""};
+  std::string app_esp_memory_ {""};
+
   // variables command queue
   std::vector<uint8_t> rx_buffer_;
   uint32_t last_rx_byte_time_{0};
-  std::deque<std::vector<uint8_t>> tx_queue_;
+  std::deque<Frame_with_Fingerprint> tx_queue_;
   uint32_t last_tx_{0};
-  static constexpr uint32_t TX_INTERVAL_MS = 300;
-
+  static constexpr uint32_t INTERVAL_MQTT_BETWEEN_CMD = 60;
+  static constexpr uint32_t DELAY_MQTT_G1_GENERATE = 1500;
+  static constexpr uint32_t INTERVAL_INTERNAL_MQTT_KEEPALIVE = 15000;
+  static constexpr uint32_t INTERVAL_INTERNAL_AC_KEEPALIVE = 60000;
+  static constexpr uint32_t SILENCE_RX_MS = 120;
+  static constexpr uint32_t ACK_WINDOW_MS = 120;
+  static constexpr uint32_t TX_INTERVAL_MS = 180;
+  static constexpr uint32_t ACK_EVAL_MIN_MS  = 50;  // wait ≥50 ms after TX before comparing RX/TX
+  uint32_t rx_max_depth_ = 0; // for check size rx buffer
+  bool ack_wait_ = false;
+  uint32_t ack_block_until_ = 0;
+  // Timing constants (already have these near your others)
+  static constexpr uint32_t ACK_RETRY_TIMEOUT_MS = 220;  // 200–300ms is fine
+  static constexpr uint32_t ACK_ABORT_MS = 1200;
+  bool timeout_retry_pending_{false};
+  
   // variables AC
   Mode mode_ {Mode::COOL};
-  bool power_on_ {true};
+  bool power_on_ {false};
   Fan  fan_ {Fan::AUTO};
   Fan  previous_fan_ {Fan::AUTO};
   uint8_t target_temp_c_ {26};
@@ -350,7 +408,8 @@ class ACW02 : public Component, public uart::UARTDevice {
   std::string mqtt_username_;
   std::string mqtt_password_;
   int mqtt_port_ = 1883;
-  int mqtt_delay_rebuild_ = 300;
+  int mqtt_delay_rebuild_short_ = 300;
+  int mqtt_delay_rebuild_ = 800;
   binary_sensor::BinarySensor *mqtt_connected_sensor_{nullptr};
 
 
@@ -378,9 +437,17 @@ class ACW02 : public Component, public uart::UARTDevice {
   // Protected functions for command queue
   void process_tx_queue();
 
+  // jitter retry
+  uint32_t compute_retry_jitter(int tryCnt) const;
+
+  // Check and retry if cmd don't have ACK AC
+  void check_timeout_retry();
+
   // Protected functions for command UART
-  std::vector<uint8_t> build_frame(bool bypassMute = false) const;
-  void send_command_basic(const std::vector<uint8_t> &data);
+  Frame_with_Fingerprint build_frame(bool bypassMute = false) const;
+  std::vector<uint8_t> make_muted_with_fixed_crc(const std::vector<uint8_t>& frame) const;
+   void send_static_command_basic(const std::vector<uint8_t> &data);
+  void send_command_basic(const Frame_with_Fingerprint &data);
   void send_command(bool skipResetClean = false);
   static uint16_t crc16(const uint8_t *data, size_t len);
   void decode_state(const std::vector<uint8_t> &frame);
@@ -419,7 +486,12 @@ class ACW02 : public Component, public uart::UARTDevice {
   void recalculate_climate_depending_by_option();
 
   // fingerprint
+  int cmd_failure_counter_ = 0;
+  mutable Frame_with_Fingerprint cmd_send_fingerprint_ = {0, "", {}, 0, 0};
+  Frame_with_Fingerprint fingerprint() const;
   uint32_t ac_to_fingerprint() const;
+  std::string fingerprint_to_string() const;
+  void log_fingerprint(std::string from, Frame_with_Fingerprint fp, Frame_with_Fingerprint tfp = {0, "", {}, 0, 0}) const;
   bool compare_fingerprints(uint32_t a, uint32_t b);
 
   // presets
@@ -429,23 +501,22 @@ class ACW02 : public Component, public uart::UARTDevice {
   std::string preset_name_config_ = {""};
 
   std::array<PresetSlot, 8> presets_list = {{
-    {1, "Preset 1 (empty)", {}},
-    {2, "Preset 2 (empty)", {}},
-    {3, "Preset 3 (empty)", {}},
-    {4, "Preset 4 (empty)", {}},
-    {5, "Preset 5 (empty)", {}},
-    {6, "Preset 6 (empty)", {}},
-    {7, "Preset 7 (empty)", {}},
-    {8, "Preset 8 (empty)", {}}
+    {1, "Preset 1 (empty)", {0, "", {}, 0, 0}},
+    {2, "Preset 2 (empty)", {0, "", {}, 0, 0}},
+    {3, "Preset 3 (empty)", {0, "", {}, 0, 0}},
+    {4, "Preset 4 (empty)", {0, "", {}, 0, 0}},
+    {5, "Preset 5 (empty)", {0, "", {}, 0, 0}},
+    {6, "Preset 6 (empty)", {0, "", {}, 0, 0}},
+    {7, "Preset 7 (empty)", {0, "", {}, 0, 0}},
+    {8, "Preset 8 (empty)", {0, "", {}, 0, 0}}
   }};
   std::string get_preset_list(bool only_non_empty, bool forClimate = false);
-  std::string encode_trame_base64(const std::vector<uint8_t> &data);
-  std::vector<uint8_t> decode_trame_base64(const std::string &base64_str);
+  std::string encode_frame_base64(const std::vector<uint8_t> &data);
+  std::vector<uint8_t> decode_frame_base64(const std::string &base64_str);
 
-  void update_selected_preset(const std::string &new_name, const std::vector<uint8_t> &new_trame);
+  void update_selected_preset(const std::string &new_name, const Frame_with_Fingerprint &new_frame);
   void load_presets_from_flash();
   void save_presets_to_flash();
-  void log_selected_preset_trame();
   void save_single_preset_to_flash(const PresetSlot &preset);
   void delete_preset_by_name();
   PresetSlot get_preset_by_name(const std::string &name);

@@ -12,7 +12,10 @@ You can install it from the Microsoft Store or directly from:
 Run PowerShell as administrator and execute:  
 ```powershell
 wsl --install
+wsl --install -d Ubuntu-22.04
 ```
+
+![usbipd list](../docker/images/docker%20desktop.PNG)
 
 ---
 
@@ -94,6 +97,7 @@ usbipd unbind --busid 3-3
    ```powershell
    docker compose build
    docker compose up -d esphome-usb
+   docker compose up -d esphome-usb-c3c6
    docker compose up -d esphome-ota
    ```
    or use script 
@@ -102,11 +106,11 @@ usbipd unbind --busid 3-3
    start-docker.bat
    ```
 
-3. Build and push firmware to USB (params ota | usb):
+3. Build and push firmware to USB (params ota | usb | usb-c3c6):
    ```powershell
    build-fr.bat
    ```
-   or (depending on language) (params ota | usb):
+   or (depending on language) (params ota | usb | usb-c3c6):
    ```powershell
    build-en.bat
    ```
@@ -118,11 +122,14 @@ usbipd unbind --busid 3-3
 - `build-compile-only-en.bat` : build only (EN), no flash  
 - `open-container.bat` : enter Docker container (params ota | usb)
 - `start-docker.bat` : only start docker (ota only)
-- `stop-docker.bat` : only stop docker (ota + usb)
+- `stop-docker.bat` : only stop docker (ota + usb + usb-c3c6)
 - `attach-usb.bat` : script for attach usb to docker
 - `detach-usb.bat` : script for detach usb to docker
-- `start-docker-with-attach-USB.bat` : run attach USB to docker and start docker (ota + usb)
-- `stop-docker-with-attach-USB.bat` : run stop docker and detach USB to docker (ota + usb)
+- `start-docker-with-attach-USB.bat` : run attach USB to docker and start docker (ota + usb + usb-c3c6)
+- `stop-docker-with-attach-USB.bat` : run stop docker and detach USB to docker (ota + usb + usb-c3c6)
+- `logs-fr.bat` : show logs OTA (FR)
+- `logs-en.bat` : show logs OTA (EN)
+- `clear-memory.bat` : reset memorised config  (usb | usb-c3c6)
 
 ---
 

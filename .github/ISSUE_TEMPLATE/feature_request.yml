@@ -1,0 +1,29 @@
+name: "💡 Feature Request"
+description: "Suggest a new feature or improvement for the ACW02 ESPHome module"
+title: "[Feature] Short description"
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Feature description
+      description: "Describe the feature you would like to see."
+      placeholder: "Example: Add support for 'I Feel' function."
+    validations:
+      required: true
+
+  - type: textarea
+    id: reason
+    attributes:
+      label: Why is this feature useful?
+      description: "Explain why this feature would improve the project."
+      placeholder: "Example: Many Airton users rely on the I Feel function for accurate temperature control."
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: "Have you thought of any alternative solutions?"
+      placeholder: "Example: Use a Home Assistant automation instead."
