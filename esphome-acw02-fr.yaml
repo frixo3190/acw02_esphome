@@ -51,6 +51,8 @@ web_server:
   include_internal: true
   
 logger:
+  hardware_uart: UART0
+  baud_rate: 0
   level: INFO
   
 api:
@@ -102,17 +104,79 @@ uart:
   tx_pin: ${TX}
   rx_pin: ${RX}
   baud_rate: 9600
-  stop_bits: 1
-  rx_buffer_size: 1024
+  # stop_bits: 1
+  # rx_buffer_size: 1024
 
-external_components:
-  - source:
-      type: local
-      path: components
+tuya:
+climate:
+  - platform: tuya
+    id: acw02
+    name: "Climatiseur"
+    switch_datapoint: 1
+    supports_heat: true
+    supports_cool: true
+    target_temperature_datapoint: 2
+    current_temperature_datapoint: 3
+    temperature_multiplier: 0.1
+    on_state:
+      - lambda: |-
+          if (x.target_temperature < 10) {
+            id(acw02).target_temperature = x.target_temperature * 10;
+          }
+    visual:
+      min_temperature: 16
+      max_temperature: 31
+      temperature_step: 1
+    active_state:
+      datapoint: 4
+      heating_value: 3
+      cooling_value: 1
+      drying_value: 2
+      fanonly_value: 4
+select:
+  - platform: tuya
+    name: "Ventilation"
+    enum_datapoint: 5
+    options:
+      0: "Auto"
+      1: "20%"
+      2: "40%"
+      3: "60%"
+      4: "80%"
+      5: "100%"
+      6: "Silencieux"
+      7: "Turbo"
+  - platform: "tuya"
+    name: "Oscillation Vertical"
+    enum_datapoint: 107
+    options:
+      0: "Désactivé"
+      1: "Activé"
+      2: "Position 1"
+      3: "Position 2"
+      4: "Position 3"
+      5: "Position 4"
+      6: "Position 5"  
+  - platform: "tuya"
+    name: "Unité"
+    enum_datapoint: 105
+    options:
+      0: "°C"
+      1: "°F"
+  - platform: "tuya"
+    name: "Oscillation Horizontal"
+    enum_datapoint: 106
+    options:
+      0: "Désactivé"
+      1: "Activé"
 
-packages:
-  acw02_entities: !include components/acw02/acw02_fr.yaml
-  
-acw02:
-  id: ac_ctrl
-  uart_id: uart_acw02
+switch:
+  - platform: "tuya"
+    name: "Affichage"
+    switch_datapoint: 13
+  - platform: "tuya"
+    name: "Purificateur"
+    switch_datapoint: 110
+  - platform: "tuya"
+    name: "Nuit"
+    switch_datapoint: 109
