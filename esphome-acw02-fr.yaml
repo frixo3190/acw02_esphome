@@ -51,7 +51,7 @@ web_server:
   include_internal: true
   
 logger:
-  level: INFO
+  level: DEBUG
   
 api:
   encryption:
@@ -78,44 +78,20 @@ wifi:
     ssid: ${dev_friendly}
     password: ${ap_password}
 
-mqtt:
-  broker: "" 
-  username: ""
-  password: ""
-  enable_on_boot: false
-  discovery: false
-  keepalive: 30s
-  log_topic: null
-  clean_session: false
-  idf_send_async: false
-  wait_for_connection: false
-  topic_prefix: ${dev_name}
-  birth_message:
-    topic: ${dev_name}/status
-    payload: online
 
-  will_message:
-    topic: ${dev_name}/status
-    payload: offline
 
 captive_portal:
 
 uart:
   id: uart_acw02
-  tx_pin: ${TX}
-  rx_pin: ${RX}
-  baud_rate: 9600
-  stop_bits: 1
+  tx_pin: ${RX}
+  rx_pin: ${TX}
+  baud_rate: 115200
   rx_buffer_size: 1024
+  #marche pas 9600  57600  115200
+  # stop_bits: 1
+  # rx_buffer_size: 1024
+  debug:
+    direction: BOTH
+    dummy_receiver: false
 
-external_components:
-  - source:
-      type: local
-      path: components
-
-packages:
-  acw02_entities: !include components/acw02/acw02_fr.yaml
-  
-acw02:
-  id: ac_ctrl
-  uart_id: uart_acw02
