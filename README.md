@@ -40,7 +40,8 @@ Custom ESPHome component for **Teknopoint** and **Airton** (Airton ref: 409729) 
   - [📦 Update](#-update)
 - [🔍 Interface Details](#-interface-details)
 - [🏠 Bonus Jeedom Configuration](#-bonus-jeedom-configuration)
-- [📦 Components](#-components)
+- [📦 Components for Forhorse version](#-components-for-forhorse-version-thanks-to-him)
+- [📦 Components for original version](#-components-for-original-version-mine)
   - [⚙️ Choosing the ESP32 Board](#️-choosing-the-esp32-board)
 - [🧵 PCB Soldering & Wiring](#-pcb-soldering--wiring)
 - [🧱 3D Files](#-3d-files)
@@ -62,7 +63,19 @@ Custom ESPHome component for **Teknopoint** and **Airton** (Airton ref: 409729) 
 > - **Exception – Airton**: AC units using the **Wi-Fi module 409945** are **not compatible** with this firmware.  
 >   - These units use a **Tuya MCU UART protocol** (`55 AA 03 ...`) instead of the custom `7A 7A ...` protocol implemented here.  
 >   - You can still use **all provided hardware parts** (PCB, wiring, and 3D-printed enclosure) from this repository.  
->   - For these models, use this doc **[ACW02 ESPHome Tuya MCU integration](./docs/TUYA_MCU_SETUP.md)** instead — a basic configuration example is provided in that document and can be adapted to your needs.  
+>   - For these models, use this doc **[ACW02 ESPHome Tuya MCU integration](./docs/TUYA_MCU_SETUP.md)** instead — a basic configuration example is provided in that document and can be adapted to your needs.
+> - **Exception – Some Airton mainboards**: Certain Airton units using control boards with a reference similar to `SMVHXX-XBXXXXX` may provide insufficient power on the Wi-Fi module connector for an ESP32-based ACW02 replacement.
+>   - Symptoms may include random reboots, Wi-Fi instability, connection failures, or ESP32 brownout resets.
+>   - If you experience these issues, power the ACW02 module from an external **5 V USB supply** (micro usb, usb c... depends on the ESP32's USB connector) while keeping the UART connection to the AC unit.
+>   - In this configuration, the **original 12 V supply from the AC board must be disconnected** (but keep the GND) from the Wi-Fi/ACW02 connector to avoid back-powering or instability. (In this configuration, the polulu module is no longer necessary.)
+>   - example:
+    https://www.amazon.fr/dp/B0DLK81PNN?ref=cm_sw_r_cso_cp_apin_dp_1YWFK08F028ZE3RDJSZV&social_share=cm_sw_r_cso_cp_apin_dp_1YWFK08F028ZE3RDJSZV&language=en_GB&currency=EUR
+    ![conv-220v-5v-usb.png](docs/images/conv-220v-5v-usb.png)
+>   - This converter needs to be connected to the main power supply of the indoor unit, which is normally 220v.
+>   - This issue appears to be related to the available current on specific board revisions and does not affect all Airton units.
+>   - Further community feedback is welcome to identify the affected board revisions more precisely.
+>   - All versions have affected my versions and that of Forhorse.
+
 
 ---
 
@@ -216,8 +229,80 @@ wifi_password3: "testesp32"
 - [Enable on Jeedom](docs/enable_on_jeedom.md)  
 
 ---
+### 📦 Components for Forhorse version (thanks to him)
+- **PCB**
+  - **[Forhorse PCB](https://github.com/devildant/acw02_esphome/blob/main/docs/version_Forhorse.md)**
+  ![Forhorse](PCB/images/pcb/Forhorse_PCB.png)  
 
-### 📦 Components
+- **Components**
+  - **[Connector: JST XA 2.5 male/male 4 pins (standard direction) (x1)](https://www.aliexpress.com/item/1005008857984831.html)** 
+
+    ![JST order](PCB/images/components/connector%202.PNG)
+
+- **Configuration board in yaml**:
+```yaml
+ # LOLIN ESP32 C3 MINI
+ board: lolin_c3_mini
+ TX: GPIO21
+ RX: GPIO20
+```
+
+- **(Optional) Additional configuration to add to the yaml file at the end (currently not linked to the firmware)**:
+```yaml
+## Start of the section for the STA LED
+# Off when everything is OK
+# slow blinking in case of warning (Wi-Fi connection issue, etc.)
+# fast blinking in case of error
+status_led:
+  pin:
+    number: GPIO03
+    inverted: true
+## End of the section for the STA LED
+
+## Start of the section for the remote temperature probe
+# Temperature probe
+sensor:
+  - platform: ntc
+    id: external_temperature_sensor
+    sensor: resistance_sensor
+    calibration:
+      b_constant: 3950
+      reference_temperature: 25°C
+      reference_resistance: 10kOhm
+    name: NTC Temperature
+
+  # Source sensors:
+  - platform: resistance
+    id: resistance_sensor
+    sensor: source_sensor
+    configuration: DOWNSTREAM
+    resistor: 10kOhm
+    name: Resistance Sensor
+    internal: True
+
+  - platform: adc
+    id: source_sensor
+    pin: GPIO01
+    attenuation: 12db
+    update_interval: never
+    internal: True
+
+switch:
+  - platform: gpio
+    pin: GPIO10
+    id: ntc_vcc
+    internal: True
+
+interval:
+  - interval: 10s #adjust frequency of measurement refresh here
+    then:
+      - switch.turn_on: ntc_vcc
+      - component.update: source_sensor
+      - switch.turn_off: ntc_vcc
+## End of the section for the remote temperature probe
+```
+
+### 📦 Components for original version (mine)
 
 - **[12V → 5V Regulator D24V10F5](https://shop.mchobby.be/fr/regulateurs/554--regul-5v-1a-step-down-d24v10f5-3232100005549-pololu.html)**  
   [Manufacturer](https://www.pololu.com/product/2831)  
@@ -333,6 +418,14 @@ Several ESP32 boards can be used with this module. Each has its own pros and con
 #### Version 2
 
 - [acw02 case bot with air flow (.stl)](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/D1-MIMI/Version%202/acw02%20case%20bot%20with%20air%20flow.stl)
+- [acw02 case top air flow (.stl)](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/D1-MIMI/Version%202/acw02%20case%20top%20air%20flow.stl)
+- [acw02 case top cable with thermo air flow (.stl)](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/D1-MIMI/Version%202/acw02%20case%20top%20cable%20with%20thermo%20air%20flow.stl)
+- [acw02 case top cable with thermo plastic card (.stl)](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/D1-MIMI/Version%202/acw02%20case%20top%20cable%20with%20thermo%20plastic%20card.stl)
+- [acw02 case top plastic card (.stl)](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/D1-MIMI/Version%202/acw02%20case%20top%20plastic%20card.stl)
+- [card (.stl)](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/D1-MIMI/Version%202/card.stl)
+
+#### Version 2 for pcb Forhorse
+- [full pcb acw02 case bot with air flow (.stl)](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/full%20pcb%20by%20Forhorse/full%20pcb%20acw02%20case%20bot%20with%20air%20flow.stl)
 - [acw02 case top air flow (.stl)](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/D1-MIMI/Version%202/acw02%20case%20top%20air%20flow.stl)
 - [acw02 case top cable with thermo air flow (.stl)](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/D1-MIMI/Version%202/acw02%20case%20top%20cable%20with%20thermo%20air%20flow.stl)
 - [acw02 case top cable with thermo plastic card (.stl)](https://github.com/devildant/acw02_esphome/raw/main/3Dfiles/D1-MIMI/Version%202/acw02%20case%20top%20cable%20with%20thermo%20plastic%20card.stl)
