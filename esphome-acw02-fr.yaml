@@ -53,7 +53,7 @@ web_server:
 logger:
   hardware_uart: UART0
   baud_rate: 0
-  level: INFO
+  level: DEBUG
   
 api:
   encryption:
@@ -101,11 +101,15 @@ captive_portal:
 
 uart:
   id: uart_acw02
-  tx_pin: ${TX}
-  rx_pin: ${RX}
-  baud_rate: 9600
+  tx_pin: ${RX}
+  rx_pin: ${TX}
+  baud_rate: 115200
+  #marche pas 9600  57600  115200
   # stop_bits: 1
   # rx_buffer_size: 1024
+  debug:
+    direction: BOTH
+    dummy_receiver: false
 
 tuya:
 climate:
