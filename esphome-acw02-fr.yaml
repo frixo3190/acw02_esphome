@@ -1,8 +1,8 @@
 substitutions:
-  dev_name: clim-salon
-  dev_friendly: clim salon
+  dev_name: clim-rdc-extension
+  dev_friendly: clim extension salon
   lang: "fr"
-  api_encrypted_key: "D2oldc0VP++fni6src89tCSC0UwBhNPgyc8vgYN8/mA="
+  api_encrypted_key: "+4Y9UtfgruQGKwKdOfNrvIAG2BqTfiu6Y64JSn4wwWQ="
   ota_password: "motdepasseclim!"
   ap_password: "fallbackpassword"
   web_server_username: admin
