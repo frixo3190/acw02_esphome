@@ -45,7 +45,7 @@ web_server:
   include_internal: true
   
 logger:
-  level: DEBUG
+  level: INFO
   
 api:
   encryption:
