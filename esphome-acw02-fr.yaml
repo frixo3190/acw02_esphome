@@ -12,20 +12,7 @@ substitutions:
   TX: GPIO17
   RX: GPIO16
   
-  ## LOLIN ESP32 C3 MINI
-  # board: lolin_c3_mini
-  # TX: GPIO21
-  # RX: GPIO20
 
-  ## XIAO (seeeds studio) ESP32 C3
-  # board: seeed_xiao_esp32c3
-  # TX: GPIO21
-  # RX: GPIO20
-
-  ## XIAO (seeeds studio) ESP32 C6
-  # board: seeed_xiao_esp32c6
-  # TX: GPIO16
-  # RX: GPIO17
 
 esphome:
   name: ${dev_name}
@@ -34,6 +21,13 @@ esphome:
     build_flags:
       - -DDLOCALE_LANG=\"${lang}\"
       - -DDBOARD=\"${board}\"
+
+external_components:
+  - source:
+      type: local
+      path: tuya_patched
+    components: [tuya]
+  
 
 esp32:
   board: ${board}
@@ -67,13 +61,6 @@ wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
   power_save_mode: none
-  # networks:
-  #   - ssid: !secret wifi_ssid
-  #     password: !secret wifi_password
-  #   - ssid: !secret wifi_ssid2
-  #     password: !secret wifi_password2
-  #   - ssid: !secret wifi_ssid3
-  #     password: !secret wifi_password3
   ap:
     ssid: ${dev_friendly}
     password: ${ap_password}
@@ -85,13 +72,91 @@ captive_portal:
 uart:
   id: uart_acw02
   tx_pin: ${RX}
-  rx_pin: ${TX}
-  baud_rate: 115200
+  rx_pin:
+    number: ${TX}
+  baud_rate: 9600
   rx_buffer_size: 1024
   #marche pas 9600  57600  115200
   # stop_bits: 1
   # rx_buffer_size: 1024
-  debug:
-    direction: BOTH
-    dummy_receiver: false
+  # debug:
+  #     direction: BOTH
+  #     dummy_receiver: false
 
+
+
+tuya:
+  id: tuya_clim
+
+climate:
+  - platform: tuya
+    id: acw02
+    name: "Climatiseur"
+    switch_datapoint: 1
+    supports_heat: true
+    supports_cool: true
+    target_temperature_datapoint: 2
+    current_temperature_datapoint: 3
+    temperature_multiplier: 0.1
+    on_state:
+      - lambda: |-
+          if (x.target_temperature < 10) {
+            id(acw02).target_temperature = x.target_temperature * 10;
+          }
+    visual:
+      min_temperature: 16
+      max_temperature: 31
+      temperature_step: 1
+    active_state:
+      datapoint: 4
+      heating_value: 3
+      cooling_value: 1
+      drying_value: 2
+      fanonly_value: 4
+select:
+  - platform: tuya
+    name: "Ventilation"
+    enum_datapoint: 5
+    options:
+      0: "Auto"
+      1: "20%"
+      2: "40%"
+      3: "60%"
+      4: "80%"
+      5: "100%"
+      6: "Silencieux"
+      7: "Turbo"
+  - platform: "tuya"
+    name: "Oscillation Vertical"
+    enum_datapoint: 107
+    options:
+      0: "Désactivé"
+      1: "Activé"
+      2: "Position 1"
+      3: "Position 2"
+      4: "Position 3"
+      5: "Position 4"
+      6: "Position 5"  
+  - platform: "tuya"
+    name: "Unité"
+    enum_datapoint: 105
+    options:
+      0: "°C"
+      1: "°F"
+  - platform: "tuya"
+    name: "Oscillation Horizontal"
+    enum_datapoint: 106
+    options:
+      0: "Désactivé"
+      1: "Activé"
+
+switch:
+  - platform: "tuya"
+    name: "Affichage"
+    switch_datapoint: 13
+  - platform: "tuya"
+    name: "Purificateur"
+    switch_datapoint: 110
+  - platform: "tuya"
+    name: "Nuit"
+    switch_datapoint: 109
