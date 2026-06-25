@@ -160,6 +160,4 @@ switch:
   - platform: "tuya"
     name: "Nuit"
     switch_datapoint: 109
-  - platform: "tuya"
-    name: "Bip"
-    switch_datapoint: 115
+
