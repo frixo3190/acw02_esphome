@@ -85,8 +85,6 @@ uart:
 
 
 
-
-
 tuya:
   id: tuya_clim
   ignore_mcu_update_on_datapoints:
