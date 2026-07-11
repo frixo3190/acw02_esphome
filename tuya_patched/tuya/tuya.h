@@ -86,6 +86,9 @@ struct TuyaCommand {
 
 class Tuya : public Component, public uart::UARTDevice {
  public:
+  void query_all_datapoints() {
+    this->send_empty_command_(TuyaCommandType::DATAPOINT_QUERY);
+  }
   float get_setup_priority() const override { return setup_priority::LATE; }
   void setup() override;
   void loop() override;

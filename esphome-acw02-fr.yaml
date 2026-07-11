@@ -89,18 +89,18 @@ tuya:
   id: tuya_clim
   # ignore_mcu_update_on_datapoints:
   #   - 3
-  on_datapoint_update:
-    - sensor_datapoint: 3
-      datapoint_type: int
-      then:
-        - lambda: |-
-            static uint32_t last_update = 0;
-            uint32_t now = millis();
-            if (now - last_update > 500) {
-              id(acw02).current_temperature = x / 10.0;
-              id(acw02).publish_state();
-              last_update = now;
-            }
+  # on_datapoint_update:
+  #   - sensor_datapoint: 3
+  #     datapoint_type: int
+  #     then:
+  #       - lambda: |-
+  #           static uint32_t last_update = 0;
+  #           uint32_t now = millis();
+  #           if (now - last_update > 500) {
+  #             id(acw02).current_temperature = x / 10.0;
+  #             id(acw02).publish_state();
+  #             last_update = now;
+  #           }
 
 climate:
   - platform: tuya
@@ -174,3 +174,10 @@ switch:
   - platform: "tuya"
     name: "Nuit"
     switch_datapoint: 109
+
+button:
+  - platform: template
+    name: "Rafraîchir température"
+    on_press:
+      - lambda: |-
+          id(tuya_clim).query_all_datapoints();
