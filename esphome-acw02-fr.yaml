@@ -94,9 +94,12 @@ tuya:
       datapoint_type: int
       then:
         - lambda: |-
-            if (x != 250) {  // ignorer le second capteur
+            static uint32_t last_update = 0;
+            uint32_t now = millis();
+            if (now - last_update > 500) {
               id(acw02).current_temperature = x / 10.0;
               id(acw02).publish_state();
+              last_update = now;
             }
 
 climate:
