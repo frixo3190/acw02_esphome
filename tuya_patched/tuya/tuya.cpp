@@ -376,13 +376,28 @@ void Tuya::handle_datapoints_(const uint8_t *buffer, size_t len) {
       if (ds == 4) {
         uint32_t val = (buffer[4] << 24) | (buffer[5] << 16) | (buffer[6] << 8) | buffer[7];
         if (val < 70) {
-          ESP_LOGD("tuya_fix", "DP3 parasite ignoré: %u", val);
-          len -= 4 + ds;
-          buffer += 4 + ds;
-          continue;
+          uint32_t corrected = val + 256;
+          ESP_LOGD("tuya_fix", "DP3 overflow corrigé: %u -> %u (%.1f°C)", val, corrected, corrected / 10.0f);
+          const_cast<uint8_t*>(buffer)[6] = (corrected >> 8) & 0xFF;
+          const_cast<uint8_t*>(buffer)[7] = corrected & 0xFF;
         }
       }
     }
+
+    //ignore
+    // if (datapoint.id == 3) {
+    //   size_t ds = (buffer[2] << 8) + buffer[3];
+    //   if (ds == 4) {
+    //     uint32_t val = (buffer[4] << 24) | (buffer[5] << 16) | (buffer[6] << 8) | buffer[7];
+    //     if (val < 70) {
+    //       ESP_LOGD("tuya_fix", "DP3 parasite ignoré: %u", val);
+    //       len -= 4 + ds;
+    //       buffer += 4 + ds;
+    //       continue;
+    //     }
+    //   }
+    // }
+
     // if (datapoint.id == 3) {
     //   size_t ds = (buffer[2] << 8) + buffer[3];
     //   if (ds == 4) {
