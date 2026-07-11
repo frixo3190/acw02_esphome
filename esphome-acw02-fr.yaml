@@ -45,7 +45,7 @@ web_server:
   include_internal: true
   
 logger:
-  level: DEBUG
+  level: INFO
   
 api:
   encryption:
@@ -79,9 +79,9 @@ uart:
   #marche pas 9600  57600  115200
   # stop_bits: 1
   # rx_buffer_size: 1024
-  debug:
-      direction: BOTH
-      dummy_receiver: false
+  # debug:
+  #     direction: BOTH
+  #     dummy_receiver: false
 
 
 
@@ -174,10 +174,3 @@ switch:
   - platform: "tuya"
     name: "Nuit"
     switch_datapoint: 109
-
-button:
-  - platform: template
-    name: "Rafraîchir température"
-    on_press:
-      - lambda: |-
-          id(tuya_clim).query_all_datapoints();
