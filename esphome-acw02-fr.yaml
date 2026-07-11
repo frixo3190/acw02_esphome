@@ -85,8 +85,22 @@ uart:
 
 
 
+
+
 tuya:
   id: tuya_clim
+  ignore_mcu_update_on_datapoints:
+    - 3
+  on_datapoint_update:
+    - sensor_datapoint: 3
+      datapoint_type: int
+      then:
+        - lambda: |-
+            if (x >= 100) {
+              id(acw02).current_temperature = x / 10.0;
+              id(acw02).publish_state();
+            }
+            // x < 100 → valeur parasite, on ignore
 
 climate:
   - platform: tuya
@@ -96,7 +110,7 @@ climate:
     supports_heat: true
     supports_cool: true
     target_temperature_datapoint: 2
-    current_temperature_datapoint: 3
+    # current_temperature_datapoint: 3
     temperature_multiplier: 0.1
     on_state:
       - lambda: |-
