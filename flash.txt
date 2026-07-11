@@ -1,3 +1,7 @@
 python -m esphome run esphome-acw02-fr.yaml --device 192.168.70.7
 
 14 pour le salon
+
+logs
+===============
+esphome logs .\esphome-acw02-fr.yaml

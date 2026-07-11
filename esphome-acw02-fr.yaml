@@ -43,9 +43,7 @@ web_server:
   log: true
   local : true
   include_internal: true
-  
-logger:
-  level: INFO
+
   
 api:
   encryption:
@@ -79,11 +77,13 @@ uart:
   #marche pas 9600  57600  115200
   # stop_bits: 1
   # rx_buffer_size: 1024
-  # debug:
-  #     direction: BOTH
-  #     dummy_receiver: false
+  debug:
+      direction: BOTH
+      dummy_receiver: false
 
-
+  
+logger:
+  level: DEBUG
 
 tuya:
   id: tuya_clim

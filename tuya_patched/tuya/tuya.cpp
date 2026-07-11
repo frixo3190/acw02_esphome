@@ -352,15 +352,15 @@ void Tuya::handle_command_(uint8_t command, uint8_t version, const uint8_t *buff
 
 void Tuya::handle_datapoints_(const uint8_t *buffer, size_t len) {
   // Variables statiques pour mémoriser l'état du DP3 d'un appel à l'autre
-  static uint32_t last_dp3_time = 0;
-  static uint32_t pending_dp3_val = 0;
-  static bool has_pending_dp3 = false;
+  // static uint32_t last_dp3_time = 0;
+  // static uint32_t pending_dp3_val = 0;
+  // static bool has_pending_dp3 = false;
 
-  // Sécurité : si une valeur DP3 est restée bloquée et que plus d'une seconde s'est écoulée
-  // sans qu'une deuxième trame ne soit arrivée, on l'autorise à passer au coup suivant.
-  if (has_pending_dp3 && (millis() - last_dp3_time >= 1000)) {
-    has_pending_dp3 = false;
-  }
+  // // Sécurité : si une valeur DP3 est restée bloquée et que plus d'une seconde s'est écoulée
+  // // sans qu'une deuxième trame ne soit arrivée, on l'autorise à passer au coup suivant.
+  // if (has_pending_dp3 && (millis() - last_dp3_time >= 1000)) {
+  //   has_pending_dp3 = false;
+  // }
 
   while (len >= 4) {
     TuyaDatapoint datapoint{};
@@ -371,50 +371,51 @@ void Tuya::handle_datapoints_(const uint8_t *buffer, size_t len) {
     //Frixo
     // Fix: ignore spurious low values on datapoint 3 (Airton 409966)
     // This MCU sends parasite temp frames with values < 70 (e.g. 4, 14)
-    // if (datapoint.id == 3) {
-    //   size_t ds = (buffer[2] << 8) + buffer[3];
-    //   if (ds == 4) {
-    //     uint32_t val = (buffer[4] << 24) | (buffer[5] << 16) | (buffer[6] << 8) | buffer[7];
-    //     if (val < 70) {
-    //       len -= 4 + ds;
-    //       buffer += 4 + ds;
-    //       continue;
-    //     }
-    //   }
-    // }
     if (datapoint.id == 3) {
       size_t ds = (buffer[2] << 8) + buffer[3];
       if (ds == 4) {
         uint32_t val = (buffer[4] << 24) | (buffer[5] << 16) | (buffer[6] << 8) | buffer[7];
-        if (val < 60) {
-          val += 0xF0; 
-          const_cast<uint8_t*>(buffer)[7] = val & 0xFF; 
-        }
-
-        uint32_t now = millis();
-
-        // 2. Filtre temporel : si c'est la DEUXIÈME valeur en moins d'une seconde
-        if (has_pending_dp3 && (now - last_dp3_time < 1000)) {
-          ESP_LOGD("tuya_fix", "Rafale DP3 ! Deuxième valeur reçue en %u ms. On valide : %u (%.1f°C)", 
-                   (now - last_dp3_time), val, val / 10.0f);
-          
-          last_dp3_time = now;
-          has_pending_dp3 = false; // On l'exécute normalement maintenant
-        } 
-        else {
-          // 3. C'est la première valeur de la rafale, on la met de côté et on attend la suivante
-          ESP_LOGD("tuya_fix", "Première valeur DP3 : %u. En attente de la deuxième...", val);
-          last_dp3_time = now;
-          pending_dp3_val = val;
-          has_pending_dp3 = true;
-
-          // On saute le traitement d'ESPHome pour cet octet
+        if (val < 70) {
+          ESP_LOGD("tuya_fix", "DP3 parasite ignoré: %u", val);
           len -= 4 + ds;
           buffer += 4 + ds;
-          continue; 
+          continue;
         }
       }
     }
+    // if (datapoint.id == 3) {
+    //   size_t ds = (buffer[2] << 8) + buffer[3];
+    //   if (ds == 4) {
+    //     uint32_t val = (buffer[4] << 24) | (buffer[5] << 16) | (buffer[6] << 8) | buffer[7];
+    //     if (val < 60) {
+    //       val += 0xF0; 
+    //       const_cast<uint8_t*>(buffer)[7] = val & 0xFF; 
+    //     }
+
+    //     uint32_t now = millis();
+
+    //     // 2. Filtre temporel : si c'est la DEUXIÈME valeur en moins d'une seconde
+    //     if (has_pending_dp3 && (now - last_dp3_time < 1000)) {
+    //       ESP_LOGD("tuya_fix", "Rafale DP3 ! Deuxième valeur reçue en %u ms. On valide : %u (%.1f°C)", 
+    //                (now - last_dp3_time), val, val / 10.0f);
+          
+    //       last_dp3_time = now;
+    //       has_pending_dp3 = false; // On l'exécute normalement maintenant
+    //     } 
+    //     else {
+    //       // 3. C'est la première valeur de la rafale, on la met de côté et on attend la suivante
+    //       ESP_LOGD("tuya_fix", "Première valeur DP3 : %u. En attente de la deuxième...", val);
+    //       last_dp3_time = now;
+    //       pending_dp3_val = val;
+    //       has_pending_dp3 = true;
+
+    //       // On saute le traitement d'ESPHome pour cet octet
+    //       len -= 4 + ds;
+    //       buffer += 4 + ds;
+    //       continue; 
+    //     }
+    //   }
+    // }
 
     size_t data_size = (buffer[2] << 8) + buffer[3];
     const uint8_t *data = buffer + 4;
